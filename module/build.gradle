@@ -55,6 +55,18 @@ dependencies {
     // Databricks Zerobus Ingest SDK - CONFIRMED available in Maven Central
     implementation 'com.databricks:zerobus-ingest-sdk:0.1.0'
     
+    // gRPC - required by Zerobus SDK for communication
+    implementation 'io.grpc:grpc-api:1.59.0'
+    implementation 'io.grpc:grpc-core:1.59.0'
+    implementation 'io.grpc:grpc-stub:1.59.0'
+    implementation 'io.grpc:grpc-protobuf:1.59.0'
+    implementation 'io.grpc:grpc-netty-shaded:1.59.0'
+    implementation 'io.grpc:grpc-context:1.59.0'
+    
+    // Additional gRPC dependencies
+    implementation 'com.google.api.grpc:proto-google-common-protos:2.25.1'
+    implementation 'com.google.code.gson:gson:2.10.1'
+    
     // Testing
     testImplementation 'org.junit.jupiter:junit-jupiter:5.9.2'
     testImplementation 'org.mockito:mockito-core:5.1.1'
