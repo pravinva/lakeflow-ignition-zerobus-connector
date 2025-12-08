@@ -4,7 +4,6 @@ import com.example.ignition.zerobus.web.ZerobusConfigResource;
 import com.inductiveautomation.ignition.common.licensing.LicenseState;
 import com.inductiveautomation.ignition.gateway.model.AbstractGatewayModuleHook;
 import com.inductiveautomation.ignition.gateway.model.GatewayContext;
-import com.inductiveautomation.ignition.gateway.web.components.AbstractResourceProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,9 +13,10 @@ import org.slf4j.LoggerFactory;
  * This module subscribes to Ignition tags and streams their values to Databricks
  * Delta tables via the Zerobus Ingest API using the Databricks Zerobus Java SDK.
  * 
- * Lifecycle:
- * - startup(): Initialize managers, services, and config UI
- * - shutdown(): Gracefully close connections and stop subscriptions
+ * Lifecycle (Ignition 8.3.2):
+ * - setup(GatewayContext): Initialize context and prepare resources
+ * - startup(LicenseState): Start services and activate module
+ * - shutdown(): Stop services and cleanup
  */
 public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
     
@@ -29,17 +29,24 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
     private ZerobusConfigResource restResource;
     
     /**
+     * Setup - called first during module initialization.
+     * Store the gateway context for later use.
+     */
+    @Override
+    public void setup(GatewayContext context) {
+        this.gatewayContext = context;
+        logger.info("Zerobus Gateway Module setup complete");
+    }
+    
+    /**
      * Module startup - called when the module is installed or Gateway starts.
+     * NOTE: startup() is abstract in AbstractGatewayModuleHook - do NOT call super.startup()
      */
     @Override
     public void startup(LicenseState licenseState) {
-        super.startup(licenseState);
-        
         logger.info("Starting Zerobus Gateway Module...");
         
         try {
-            this.gatewayContext = this.getContext();
-            
             // Initialize configuration model
             this.configModel = new ConfigModel();
             loadConfiguration();
@@ -55,11 +62,16 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
             );
             
             // Register REST API resource for configuration UI
+            // In Ignition 8.3.2, use mountPathAlias instead of addResource
             this.restResource = new ZerobusConfigResource(gatewayContext, this);
-            gatewayContext.getWebResourceManager()
-                .addResource("/system/zerobus", restResource);
-            
-            logger.info("REST API registered at /system/zerobus");
+            try {
+                gatewayContext.getMountManager()
+                    .mountPathAlias("/system/zerobus", restResource);
+                logger.info("REST API mounted at /system/zerobus");
+            } catch (Exception e) {
+                logger.warn("Could not mount REST resource (getMountManager may not be available): {}", e.getMessage());
+                logger.info("REST endpoints may need manual registration - check Ignition 8.3.2 documentation");
+            }
             
             // Only start services if module is enabled
             if (configModel.isEnabled()) {
@@ -76,20 +88,21 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
     
     /**
      * Module shutdown - called when the module is uninstalled or Gateway stops.
+     * NOTE: shutdown() is abstract in AbstractGatewayModuleHook - do NOT call super.shutdown()
      */
     @Override
     public void shutdown() {
         logger.info("Shutting down Zerobus Gateway Module...");
         
         try {
-            // Unregister REST API
+            // Unmount REST API
             if (gatewayContext != null && restResource != null) {
                 try {
-                    gatewayContext.getWebResourceManager()
-                        .removeResource("/system/zerobus");
-                    logger.info("REST API unregistered");
+                    gatewayContext.getMountManager()
+                        .unmountPath("/system/zerobus");
+                    logger.info("REST API unmounted");
                 } catch (Exception e) {
-                    logger.warn("Error unregistering REST API", e);
+                    logger.warn("Error unmounting REST API: {}", e.getMessage());
                 }
             }
             
@@ -109,8 +122,6 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
             
         } catch (Exception e) {
             logger.error("Error during module shutdown", e);
-        } finally {
-            super.shutdown();
         }
     }
     
@@ -145,7 +156,7 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
         logger.debug("Loading configuration...");
         
         /*
-         * IMPLEMENTATION REQUIRED (Ignition SDK):
+         * IMPLEMENTATION REQUIRED (Ignition SDK 8.3.2):
          * 
          * PersistenceInterface persistence = gatewayContext.getPersistenceInterface();
          * SQuery<SettingsRecord> query = new SQuery<>(SettingsRecord.META);
@@ -173,7 +184,7 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
         logger.info("Saving configuration...");
         
         /*
-         * IMPLEMENTATION REQUIRED (Ignition SDK):
+         * IMPLEMENTATION REQUIRED (Ignition SDK 8.3.2):
          * 
          * PersistenceInterface persistence = gatewayContext.getPersistenceInterface();
          * 
@@ -257,6 +268,13 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
     }
     
     /**
+     * Get the gateway context.
+     */
+    public GatewayContext getGatewayContext() {
+        return gatewayContext;
+    }
+    
+    /**
      * Get diagnostics information.
      */
     public String getDiagnosticsInfo() {
@@ -275,4 +293,3 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
         return info.toString();
     }
 }
-
