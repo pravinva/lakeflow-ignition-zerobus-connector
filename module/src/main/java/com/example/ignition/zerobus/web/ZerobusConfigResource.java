@@ -44,6 +44,15 @@ public class ZerobusConfigResource {
     }
     
     /**
+     * Get the gateway hook instance.
+     * 
+     * @return Gateway hook
+     */
+    public ZerobusGatewayHook getGatewayHook() {
+        return gatewayHook;
+    }
+    
+    /**
      * GET /system/zerobus/config
      * 
      * Get the current module configuration.

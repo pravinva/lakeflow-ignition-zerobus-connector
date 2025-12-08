@@ -9,32 +9,11 @@
         <freeModule>true</freeModule>
         <hook scope="G">com.example.ignition.zerobus.ZerobusGatewayHook</hook>
         <requiredFrameworkVersion>8</requiredFrameworkVersion>
+        <!-- Core module JAR -->
         <jar scope="G">lib/zerobus-connector-1.0.0.jar</jar>
-        <jar scope="G">lib/zerobus-ingest-sdk-0.1.0.jar</jar>
-        <jar scope="G">lib/protobuf-java-3.24.3.jar</jar>
-        <jar scope="G">lib/javax.ws.rs-api-2.1.1.jar</jar>
-        <jar scope="G">lib/jackson-databind-2.15.2.jar</jar>
-        <jar scope="G">lib/jackson-core-2.15.2.jar</jar>
-        <jar scope="G">lib/jackson-annotations-2.15.2.jar</jar>
-        <jar scope="G">lib/gson-2.10.1.jar</jar>
-        <jar scope="G">lib/grpc-api-1.59.0.jar</jar>
-        <jar scope="G">lib/grpc-context-1.59.0.jar</jar>
-        <jar scope="G">lib/grpc-core-1.59.0.jar</jar>
-        <jar scope="G">lib/grpc-netty-shaded-1.59.0.jar</jar>
-        <jar scope="G">lib/grpc-protobuf-1.59.0.jar</jar>
-        <jar scope="G">lib/grpc-protobuf-lite-1.59.0.jar</jar>
-        <jar scope="G">lib/grpc-stub-1.59.0.jar</jar>
-        <jar scope="G">lib/grpc-util-1.59.0.jar</jar>
-        <jar scope="G">lib/proto-google-common-protos-2.25.1.jar</jar>
-        <jar scope="G">lib/guava-32.0.1-android.jar</jar>
-        <jar scope="G">lib/animal-sniffer-annotations-1.23.jar</jar>
-        <jar scope="G">lib/annotations-4.1.1.4.jar</jar>
-        <jar scope="G">lib/checker-qual-3.33.0.jar</jar>
-        <jar scope="G">lib/error_prone_annotations-2.20.0.jar</jar>
-        <jar scope="G">lib/failureaccess-1.0.1.jar</jar>
-        <jar scope="G">lib/j2objc-annotations-2.8.jar</jar>
-        <jar scope="G">lib/jsr305-3.0.2.jar</jar>
-        <jar scope="G">lib/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar</jar>
-        <jar scope="G">lib/perfmark-api-0.26.0.jar</jar>
+        
+        <!-- Runtime dependencies - Using shaded JAR with all dependencies bundled -->
+        <jar scope="G">lib/zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar</jar>
+        <jar scope="G">lib/protobuf-java-3.21.12.jar</jar>
     </module>
 </modules>

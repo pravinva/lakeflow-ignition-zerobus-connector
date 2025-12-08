@@ -36,6 +36,21 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
     @Override
     public void setup(GatewayContext context) {
         this.gatewayContext = context;
+        
+        // Register configuration servlet
+        try {
+            // Create REST resource and set it for servlet use
+            this.restResource = new ZerobusConfigResource(context, this);
+            ZerobusConfigServlet.setResource(restResource);
+            
+            // Register servlet with Ignition's WebResourceManager
+            context.getWebResourceManager().addServlet("zerobus", ZerobusConfigServlet.class);
+            
+            logger.info("Configuration servlet registered: 'zerobus' → /system/zerobus");
+        } catch (Exception e) {
+            logger.error("Failed to register configuration servlet", e);
+        }
+        
         logger.info("Zerobus Gateway Module setup complete");
     }
     
@@ -62,20 +77,7 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
                 configModel
             );
             
-            // Register configuration servlet
-            // Set static hook reference before servlet registration (required for no-arg constructor)
-            ZerobusConfigServlet.setHook(this);
-            
-            try {
-                // Register servlet with simple name (Ignition adds /system/ prefix automatically)
-                gatewayContext.getWebResourceManager()
-                    .addServlet("zerobus", ZerobusConfigServlet.class);
-                
-                logger.info("Configuration servlet registered: 'zerobus' → /system/zerobus");
-            } catch (Exception e) {
-                logger.error("Failed to register configuration servlet", e);
-                throw new RuntimeException("Servlet registration failed - module cannot function without it", e);
-            }
+            // Note: REST servlet is registered in setup() method
             
             // Only start services if module is enabled
             if (configModel.isEnabled()) {
@@ -99,19 +101,15 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
         logger.info("Shutting down Zerobus Gateway Module...");
         
         try {
-            // Unregister REST API servlet
+            // Unregister servlet
             if (gatewayContext != null) {
                 try {
-                    gatewayContext.getWebResourceManager()
-                        .removeServlet("zerobus");
+                    gatewayContext.getWebResourceManager().removeServlet("zerobus");
                     logger.info("Configuration servlet unregistered");
                 } catch (Exception e) {
-                    logger.warn("Error unregistering configuration servlet: {}", e.getMessage());
+                    logger.warn("Error unregistering servlet: {}", e.getMessage());
                 }
             }
-            
-            // Clear static hook reference
-            ZerobusConfigServlet.setHook(null);
             
             // Stop tag subscriptions
             if (tagSubscriptionService != null) {
@@ -282,16 +280,23 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
     }
     
     /**
-     * Get diagnostics information.
+     * Get Zerobus client manager.
      */
-    public String getDiagnosticsInfo() {
-        return getDiagnostics();
+    public ZerobusClientManager getZerobusClientManager() {
+        return zerobusClientManager;
     }
     
     /**
-     * Get diagnostics information (alias for servlet).
+     * Get diagnostics information.
      */
     public String getDiagnostics() {
+        return getDiagnosticsInfo();
+    }
+    
+    /**
+     * Get diagnostics information.
+     */
+    public String getDiagnosticsInfo() {
         StringBuilder info = new StringBuilder();
         info.append("=== Zerobus Module Diagnostics ===\n");
         info.append("Module Enabled: ").append(configModel.isEnabled()).append("\n");
@@ -306,13 +311,4 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
         
         return info.toString();
     }
-    
-    /**
-     * Get the Zerobus client manager.
-     */
-    public ZerobusClientManager getZerobusClientManager() {
-        return zerobusClientManager;
-    }
 }
-
-

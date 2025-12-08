@@ -384,7 +384,8 @@ public class TagSubscriptionService {
      * 
      * @param event The tag event
      */
-    private static boolean firstPoll = true;
+    // Fast polling state (instance variable - each service instance needs its own flag!)
+    private boolean firstPoll = true;
     
     /**
      * Poll tag values at high frequency (100ms).

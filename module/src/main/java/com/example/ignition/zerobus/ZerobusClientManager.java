@@ -464,6 +464,10 @@ public class ZerobusClientManager {
         return totalFailures.get();
     }
     
+    public boolean isInitialized() {
+        return initialized.get();
+    }
+    
     public boolean isConnected() {
         return connected.get();
     }

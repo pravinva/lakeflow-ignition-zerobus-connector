@@ -1,262 +1,120 @@
 package com.example.ignition.zerobus.web;
 
 import com.example.ignition.zerobus.ConfigModel;
+import com.example.ignition.zerobus.ZerobusClientManager;
 import com.example.ignition.zerobus.ZerobusGatewayHook;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import com.google.gson.Gson;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
- * ZerobusConfigServlet - HTTP Servlet for module configuration.
- * 
- * Routes:
- * - GET  /system/zerobus/config         -> getConfiguration()
- * - POST /system/zerobus/config         -> saveConfiguration()
- * - POST /system/zerobus/test-connection -> testConnection()
- * - GET  /system/zerobus/diagnostics    -> getDiagnostics()
- * - GET  /system/zerobus/health         -> healthCheck()
+ * Servlet for Zerobus configuration REST API.
+ * Handles GET/POST requests for configuration, diagnostics, and health checks.
  */
 public class ZerobusConfigServlet extends HttpServlet {
-    
     private static final Logger logger = LoggerFactory.getLogger(ZerobusConfigServlet.class);
-    private static final long serialVersionUID = 1L;
+    private static final Gson gson = new Gson();
     
-    // Static reference to hook (set by GatewayHook before servlet registration)
-    private static ZerobusGatewayHook staticHook;
+    // Static reference set by the module during initialization
+    private static ZerobusConfigResource resource;
     
-    private ZerobusGatewayHook hook;
-    private ObjectMapper objectMapper;
-    
-    /**
-     * No-arg constructor - Required by servlet container.
-     */
     public ZerobusConfigServlet() {
-        this.hook = staticHook;
-        this.objectMapper = new ObjectMapper();
-        
-        if (this.hook == null) {
-            logger.error("ZerobusGatewayHook not set! Call setHook() before servlet registration.");
-        }
+        // Default constructor for Ignition
     }
     
-    /**
-     * Constructor with hook injection - Used by GatewayHook.
-     * 
-     * @param hook The ZerobusGatewayHook instance
-     */
-    public ZerobusConfigServlet(ZerobusGatewayHook hook) {
-        this.hook = hook;
-        this.objectMapper = new ObjectMapper();
-        logger.info("ZerobusConfigServlet created with injected hook");
-    }
-    
-    /**
-     * Set the static hook reference before servlet registration.
-     * Must be called by GatewayHook before addServlet().
-     * 
-     * @param hook The ZerobusGatewayHook instance
-     */
-    public static void setHook(ZerobusGatewayHook hook) {
-        staticHook = hook;
+    public static void setResource(ZerobusConfigResource res) {
+        resource = res;
     }
     
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) 
-            throws ServletException, IOException {
-        
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String pathInfo = req.getPathInfo();
         logger.info("GET request - pathInfo: {}, requestURI: {}", pathInfo, req.getRequestURI());
         
-        // Normalize path - remove leading /zerobus if present
-        String normalizedPath = pathInfo;
+        // Normalize path - remove /zerobus prefix if present
         if (pathInfo != null && pathInfo.startsWith("/zerobus")) {
-            normalizedPath = pathInfo.substring("/zerobus".length());
+            pathInfo = pathInfo.substring("/zerobus".length());
         }
-        
-        // If path is empty or just "/", show index/config
-        if (normalizedPath == null || normalizedPath.isEmpty() || "/".equals(normalizedPath)) {
-            normalizedPath = "/config";
-        }
-        
-        logger.info("Normalized path: {}", normalizedPath);
+        logger.info("Normalized path: {}", pathInfo);
         
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
         
         try {
-            if ("/config".equals(normalizedPath)) {
-                // GET /system/zerobus/config - Get current configuration
+            if (pathInfo == null || pathInfo.equals("/") || pathInfo.equals("/config")) {
                 handleGetConfig(resp);
-                
-            } else if ("/diagnostics".equals(normalizedPath)) {
-                // GET /system/zerobus/diagnostics - Get diagnostics info
-                handleGetDiagnostics(resp);
-                
-            } else if ("/health".equals(normalizedPath)) {
-                // GET /system/zerobus/health - Health check
+            } else if (pathInfo.equals("/health")) {
                 handleHealthCheck(resp);
-                
+            } else if (pathInfo.equals("/diagnostics")) {
+                handleGetDiagnostics(resp);
             } else {
                 resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                writeJson(resp, "{\"error\": \"Endpoint not found: " + normalizedPath + "\"}");
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "Unknown endpoint: " + pathInfo);
+                resp.getWriter().write(gson.toJson(error));
             }
-            
         } catch (Exception e) {
-            logger.error("Error handling GET request: " + pathInfo, e);
+            logger.error("Error handling GET request", e);
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            writeJson(resp, "{\"error\": \"" + e.getMessage() + "\"}");
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            resp.getWriter().write(gson.toJson(error));
         }
     }
     
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) 
-            throws ServletException, IOException {
-        
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String pathInfo = req.getPathInfo();
         logger.info("POST request - pathInfo: {}, requestURI: {}", pathInfo, req.getRequestURI());
         
-        // Normalize path - remove leading /zerobus if present
-        String normalizedPath = pathInfo;
+        // Normalize path
         if (pathInfo != null && pathInfo.startsWith("/zerobus")) {
-            normalizedPath = pathInfo.substring("/zerobus".length());
+            pathInfo = pathInfo.substring("/zerobus".length());
         }
-        
-        logger.info("Normalized path: {}", normalizedPath);
+        logger.info("Normalized path: {}", pathInfo);
         
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
         
         try {
-            if ("/config".equals(normalizedPath)) {
-                // POST /system/zerobus/config - Save configuration
+            if (pathInfo == null || pathInfo.equals("/") || pathInfo.equals("/config")) {
                 handleSaveConfig(req, resp);
-                
-            } else if ("/test-connection".equals(normalizedPath)) {
-                // POST /system/zerobus/test-connection - Test Databricks connection
-                handleTestConnection(resp);
-                
+            } else if (pathInfo.equals("/test-connection")) {
+                handleTestConnection(req, resp);
             } else {
                 resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                writeJson(resp, "{\"error\": \"Endpoint not found: " + normalizedPath + "\"}");
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "Unknown endpoint: " + pathInfo);
+                resp.getWriter().write(gson.toJson(error));
             }
-            
         } catch (Exception e) {
-            logger.error("Error handling POST request: " + pathInfo, e);
+            logger.error("Error handling POST request", e);
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            writeJson(resp, "{\"error\": \"" + e.getMessage() + "\"}");
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            resp.getWriter().write(gson.toJson(error));
         }
     }
     
-    /**
-     * Handle GET /config - Return current configuration.
-     */
     private void handleGetConfig(HttpServletResponse resp) throws IOException {
-        try {
-            ConfigModel config = hook.getConfigModel();
-            String json = objectMapper.writeValueAsString(config);
-            resp.setStatus(HttpServletResponse.SC_OK);
-            writeJson(resp, json);
-        } catch (Exception e) {
-            logger.error("Error getting configuration", e);
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            writeJson(resp, "{\"error\": \"Failed to get configuration: " + e.getMessage() + "\"}");
-        }
+        ZerobusGatewayHook hook = resource.getGatewayHook();
+        ConfigModel config = hook.getConfigModel();
+        
+        resp.setStatus(HttpServletResponse.SC_OK);
+        resp.getWriter().write(gson.toJson(config));
     }
     
-    /**
-     * Handle POST /config - Save new configuration.
-     */
-    private void handleSaveConfig(HttpServletRequest req, HttpServletResponse resp) 
-            throws IOException {
-        try {
-            // Read JSON body
-            String jsonBody = readRequestBody(req);
-            
-            // Parse to ConfigModel
-            ConfigModel config = objectMapper.readValue(jsonBody, ConfigModel.class);
-            
-            // Save configuration via hook
-            hook.saveConfiguration(config);
-            
-            // Return success
-            resp.setStatus(HttpServletResponse.SC_OK);
-            writeJson(resp, "{\"success\": true, \"message\": \"Configuration saved successfully\"}");
-            
-        } catch (Exception e) {
-            logger.error("Error saving configuration", e);
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            writeJson(resp, "{\"error\": \"Failed to save configuration: " + e.getMessage() + "\"}");
-        }
-    }
-    
-    /**
-     * Handle POST /test-connection - Test Databricks connection.
-     */
-    private void handleTestConnection(HttpServletResponse resp) throws IOException {
-        try {
-            // Test connection via Zerobus client manager
-            boolean success = hook.getZerobusClientManager().testConnection();
-            
-            if (success) {
-                resp.setStatus(HttpServletResponse.SC_OK);
-                writeJson(resp, "{\"success\": true, \"message\": \"Connection test successful\"}");
-            } else {
-                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                writeJson(resp, "{\"success\": false, \"message\": \"Connection test failed\"}");
-            }
-            
-        } catch (Exception e) {
-            logger.error("Error testing connection", e);
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            writeJson(resp, "{\"error\": \"Connection test failed: " + e.getMessage() + "\"}");
-        }
-    }
-    
-    /**
-     * Handle GET /diagnostics - Return diagnostics information.
-     */
-    private void handleGetDiagnostics(HttpServletResponse resp) throws IOException {
-        try {
-            // Get diagnostics from hook
-            String diagnostics = hook.getDiagnostics();
-            
-            resp.setContentType("text/plain");
-            resp.setStatus(HttpServletResponse.SC_OK);
-            resp.getWriter().write(diagnostics);
-            
-        } catch (Exception e) {
-            logger.error("Error getting diagnostics", e);
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            writeJson(resp, "{\"error\": \"Failed to get diagnostics: " + e.getMessage() + "\"}");
-        }
-    }
-    
-    /**
-     * Handle GET /health - Health check endpoint.
-     */
-    private void handleHealthCheck(HttpServletResponse resp) throws IOException {
-        try {
-            resp.setStatus(HttpServletResponse.SC_OK);
-            writeJson(resp, "{\"status\": \"ok\", \"module\": \"Zerobus Connector\", \"version\": \"1.0.0\"}");
-        } catch (Exception e) {
-            logger.error("Error in health check", e);
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            writeJson(resp, "{\"error\": \"Health check failed: " + e.getMessage() + "\"}");
-        }
-    }
-    
-    /**
-     * Read request body as string.
-     */
-    private String readRequestBody(HttpServletRequest req) throws IOException {
+    private void handleSaveConfig(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         StringBuilder sb = new StringBuilder();
         try (BufferedReader reader = req.getReader()) {
             String line;
@@ -264,16 +122,63 @@ public class ZerobusConfigServlet extends HttpServlet {
                 sb.append(line);
             }
         }
-        return sb.toString();
+        
+        String jsonBody = sb.toString();
+        logger.info("Received configuration JSON (length: {})", jsonBody.length());
+        
+        ConfigModel newConfig = gson.fromJson(jsonBody, ConfigModel.class);
+        
+        ZerobusGatewayHook hook = resource.getGatewayHook();
+        hook.saveConfiguration(newConfig);
+        
+        resp.setStatus(HttpServletResponse.SC_OK);
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("message", "Configuration saved successfully");
+        resp.getWriter().write(gson.toJson(result));
     }
     
-    /**
-     * Write JSON response.
-     */
-    private void writeJson(HttpServletResponse resp, String json) throws IOException {
-        try (PrintWriter writer = resp.getWriter()) {
-            writer.write(json);
-            writer.flush();
+    private void handleTestConnection(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        ZerobusGatewayHook hook = resource.getGatewayHook();
+        ZerobusClientManager clientManager = hook.getZerobusClientManager();
+        
+        Map<String, Object> result = new HashMap<>();
+        if (clientManager != null && clientManager.isInitialized()) {
+            result.put("success", true);
+            result.put("message", "Connection test successful");
+            result.put("connected", clientManager.isConnected());
+        } else {
+            result.put("success", false);
+            result.put("message", "Zerobus client not initialized");
+            result.put("connected", false);
         }
+        
+        resp.setStatus(HttpServletResponse.SC_OK);
+        resp.getWriter().write(gson.toJson(result));
+    }
+    
+    private void handleHealthCheck(HttpServletResponse resp) throws IOException {
+        ZerobusGatewayHook hook = resource.getGatewayHook();
+        ConfigModel config = hook.getConfigModel();
+        ZerobusClientManager clientManager = hook.getZerobusClientManager();
+        
+        Map<String, Object> health = new HashMap<>();
+        health.put("status", "UP");
+        health.put("moduleEnabled", config.isEnabled());
+        health.put("zerobusInitialized", clientManager != null && clientManager.isInitialized());
+        health.put("zerobusConnected", clientManager != null && clientManager.isConnected());
+        
+        resp.setStatus(HttpServletResponse.SC_OK);
+        resp.getWriter().write(gson.toJson(health));
+    }
+    
+    private void handleGetDiagnostics(HttpServletResponse resp) throws IOException {
+        ZerobusGatewayHook hook = resource.getGatewayHook();
+        String diagnostics = hook.getDiagnostics();
+        
+        resp.setStatus(HttpServletResponse.SC_OK);
+        resp.setContentType("text/plain");
+        resp.getWriter().write(diagnostics);
     }
 }
+

@@ -38,13 +38,10 @@ dependencies {
     compileOnly fileTree(dir: '/usr/local/ignition/lib/core/common', include: '*.jar')
     
     // JAX-RS API for REST endpoints
-    implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
+    compileOnly 'javax.ws.rs:javax.ws.rs-api:2.1.1'
     
-    // Jakarta Servlet API 6.0 (from Ignition 8.3.2 installation)
-    compileOnly files('/usr/local/ignition/lib/core/gateway/jakarta.servlet-api-6.0.0.jar')
-    
-    // Jackson for JSON serialization in servlet
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
+    // Servlet API (provided by Ignition at runtime - Ignition 8.3.2 uses jakarta!)
+    compileOnly 'jakarta.servlet:jakarta.servlet-api:6.0.0'
     
     // Logging (provided by Ignition at runtime)
     compileOnly "org.slf4j:slf4j-api:${slf4jVersion}"
@@ -52,20 +49,8 @@ dependencies {
     // Protobuf - required for Zerobus SDK
     implementation "com.google.protobuf:protobuf-java:${protobufVersion}"
     
-    // Databricks Zerobus Ingest SDK - CONFIRMED available in Maven Central
-    implementation 'com.databricks:zerobus-ingest-sdk:0.1.0'
-    
-    // gRPC - required by Zerobus SDK for communication
-    implementation 'io.grpc:grpc-api:1.59.0'
-    implementation 'io.grpc:grpc-core:1.59.0'
-    implementation 'io.grpc:grpc-stub:1.59.0'
-    implementation 'io.grpc:grpc-protobuf:1.59.0'
-    implementation 'io.grpc:grpc-netty-shaded:1.59.0'
-    implementation 'io.grpc:grpc-context:1.59.0'
-    
-    // Additional gRPC dependencies
-    implementation 'com.google.api.grpc:proto-google-common-protos:2.25.1'
-    implementation 'com.google.code.gson:gson:2.10.1'
+    // Databricks Zerobus Ingest SDK - Use shaded JAR with all dependencies bundled
+    implementation 'com.databricks:zerobus-ingest-sdk:0.1.0:jar-with-dependencies'
     
     // Testing
     testImplementation 'org.junit.jupiter:junit-jupiter:5.9.2'
@@ -98,11 +83,6 @@ sourceSets {
             srcDirs 'src/main/proto'
         }
     }
-}
-
-// Handle duplicate files
-tasks.withType(Copy).configureEach {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 // Compile options
@@ -213,6 +193,11 @@ clean {
 //     into 'src/main/resources/web'
 // }
 // 
+// Handle duplicate files in processResources
+processResources {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
 // // Make processResources depend on frontend build
 // processResources {
 //     dependsOn copyFrontendToResources
