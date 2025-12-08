@@ -498,7 +498,10 @@ public class TagSubscriptionService {
                     return;
                 }
                 
-                lastValues.put(tagPath, currentValue);
+                // Only store non-null values (ConcurrentHashMap doesn't allow nulls)
+                if (currentValue != null) {
+                    lastValues.put(tagPath, currentValue);
+                }
             }
             
             // Try to add to queue
