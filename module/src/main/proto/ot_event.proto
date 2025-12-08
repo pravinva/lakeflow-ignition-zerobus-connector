@@ -9,96 +9,58 @@ option java_multiple_files = true;
 /**
  * OTEvent - Operational Technology event message for Zerobus Ingest.
  * 
- * This protobuf schema defines the structure of events sent from Ignition
- * to Databricks Delta tables via Zerobus. It represents a single tag value
- * change event with associated metadata.
+ * This protobuf schema EXACTLY matches the Delta table schema:
+ * ignition_demo.scada_data.tag_events
  * 
- * The schema should match the target Delta table schema in Unity Catalog.
+ * IMPORTANT: Column names, types, and order must match Delta table exactly
+ * for Zerobus to accept the stream.
  */
 message OTEvent {
-  // Event timestamp in milliseconds since Unix epoch
-  int64 event_time = 1;
+  // Unique event identifier
+  string event_id = 1;
   
-  // Ignition tag path (e.g., "[default]Conveyor1/Speed")
-  string tag_path = 2;
+  // Event timestamp (milliseconds since Unix epoch)
+  // Maps to Delta TIMESTAMP type
+  int64 event_time = 2;
   
-  // Asset identifier (extracted from tag path or metadata)
-  string asset_id = 3;
+  // Full Ignition tag path (e.g., "[default]TestSimulator/Sine0")
+  string tag_path = 3;
   
-  // Asset hierarchy path (e.g., "Plant1/Line2/Conveyor1")
-  string asset_path = 4;
+  // Ignition tag provider name (e.g., "default")
+  string tag_provider = 4;
   
-  // Tag value - can be one of several types
-  oneof value {
-    double numeric_value = 5;
-    string string_value = 6;
-    bool boolean_value = 7;
-    int64 integer_value = 8;
-  }
+  // Numeric tag value (for numeric tags)
+  // Can be null/0.0 if not applicable
+  double numeric_value = 5;
   
-  // Original value as string (for consistency)
-  string value_string = 9;
+  // String tag value (for string tags)
+  // Can be empty if not applicable
+  string string_value = 6;
   
-  // Data quality indicator
-  Quality quality = 10;
+  // Boolean tag value (for boolean tags)
+  // Can be false if not applicable
+  bool boolean_value = 7;
   
-  // Source system identifier (e.g., "ignition-gw-01")
-  string source_system = 11;
+  // Quality indicator as string ("GOOD", "BAD", "UNCERTAIN")
+  string quality = 8;
   
-  // Optional: Site/location information
-  string site = 12;
+  // Numeric quality code from Ignition
+  int32 quality_code = 9;
   
-  // Optional: Production line
-  string line = 13;
+  // Source Ignition Gateway identifier
+  string source_system = 10;
   
-  // Optional: Equipment unit
-  string unit = 14;
+  // Ingestion timestamp (milliseconds since Unix epoch)
+  // Set by client when event is captured
+  int64 ingestion_timestamp = 11;
   
-  // Optional: Tag metadata/description
-  string tag_description = 15;
+  // Original data type from Ignition tag
+  string data_type = 12;
   
-  // Optional: Engineering units (e.g., "PSI", "RPM", "°C")
-  string engineering_units = 16;
-}
-
-/**
- * Quality - Data quality enumeration.
- * 
- * Maps Ignition quality codes to a simplified enum.
- */
-enum Quality {
-  QUALITY_UNKNOWN = 0;
-  QUALITY_GOOD = 1;
-  QUALITY_BAD = 2;
-  QUALITY_UNCERTAIN = 3;
-}
-
-/**
- * OTEventBatch - Batch of OT events for efficient transmission.
- * 
- * Optional wrapper for sending multiple events in a single message.
- */
-message OTEventBatch {
-  repeated OTEvent events = 1;
+  // Alarm state if tag is in alarm (can be empty)
+  string alarm_state = 13;
   
-  // Batch metadata
-  int64 batch_timestamp = 2;
-  string batch_id = 3;
-  int32 event_count = 4;
-}
-
-/**
- * AlarmEvent - Alarm/event message for alarm history.
- * 
- * Separate schema for alarm events (future enhancement).
- */
-message AlarmEvent {
-  int64 event_time = 1;
-  string alarm_path = 2;
-  string asset_id = 3;
-  string alarm_state = 4;  // "ACTIVE", "CLEARED", "ACKNOWLEDGED"
-  string severity = 5;      // "LOW", "MEDIUM", "HIGH", "CRITICAL"
-  string message = 6;
-  string source_system = 7;
+  // Alarm priority if applicable (can be 0)
+  int32 alarm_priority = 14;
 }
 

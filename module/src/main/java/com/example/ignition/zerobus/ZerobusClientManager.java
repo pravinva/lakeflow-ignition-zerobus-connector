@@ -351,54 +351,68 @@ public class ZerobusClientManager {
      * @return OTEvent protobuf message
      */
     private OTEvent convertToProtobuf(TagEvent event) {
-        OTEvent.Builder builder = OTEvent.newBuilder()
-            .setEventTime(event.getTimestamp().getTime())
-            .setTagPath(event.getTagPath())
-            .setQuality(mapQuality(event.getQuality()))
-            .setSourceSystem(config.getSourceSystemId())
-            .setValueString(event.getValueAsString());
+        // Generate unique event ID
+        String eventId = java.util.UUID.randomUUID().toString();
         
-        // Set asset information if available
-        if (event.getAssetId() != null) {
-            builder.setAssetId(event.getAssetId());
+        // Get current time in milliseconds for ingestion timestamp
+        long ingestionTime = System.currentTimeMillis();
+        
+        // Extract tag provider from tag path (e.g., "[default]TagName" -> "default")
+        String tagProvider = "default";
+        String tagPath = event.getTagPath();
+        if (tagPath != null && tagPath.startsWith("[") && tagPath.contains("]")) {
+            int endBracket = tagPath.indexOf("]");
+            tagProvider = tagPath.substring(1, endBracket);
         }
-        if (event.getAssetPath() != null) {
-            builder.setAssetPath(event.getAssetPath());
+        
+        // Determine data type
+        String dataType = "UNKNOWN";
+        if (event.isNumeric()) {
+            dataType = "DOUBLE";
+        } else if (event.isString()) {
+            dataType = "STRING";
+        } else if (event.isBoolean()) {
+            dataType = "BOOLEAN";
         }
+        
+        // Build the OTEvent
+        // Note: Delta TIMESTAMP expects microseconds (not milliseconds) when using int64
+        long eventTimeMicros = event.getTimestamp().getTime() * 1000;  // Convert millis to micros
+        long ingestionTimeMicros = ingestionTime * 1000;  // Convert millis to micros
+        
+        OTEvent.Builder builder = OTEvent.newBuilder()
+            .setEventId(eventId)
+            .setEventTime(eventTimeMicros)
+            .setTagPath(tagPath != null ? tagPath : "")
+            .setTagProvider(tagProvider)
+            .setQuality(event.getQuality() != null ? event.getQuality() : "UNKNOWN")
+            .setQualityCode(event.isGoodQuality() ? 192 : 0)  // 192 is Ignition's GOOD quality code
+            .setSourceSystem(config.getSourceSystemId())
+            .setIngestionTimestamp(ingestionTimeMicros)
+            .setDataType(dataType)
+            .setAlarmState("")  // Empty if not in alarm
+            .setAlarmPriority(0);  // 0 if no alarm
         
         // Set the appropriate value field based on type
         if (event.isNumeric()) {
             builder.setNumericValue(event.getValueAsDouble());
-        } else if (event.isBoolean()) {
-            builder.setBooleanValue(event.getValueAsBoolean());
-        } else if (event.isString()) {
+        } else {
+            builder.setNumericValue(0.0);
+        }
+        
+        if (event.isString()) {
             builder.setStringValue(event.getValueAsString());
+        } else {
+            builder.setStringValue("");
+        }
+        
+        if (event.isBoolean()) {
+            builder.setBooleanValue(event.getValueAsBoolean());
+        } else {
+            builder.setBooleanValue(false);
         }
         
         return builder.build();
-    }
-    
-    /**
-     * Map Ignition quality string to protobuf Quality enum.
-     * 
-     * @param qualityStr The quality string from Ignition
-     * @return Quality enum value
-     */
-    private com.example.ignition.zerobus.proto.Quality mapQuality(String qualityStr) {
-        if (qualityStr == null || qualityStr.isEmpty()) {
-            return com.example.ignition.zerobus.proto.Quality.QUALITY_UNKNOWN;
-        }
-        
-        String lower = qualityStr.toLowerCase();
-        if (lower.contains("good")) {
-            return com.example.ignition.zerobus.proto.Quality.QUALITY_GOOD;
-        } else if (lower.contains("bad")) {
-            return com.example.ignition.zerobus.proto.Quality.QUALITY_BAD;
-        } else if (lower.contains("uncertain")) {
-            return com.example.ignition.zerobus.proto.Quality.QUALITY_UNCERTAIN;
-        }
-        
-        return com.example.ignition.zerobus.proto.Quality.QUALITY_UNKNOWN;
     }
     
     /**

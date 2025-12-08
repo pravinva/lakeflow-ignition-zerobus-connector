@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  ignition:
+    image: inductiveautomation/ignition:8.3.2
+    ports:
+      - "8088:8088"   # Gateway web UI
+      - "8043:8043"   # Gateway HTTPS
+    environment:
+      - IGNITION_EDITION=standard
+      - GATEWAY_ADMIN_USERNAME=admin
+      - GATEWAY_ADMIN_PASSWORD=password
+      - ACCEPT_IGNITION_EULA=Y
+      - GATEWAY_MODULES_ENABLED=tag-historian,opc-ua,perspective,vision,sfc
+    volumes:
+      # Mount the built module
+      - ./module/build/modules:/modules
+      # Persist gateway data
+      - ignition-data:/usr/local/bin/ignition/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/StatusPing"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+volumes:
+  ignition-data:
+

@@ -2,6 +2,8 @@ package com.example.ignition.zerobus;
 
 import com.inductiveautomation.ignition.common.model.values.QualifiedValue;
 import com.inductiveautomation.ignition.common.tags.model.TagPath;
+import com.inductiveautomation.ignition.common.tags.model.event.TagChangeEvent;
+import com.inductiveautomation.ignition.common.tags.model.event.TagChangeListener;
 import com.inductiveautomation.ignition.common.tags.paths.parser.TagPathParser;
 import com.inductiveautomation.ignition.gateway.model.GatewayContext;
 import com.inductiveautomation.ignition.gateway.tags.managed.ManagedTagProvider;
@@ -52,6 +54,7 @@ public class TagSubscriptionService {
     
     // Tag subscriptions tracking
     private final List<TagPath> subscribedTagPaths = new ArrayList<>();
+    private final List<com.inductiveautomation.ignition.common.tags.model.event.TagChangeListener> tagListeners = new ArrayList<>();
     private final Map<String, Object> lastValues = new ConcurrentHashMap<>();
     
     /**
@@ -100,8 +103,28 @@ public class TagSubscriptionService {
                 return t;
             });
             
-            // Subscribe to tags based on configuration
+            // Subscribe to tags based on configuration (event-driven)
             subscribeToTags();
+            
+            // FAST POLLING: Poll tags at 100ms intervals (10 Hz)
+            // This is a hybrid approach:
+            // - Event-driven subscriptions are set up (for future gateway-side events)
+            // - Fast polling ensures data flows NOW (100ms = 10 samples/sec per tag)
+            logger.info("Scheduling fast polling: 100ms interval, {} tags subscribed", subscribedTagPaths.size());
+            scheduledExecutor.scheduleAtFixedRate(
+                () -> {
+                    try {
+                        logger.debug("Fast polling tick");
+                        pollTagValues();
+                    } catch (Exception e) {
+                        logger.error("FATAL: Fast polling thread crashed", e);
+                    }
+                },
+                100,  // Initial delay: 100ms
+                100,  // Poll every 100ms (10 Hz)
+                TimeUnit.MILLISECONDS
+            );
+            logger.info("Fast polling enabled: 100ms interval (10 Hz per tag)");
             
             // Schedule periodic flushing
             scheduledExecutor.scheduleAtFixedRate(
@@ -301,28 +324,195 @@ public class TagSubscriptionService {
     }
     
     /**
-     * Subscribe to a single tag using Ignition Tag API.
+     * Subscribe to a single tag using Ignition Tag API (event-driven).
      * 
      * @param tagPath The tag path to subscribe to
      */
     private void subscribeToTag(TagPath tagPath) {
         try {
-            // Add to our tracking list
+            // Create a tag change listener for this tag
+            com.inductiveautomation.ignition.common.tags.model.event.TagChangeListener listener = 
+                new com.inductiveautomation.ignition.common.tags.model.event.TagChangeListener() {
+                    @Override
+                    public void tagChanged(com.inductiveautomation.ignition.common.tags.model.event.TagChangeEvent event) {
+                        // Handle the tag change event
+                        try {
+                            TagPath eventTagPath = event.getTagPath();
+                            QualifiedValue qv = event.getValue();
+                            
+                            // Create TagEvent
+                            TagEvent tagEvent = new TagEvent(
+                                eventTagPath.toStringFull(),
+                                qv.getValue(),
+                                qv.getQuality().toString(),
+                                new Date(qv.getTimestamp().getTime())
+                            );
+                            
+                            // Handle the change
+                            handleTagChange(tagEvent);
+                            
+                            if (config.isDebugLogging()) {
+                                logger.debug("Tag change: {} = {}", eventTagPath.toStringFull(), qv.getValue());
+                            }
+                            
+                        } catch (Exception e) {
+                            logger.error("Error in tag change listener", e);
+                        }
+                    }
+                };
+            
+            // Subscribe to the tag asynchronously
+            CompletableFuture<Void> subscription = 
+                gatewayContext.getTagManager().subscribeAsync(tagPath, listener);
+            
+            // Wait for subscription to complete
+            subscription.get(5, TimeUnit.SECONDS);
+            
+            // Add to tracking lists
             subscribedTagPaths.add(tagPath);
+            tagListeners.add(listener);
             
-            // In real implementation, use TagManager to subscribe:
-            // TagChangeListener listener = (TagPath path, QualifiedValue value) -> {
-            //     handleTagChange(path, value);
-            // };
-            // Subscription sub = tagManager.subscribeAsync(tagPath, listener);
-            // subscriptions.add(sub);
-            
-            logger.debug("Subscribed to tag: {}", tagPath);
+            logger.info("✅ Subscribed to tag: {}", tagPath.toStringFull());
             
         } catch (Exception e) {
             logger.error("Failed to subscribe to tag: {}", tagPath, e);
         }
     }
+    
+    /**
+     * Handle a tag change and add it to the event queue.
+     * 
+     * @param event The tag event
+     */
+    private static boolean firstPoll = true;
+    
+    /**
+     * Poll tag values at high frequency (100ms).
+     * This is the fast polling implementation for immediate data flow.
+     */
+    private void pollTagValues() {
+        boolean isFirstPoll = firstPoll;
+        if (isFirstPoll) {
+            logger.info("FIRST POLL EXECUTING: running={}, tags={}", running.get(), subscribedTagPaths.size());
+            firstPoll = false;
+        }
+        
+        if (!running.get()) {
+            logger.warn("Fast polling called but service not running");
+            return;
+        }
+        
+        if (subscribedTagPaths.isEmpty()) {
+            logger.warn("Fast polling called but no tags subscribed");
+            return;
+        }
+        
+        try {
+            // Read current values for all subscribed tags
+            if (isFirstPoll) {
+                logger.info("Reading {} tag paths...", subscribedTagPaths.size());
+            }
+            
+            CompletableFuture<List<QualifiedValue>> future = 
+                gatewayContext.getTagManager().readAsync(subscribedTagPaths);
+            
+            List<QualifiedValue> results = future.get(1, TimeUnit.SECONDS);
+            
+            if (isFirstPoll) {
+                logger.info("Got {} results from tag read", results != null ? results.size() : 0);
+            }
+            
+            int eventsGenerated = 0;
+            for (int i = 0; i < subscribedTagPaths.size() && i < results.size(); i++) {
+                TagPath tagPath = subscribedTagPaths.get(i);
+                QualifiedValue qv = results.get(i);
+                
+                if (isFirstPoll) {
+                    logger.info("Tag {}: value={}, quality={}", 
+                        tagPath.toStringFull(), qv.getValue(), qv.getQuality());
+                }
+                
+                // Create TagEvent from polled value
+                TagEvent event = new TagEvent(
+                    tagPath.toStringFull(),
+                    qv.getValue(),
+                    qv.getQuality().toString(),
+                    new Date(qv.getTimestamp().getTime())
+                );
+                
+                // Handle the event (applies filtering, queuing, etc.)
+                handleTagChange(event);
+                eventsGenerated++;
+            }
+            
+            if (isFirstPoll) {
+                logger.info("Generated {} events from polling", eventsGenerated);
+            }
+            
+            // Log polling activity every 100 polls (~10 seconds at 100ms interval)
+            long pollCount = totalEventsReceived.get() / 13; // Rough estimate
+            if (pollCount % 100 == 0 && eventsGenerated > 0) {
+                logger.info("Fast polling active: {} tags polled, {} events generated", 
+                    subscribedTagPaths.size(), eventsGenerated);
+            }
+            
+        } catch (TimeoutException e) {
+            logger.error("Timeout reading tags in fast polling");
+        } catch (Exception e) {
+            logger.error("Error in fast polling", e);
+        }
+    }
+    
+    private void handleTagChange(TagEvent event) {
+        if (!running.get()) {
+            return;
+        }
+        
+        try {
+            // Check rate limiting
+            long now = System.currentTimeMillis();
+            long second = now / 1000;
+            
+            if (second != currentSecond) {
+                currentSecond = second;
+                eventsThisSecond.set(0);
+            }
+            
+            if (eventsThisSecond.incrementAndGet() > config.getMaxEventsPerSecond()) {
+                totalEventsDropped.incrementAndGet();
+                if (config.isDebugLogging()) {
+                    logger.debug("Rate limit exceeded, dropping event: {}", event.getTagPath());
+                }
+                return;
+            }
+            
+            // Check if we should skip this event (on-change only mode)
+            if (config.isOnlyOnChange()) {
+                String tagPath = event.getTagPath();
+                Object lastValue = lastValues.get(tagPath);
+                Object currentValue = event.getValue();
+                
+                if (lastValue != null && lastValue.equals(currentValue)) {
+                    // Value hasn't changed, skip
+                    return;
+                }
+                
+                lastValues.put(tagPath, currentValue);
+            }
+            
+            // Try to add to queue
+            if (!eventQueue.offer(event)) {
+                totalEventsDropped.incrementAndGet();
+                logger.warn("Event queue full, dropping event: {}", event.getTagPath());
+            } else {
+                totalEventsReceived.incrementAndGet();
+            }
+            
+        } catch (Exception e) {
+            logger.error("Error handling tag change", e);
+        }
+    }
+    
     
     /**
      * Unsubscribe from all tags.
@@ -331,12 +521,17 @@ public class TagSubscriptionService {
         logger.info("Unsubscribing from {} tags...", subscribedTagPaths.size());
         
         try {
-            // In real implementation:
-            // for (Subscription sub : subscriptions) {
-            //     sub.cancel();
-            // }
+            // Unsubscribe all listeners
+            if (!subscribedTagPaths.isEmpty() && !tagListeners.isEmpty()) {
+                CompletableFuture<Void> unsubscribe = 
+                    gatewayContext.getTagManager().unsubscribeAsync(subscribedTagPaths, tagListeners);
+                
+                // Wait for unsubscribe to complete
+                unsubscribe.get(5, TimeUnit.SECONDS);
+            }
             
             subscribedTagPaths.clear();
+            tagListeners.clear();
             lastValues.clear();
             
             logger.info("Unsubscribed from all tags");
