@@ -40,8 +40,8 @@ dependencies {
     // JAX-RS API for REST endpoints
     compileOnly 'javax.ws.rs:javax.ws.rs-api:2.1.1'
     
-    // Servlet API (provided by Ignition)
-    compileOnly 'javax.servlet:javax.servlet-api:3.1.0'
+    // Jakarta Servlet API 6.0 (from Ignition 8.3.2 installation)
+    compileOnly files('/usr/local/ignition/lib/core/gateway/jakarta.servlet-api-6.0.0.jar')
     
     // Jackson for JSON serialization in servlet
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
@@ -88,6 +88,11 @@ sourceSets {
     }
 }
 
+// Handle duplicate files
+tasks.withType(Copy).configureEach {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
 // Compile options
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
@@ -107,6 +112,7 @@ test {
 jar {
     archiveBaseName = 'zerobus-connector'
     archiveVersion = version
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     
     manifest {
         attributes(
