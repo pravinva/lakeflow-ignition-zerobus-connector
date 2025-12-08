@@ -40,6 +40,12 @@ dependencies {
     // JAX-RS API for REST endpoints
     compileOnly 'javax.ws.rs:javax.ws.rs-api:2.1.1'
     
+    // Servlet API (provided by Ignition)
+    compileOnly 'javax.servlet:javax.servlet-api:3.1.0'
+    
+    // Jackson for JSON serialization in servlet
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
+    
     // Logging (provided by Ignition at runtime)
     compileOnly "org.slf4j:slf4j-api:${slf4jVersion}"
     

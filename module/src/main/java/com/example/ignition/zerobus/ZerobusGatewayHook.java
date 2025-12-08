@@ -1,6 +1,7 @@
 package com.example.ignition.zerobus;
 
 import com.example.ignition.zerobus.web.ZerobusConfigResource;
+import com.example.ignition.zerobus.web.ZerobusConfigServlet;
 import com.inductiveautomation.ignition.common.licensing.LicenseState;
 import com.inductiveautomation.ignition.gateway.model.AbstractGatewayModuleHook;
 import com.inductiveautomation.ignition.gateway.model.GatewayContext;
@@ -27,6 +28,7 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
     private TagSubscriptionService tagSubscriptionService;
     private ConfigModel configModel;
     private ZerobusConfigResource restResource;
+    private ZerobusConfigServlet configServlet;
     
     /**
      * Setup - called first during module initialization.
@@ -61,9 +63,18 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
                 configModel
             );
             
-            // Initialize REST resource (manual configuration for now)
+            // Register REST API via servlet wrapper
             this.restResource = new ZerobusConfigResource(gatewayContext, this);
-            logger.info("Zerobus module initialized - configure via gateway context");
+            this.configServlet = new ZerobusConfigServlet(restResource);
+            
+            try {
+                gatewayContext.getWebResourceManager()
+                    .addServlet("/system/zerobus/*", configServlet.getClass());
+                logger.info("REST API servlet registered at /system/zerobus/*");
+            } catch (Exception e) {
+                logger.error("Failed to register REST API servlet", e);
+                throw new RuntimeException("REST API registration failed - module cannot function without it", e);
+            }
             
             // Only start services if module is enabled
             if (configModel.isEnabled()) {
@@ -87,10 +98,23 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
         logger.info("Shutting down Zerobus Gateway Module...");
         
         try {
-            // Clean up REST resource
+            // Unregister REST API servlet
+            if (gatewayContext != null && configServlet != null) {
+                try {
+                    gatewayContext.getWebResourceManager()
+                        .removeServlet("/system/zerobus/*");
+                    logger.info("REST API servlet unregistered");
+                } catch (Exception e) {
+                    logger.warn("Error unregistering REST API servlet: {}", e.getMessage());
+                }
+            }
+            
+            // Clean up resources
             if (restResource != null) {
                 restResource = null;
-                logger.info("REST resource cleaned up");
+            }
+            if (configServlet != null) {
+                configServlet = null;
             }
             
             // Stop tag subscriptions
