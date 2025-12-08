@@ -61,17 +61,9 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
                 configModel
             );
             
-            // Register REST API resource for configuration UI
-            // In Ignition 8.3.2, use mountPathAlias instead of addResource
+            // Initialize REST resource (manual configuration for now)
             this.restResource = new ZerobusConfigResource(gatewayContext, this);
-            try {
-                gatewayContext.getMountManager()
-                    .mountPathAlias("/system/zerobus", restResource);
-                logger.info("REST API mounted at /system/zerobus");
-            } catch (Exception e) {
-                logger.warn("Could not mount REST resource (getMountManager may not be available): {}", e.getMessage());
-                logger.info("REST endpoints may need manual registration - check Ignition 8.3.2 documentation");
-            }
+            logger.info("Zerobus module initialized - configure via gateway context");
             
             // Only start services if module is enabled
             if (configModel.isEnabled()) {
@@ -95,15 +87,10 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
         logger.info("Shutting down Zerobus Gateway Module...");
         
         try {
-            // Unmount REST API
-            if (gatewayContext != null && restResource != null) {
-                try {
-                    gatewayContext.getMountManager()
-                        .unmountPath("/system/zerobus");
-                    logger.info("REST API unmounted");
-                } catch (Exception e) {
-                    logger.warn("Error unmounting REST API: {}", e.getMessage());
-                }
+            // Clean up REST resource
+            if (restResource != null) {
+                restResource = null;
+                logger.info("REST resource cleaned up");
             }
             
             // Stop tag subscriptions
