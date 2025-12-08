@@ -1,6 +1,7 @@
 package com.example.ignition.zerobus.web;
 
 import com.example.ignition.zerobus.ConfigModel;
+import com.example.ignition.zerobus.ZerobusGatewayHook;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,10 +15,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 
 /**
- * ZerobusConfigServlet - HTTP Servlet wrapper for ZerobusConfigResource.
- * 
- * This servlet wraps the JAX-RS resource to make it compatible with 
- * Ignition 8.3.2's WebResourceManager which only accepts servlets.
+ * ZerobusConfigServlet - HTTP Servlet for module configuration.
  * 
  * Routes:
  * - GET  /system/zerobus/config         -> getConfiguration()
@@ -31,33 +29,43 @@ public class ZerobusConfigServlet extends HttpServlet {
     private static final Logger logger = LoggerFactory.getLogger(ZerobusConfigServlet.class);
     private static final long serialVersionUID = 1L;
     
-    // Static reference to resource (set by GatewayHook before servlet registration)
-    private static ZerobusConfigResource staticResource;
+    // Static reference to hook (set by GatewayHook before servlet registration)
+    private static ZerobusGatewayHook staticHook;
     
-    private ZerobusConfigResource resource;
+    private ZerobusGatewayHook hook;
     private ObjectMapper objectMapper;
     
     /**
      * No-arg constructor - Required by servlet container.
-     * Gets resource from static reference set by GatewayHook.
      */
     public ZerobusConfigServlet() {
-        this.resource = staticResource;
+        this.hook = staticHook;
         this.objectMapper = new ObjectMapper();
         
-        if (this.resource == null) {
-            logger.error("ZerobusConfigResource not set! Call setResource() before servlet registration.");
+        if (this.hook == null) {
+            logger.error("ZerobusGatewayHook not set! Call setHook() before servlet registration.");
         }
     }
     
     /**
-     * Set the static resource reference before servlet registration.
+     * Constructor with hook injection - Used by GatewayHook.
+     * 
+     * @param hook The ZerobusGatewayHook instance
+     */
+    public ZerobusConfigServlet(ZerobusGatewayHook hook) {
+        this.hook = hook;
+        this.objectMapper = new ObjectMapper();
+        logger.info("ZerobusConfigServlet created with injected hook");
+    }
+    
+    /**
+     * Set the static hook reference before servlet registration.
      * Must be called by GatewayHook before addServlet().
      * 
-     * @param resource The ZerobusConfigResource instance
+     * @param hook The ZerobusGatewayHook instance
      */
-    public static void setResource(ZerobusConfigResource resource) {
-        staticResource = resource;
+    public static void setHook(ZerobusGatewayHook hook) {
+        staticHook = hook;
     }
     
     @Override
@@ -65,27 +73,40 @@ public class ZerobusConfigServlet extends HttpServlet {
             throws ServletException, IOException {
         
         String pathInfo = req.getPathInfo();
-        logger.debug("GET request: {}", pathInfo);
+        logger.info("GET request - pathInfo: {}, requestURI: {}", pathInfo, req.getRequestURI());
+        
+        // Normalize path - remove leading /zerobus if present
+        String normalizedPath = pathInfo;
+        if (pathInfo != null && pathInfo.startsWith("/zerobus")) {
+            normalizedPath = pathInfo.substring("/zerobus".length());
+        }
+        
+        // If path is empty or just "/", show index/config
+        if (normalizedPath == null || normalizedPath.isEmpty() || "/".equals(normalizedPath)) {
+            normalizedPath = "/config";
+        }
+        
+        logger.info("Normalized path: {}", normalizedPath);
         
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
         
         try {
-            if ("/config".equals(pathInfo)) {
+            if ("/config".equals(normalizedPath)) {
                 // GET /system/zerobus/config - Get current configuration
                 handleGetConfig(resp);
                 
-            } else if ("/diagnostics".equals(pathInfo)) {
+            } else if ("/diagnostics".equals(normalizedPath)) {
                 // GET /system/zerobus/diagnostics - Get diagnostics info
                 handleGetDiagnostics(resp);
                 
-            } else if ("/health".equals(pathInfo)) {
+            } else if ("/health".equals(normalizedPath)) {
                 // GET /system/zerobus/health - Health check
                 handleHealthCheck(resp);
                 
             } else {
                 resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                writeJson(resp, "{\"error\": \"Endpoint not found: " + pathInfo + "\"}");
+                writeJson(resp, "{\"error\": \"Endpoint not found: " + normalizedPath + "\"}");
             }
             
         } catch (Exception e) {
@@ -100,23 +121,31 @@ public class ZerobusConfigServlet extends HttpServlet {
             throws ServletException, IOException {
         
         String pathInfo = req.getPathInfo();
-        logger.debug("POST request: {}", pathInfo);
+        logger.info("POST request - pathInfo: {}, requestURI: {}", pathInfo, req.getRequestURI());
+        
+        // Normalize path - remove leading /zerobus if present
+        String normalizedPath = pathInfo;
+        if (pathInfo != null && pathInfo.startsWith("/zerobus")) {
+            normalizedPath = pathInfo.substring("/zerobus".length());
+        }
+        
+        logger.info("Normalized path: {}", normalizedPath);
         
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
         
         try {
-            if ("/config".equals(pathInfo)) {
+            if ("/config".equals(normalizedPath)) {
                 // POST /system/zerobus/config - Save configuration
                 handleSaveConfig(req, resp);
                 
-            } else if ("/test-connection".equals(pathInfo)) {
+            } else if ("/test-connection".equals(normalizedPath)) {
                 // POST /system/zerobus/test-connection - Test Databricks connection
                 handleTestConnection(resp);
                 
             } else {
                 resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                writeJson(resp, "{\"error\": \"Endpoint not found: " + pathInfo + "\"}");
+                writeJson(resp, "{\"error\": \"Endpoint not found: " + normalizedPath + "\"}");
             }
             
         } catch (Exception e) {
@@ -130,16 +159,15 @@ public class ZerobusConfigServlet extends HttpServlet {
      * Handle GET /config - Return current configuration.
      */
     private void handleGetConfig(HttpServletResponse resp) throws IOException {
-        javax.ws.rs.core.Response jaxrsResponse = resource.getConfiguration();
-        
-        if (jaxrsResponse.getStatus() == 200) {
-            ConfigModel config = (ConfigModel) jaxrsResponse.getEntity();
+        try {
+            ConfigModel config = hook.getConfigModel();
             String json = objectMapper.writeValueAsString(config);
             resp.setStatus(HttpServletResponse.SC_OK);
             writeJson(resp, json);
-        } else {
-            resp.setStatus(jaxrsResponse.getStatus());
-            writeJson(resp, jaxrsResponse.getEntity().toString());
+        } catch (Exception e) {
+            logger.error("Error getting configuration", e);
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            writeJson(resp, "{\"error\": \"Failed to get configuration: " + e.getMessage() + "\"}");
         }
     }
     
@@ -148,23 +176,24 @@ public class ZerobusConfigServlet extends HttpServlet {
      */
     private void handleSaveConfig(HttpServletRequest req, HttpServletResponse resp) 
             throws IOException {
-        
-        // Read JSON body
-        String jsonBody = readRequestBody(req);
-        
-        // Parse to ConfigModel
-        ConfigModel config = objectMapper.readValue(jsonBody, ConfigModel.class);
-        
-        // Call resource method
-        javax.ws.rs.core.Response jaxrsResponse = resource.saveConfiguration(config);
-        
-        // Return response
-        resp.setStatus(jaxrsResponse.getStatus());
-        
-        if (jaxrsResponse.getEntity() != null) {
-            writeJson(resp, jaxrsResponse.getEntity().toString());
-        } else {
-            writeJson(resp, "{\"success\": " + (jaxrsResponse.getStatus() == 200) + "}");
+        try {
+            // Read JSON body
+            String jsonBody = readRequestBody(req);
+            
+            // Parse to ConfigModel
+            ConfigModel config = objectMapper.readValue(jsonBody, ConfigModel.class);
+            
+            // Save configuration via hook
+            hook.saveConfiguration(config);
+            
+            // Return success
+            resp.setStatus(HttpServletResponse.SC_OK);
+            writeJson(resp, "{\"success\": true, \"message\": \"Configuration saved successfully\"}");
+            
+        } catch (Exception e) {
+            logger.error("Error saving configuration", e);
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            writeJson(resp, "{\"error\": \"Failed to save configuration: " + e.getMessage() + "\"}");
         }
     }
     
@@ -172,14 +201,22 @@ public class ZerobusConfigServlet extends HttpServlet {
      * Handle POST /test-connection - Test Databricks connection.
      */
     private void handleTestConnection(HttpServletResponse resp) throws IOException {
-        javax.ws.rs.core.Response jaxrsResponse = resource.testConnection();
-        
-        resp.setStatus(jaxrsResponse.getStatus());
-        
-        if (jaxrsResponse.getEntity() != null) {
-            writeJson(resp, jaxrsResponse.getEntity().toString());
-        } else {
-            writeJson(resp, "{\"success\": " + (jaxrsResponse.getStatus() == 200) + "}");
+        try {
+            // Test connection via Zerobus client manager
+            boolean success = hook.getZerobusClientManager().testConnection();
+            
+            if (success) {
+                resp.setStatus(HttpServletResponse.SC_OK);
+                writeJson(resp, "{\"success\": true, \"message\": \"Connection test successful\"}");
+            } else {
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                writeJson(resp, "{\"success\": false, \"message\": \"Connection test failed\"}");
+            }
+            
+        } catch (Exception e) {
+            logger.error("Error testing connection", e);
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            writeJson(resp, "{\"error\": \"Connection test failed: " + e.getMessage() + "\"}");
         }
     }
     
@@ -187,16 +224,18 @@ public class ZerobusConfigServlet extends HttpServlet {
      * Handle GET /diagnostics - Return diagnostics information.
      */
     private void handleGetDiagnostics(HttpServletResponse resp) throws IOException {
-        javax.ws.rs.core.Response jaxrsResponse = resource.getDiagnostics();
-        
-        if (jaxrsResponse.getStatus() == 200) {
+        try {
+            // Get diagnostics from hook
+            String diagnostics = hook.getDiagnostics();
+            
             resp.setContentType("text/plain");
             resp.setStatus(HttpServletResponse.SC_OK);
-            String diagnostics = jaxrsResponse.getEntity().toString();
             resp.getWriter().write(diagnostics);
-        } else {
-            resp.setStatus(jaxrsResponse.getStatus());
-            writeJson(resp, "{\"error\": \"Failed to get diagnostics\"}");
+            
+        } catch (Exception e) {
+            logger.error("Error getting diagnostics", e);
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            writeJson(resp, "{\"error\": \"Failed to get diagnostics: " + e.getMessage() + "\"}");
         }
     }
     
@@ -204,14 +243,13 @@ public class ZerobusConfigServlet extends HttpServlet {
      * Handle GET /health - Health check endpoint.
      */
     private void handleHealthCheck(HttpServletResponse resp) throws IOException {
-        javax.ws.rs.core.Response jaxrsResponse = resource.healthCheck();
-        
-        resp.setStatus(jaxrsResponse.getStatus());
-        
-        if (jaxrsResponse.getEntity() != null) {
-            writeJson(resp, jaxrsResponse.getEntity().toString());
-        } else {
-            writeJson(resp, "{\"status\": \"ok\"}");
+        try {
+            resp.setStatus(HttpServletResponse.SC_OK);
+            writeJson(resp, "{\"status\": \"ok\", \"module\": \"Zerobus Connector\", \"version\": \"1.0.0\"}");
+        } catch (Exception e) {
+            logger.error("Error in health check", e);
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            writeJson(resp, "{\"error\": \"Health check failed: " + e.getMessage() + "\"}");
         }
     }
     
@@ -239,4 +277,3 @@ public class ZerobusConfigServlet extends HttpServlet {
         }
     }
 }
-

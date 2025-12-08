@@ -38,7 +38,7 @@ dependencies {
     compileOnly fileTree(dir: '/usr/local/ignition/lib/core/common', include: '*.jar')
     
     // JAX-RS API for REST endpoints
-    compileOnly 'javax.ws.rs:javax.ws.rs-api:2.1.1'
+    implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
     
     // Jakarta Servlet API 6.0 (from Ignition 8.3.2 installation)
     compileOnly files('/usr/local/ignition/lib/core/gateway/jakarta.servlet-api-6.0.0.jar')

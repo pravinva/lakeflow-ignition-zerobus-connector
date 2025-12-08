@@ -62,19 +62,19 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
                 configModel
             );
             
-            // Register REST API via servlet wrapper
-            this.restResource = new ZerobusConfigResource(gatewayContext, this);
-            
-            // Set static resource before servlet registration (required for no-arg constructor)
-            ZerobusConfigServlet.setResource(restResource);
+            // Register configuration servlet
+            // Set static hook reference before servlet registration (required for no-arg constructor)
+            ZerobusConfigServlet.setHook(this);
             
             try {
+                // Register servlet with simple name (Ignition adds /system/ prefix automatically)
                 gatewayContext.getWebResourceManager()
-                    .addServlet("/system/zerobus/*", ZerobusConfigServlet.class);
-                logger.info("REST API servlet registered at /system/zerobus/*");
+                    .addServlet("zerobus", ZerobusConfigServlet.class);
+                
+                logger.info("Configuration servlet registered: 'zerobus' → /system/zerobus");
             } catch (Exception e) {
-                logger.error("Failed to register REST API servlet", e);
-                throw new RuntimeException("REST API registration failed - module cannot function without it", e);
+                logger.error("Failed to register configuration servlet", e);
+                throw new RuntimeException("Servlet registration failed - module cannot function without it", e);
             }
             
             // Only start services if module is enabled
@@ -103,20 +103,15 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
             if (gatewayContext != null) {
                 try {
                     gatewayContext.getWebResourceManager()
-                        .removeServlet("/system/zerobus/*");
-                    logger.info("REST API servlet unregistered");
+                        .removeServlet("zerobus");
+                    logger.info("Configuration servlet unregistered");
                 } catch (Exception e) {
-                    logger.warn("Error unregistering REST API servlet: {}", e.getMessage());
+                    logger.warn("Error unregistering configuration servlet: {}", e.getMessage());
                 }
             }
             
-            // Clean up resources
-            if (restResource != null) {
-                restResource = null;
-            }
-            
-            // Clear static resource reference
-            ZerobusConfigServlet.setResource(null);
+            // Clear static hook reference
+            ZerobusConfigServlet.setHook(null);
             
             // Stop tag subscriptions
             if (tagSubscriptionService != null) {
@@ -290,6 +285,13 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
      * Get diagnostics information.
      */
     public String getDiagnosticsInfo() {
+        return getDiagnostics();
+    }
+    
+    /**
+     * Get diagnostics information (alias for servlet).
+     */
+    public String getDiagnostics() {
         StringBuilder info = new StringBuilder();
         info.append("=== Zerobus Module Diagnostics ===\n");
         info.append("Module Enabled: ").append(configModel.isEnabled()).append("\n");
@@ -304,5 +306,13 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
         
         return info.toString();
     }
+    
+    /**
+     * Get the Zerobus client manager.
+     */
+    public ZerobusClientManager getZerobusClientManager() {
+        return zerobusClientManager;
+    }
 }
+
 
