@@ -31,17 +31,33 @@ public class ZerobusConfigServlet extends HttpServlet {
     private static final Logger logger = LoggerFactory.getLogger(ZerobusConfigServlet.class);
     private static final long serialVersionUID = 1L;
     
-    private final ZerobusConfigResource resource;
-    private final ObjectMapper objectMapper;
+    // Static reference to resource (set by GatewayHook before servlet registration)
+    private static ZerobusConfigResource staticResource;
+    
+    private ZerobusConfigResource resource;
+    private ObjectMapper objectMapper;
     
     /**
-     * Constructor - Initialize servlet with JAX-RS resource.
-     * 
-     * @param resource The ZerobusConfigResource to wrap
+     * No-arg constructor - Required by servlet container.
+     * Gets resource from static reference set by GatewayHook.
      */
-    public ZerobusConfigServlet(ZerobusConfigResource resource) {
-        this.resource = resource;
+    public ZerobusConfigServlet() {
+        this.resource = staticResource;
         this.objectMapper = new ObjectMapper();
+        
+        if (this.resource == null) {
+            logger.error("ZerobusConfigResource not set! Call setResource() before servlet registration.");
+        }
+    }
+    
+    /**
+     * Set the static resource reference before servlet registration.
+     * Must be called by GatewayHook before addServlet().
+     * 
+     * @param resource The ZerobusConfigResource instance
+     */
+    public static void setResource(ZerobusConfigResource resource) {
+        staticResource = resource;
     }
     
     @Override

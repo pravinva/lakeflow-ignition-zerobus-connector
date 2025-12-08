@@ -28,7 +28,6 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
     private TagSubscriptionService tagSubscriptionService;
     private ConfigModel configModel;
     private ZerobusConfigResource restResource;
-    private ZerobusConfigServlet configServlet;
     
     /**
      * Setup - called first during module initialization.
@@ -65,11 +64,13 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
             
             // Register REST API via servlet wrapper
             this.restResource = new ZerobusConfigResource(gatewayContext, this);
-            this.configServlet = new ZerobusConfigServlet(restResource);
+            
+            // Set static resource before servlet registration (required for no-arg constructor)
+            ZerobusConfigServlet.setResource(restResource);
             
             try {
                 gatewayContext.getWebResourceManager()
-                    .addServlet("/system/zerobus/*", configServlet.getClass());
+                    .addServlet("/system/zerobus/*", ZerobusConfigServlet.class);
                 logger.info("REST API servlet registered at /system/zerobus/*");
             } catch (Exception e) {
                 logger.error("Failed to register REST API servlet", e);
@@ -99,7 +100,7 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
         
         try {
             // Unregister REST API servlet
-            if (gatewayContext != null && configServlet != null) {
+            if (gatewayContext != null) {
                 try {
                     gatewayContext.getWebResourceManager()
                         .removeServlet("/system/zerobus/*");
@@ -113,9 +114,9 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
             if (restResource != null) {
                 restResource = null;
             }
-            if (configServlet != null) {
-                configServlet = null;
-            }
+            
+            // Clear static resource reference
+            ZerobusConfigServlet.setResource(null);
             
             // Stop tag subscriptions
             if (tagSubscriptionService != null) {
@@ -304,3 +305,4 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
         return info.toString();
     }
 }
+
