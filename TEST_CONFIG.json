@@ -1,0 +1,19 @@
+{
+  "workspaceUrl": "https://e2-demo-field-eng.cloud.databricks.com",
+  "zerobusEndpoint": "e2-demo-field-eng.zerobus.cloud.databricks.com",
+  "oauthClientId": "52393ed8-ea22-4830-a6ef-6b6545e6be5f",
+  "oauthClientSecret": "test-mode-will-get-real-oauth-later",
+  "targetTable": "lakeflow_ignition.ot_data.bronze_events",
+  "sourceSystem": "Ignition-Dev-Mac",
+  "batchSize": 100,
+  "batchIntervalSeconds": 5,
+  "enableStreamRecovery": true,
+  "maxInflightRecords": 50000,
+  "subscribedTags": [
+    "[default]TestSimulator/Sine0",
+    "[default]TestSimulator/Ramp1",
+    "[default]TestSimulator/Realistic0"
+  ],
+  "enabled": true
+}
+
