@@ -1,13 +1,17 @@
 plugins {
     id 'java'
     id 'com.google.protobuf' version '0.9.4'
-    id 'com.github.node-gradle.node' version '7.0.1'
+    // UI build can be added later
+    // id 'com.github.node-gradle.node' version '7.0.1'
 }
 
 group = 'com.example.ignition'
 version = '1.0.0'
-sourceCompatibility = '17'
-targetCompatibility = '17'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
 
 repositories {
     mavenCentral()
@@ -149,49 +153,49 @@ clean {
     delete 'build'
 }
 
-// Node.js configuration for React frontend build
-node {
-    version = '18.17.1'
-    npmVersion = '9.6.7'
-    download = true
-    nodeProjectDir = file("${project.projectDir}/src/main/javascript")
-}
-
-// Task to install npm dependencies
-tasks.register('npmInstall', com.github.gradle.node.npm.task.NpmTask) {
-    group = 'build'
-    description = 'Install React dependencies'
-    args = ['install']
-    inputs.file('src/main/javascript/package.json')
-    inputs.file('src/main/javascript/package-lock.json').optional(true)
-    outputs.dir('src/main/javascript/node_modules')
-}
-
-// Task to build React frontend
-tasks.register('buildFrontend', com.github.gradle.node.npm.task.NpmTask) {
-    dependsOn npmInstall
-    group = 'build'
-    description = 'Build React frontend'
-    args = ['run', 'build']
-    inputs.dir('src/main/javascript/src')
-    inputs.file('src/main/javascript/package.json')
-    outputs.dir('src/main/javascript/build')
-}
-
-// Task to copy React build to resources
-tasks.register('copyFrontendToResources', Copy) {
-    dependsOn buildFrontend
-    group = 'build'
-    description = 'Copy React build to Java resources'
-    from 'src/main/javascript/build'
-    into 'src/main/resources/web'
-}
-
-// Make processResources depend on frontend build
-processResources {
-    dependsOn copyFrontendToResources
-}
-
-// Default build includes module
-defaultTasks 'buildModule'
-
+// // Node.js configuration for React frontend build
+// node {
+//     version = '18.17.1'
+//     npmVersion = '9.6.7'
+//     download = true
+//     nodeProjectDir = file("${project.projectDir}/src/main/javascript")
+// }
+// 
+// // Task to install npm dependencies
+// tasks.register('npmInstall', com.github.gradle.node.npm.task.NpmTask) {
+//     group = 'build'
+//     description = 'Install React dependencies'
+//     args = ['install']
+//     inputs.file('src/main/javascript/package.json')
+//     inputs.file('src/main/javascript/package-lock.json').optional(true)
+//     outputs.dir('src/main/javascript/node_modules')
+// }
+// 
+// // Task to build React frontend
+// tasks.register('buildFrontend', com.github.gradle.node.npm.task.NpmTask) {
+//     dependsOn npmInstall
+//     group = 'build'
+//     description = 'Build React frontend'
+//     args = ['run', 'build']
+//     inputs.dir('src/main/javascript/src')
+//     inputs.file('src/main/javascript/package.json')
+//     outputs.dir('src/main/javascript/build')
+// }
+// 
+// // Task to copy React build to resources
+// tasks.register('copyFrontendToResources', Copy) {
+//     dependsOn buildFrontend
+//     group = 'build'
+//     description = 'Copy React build to Java resources'
+//     from 'src/main/javascript/build'
+//     into 'src/main/resources/web'
+// }
+// 
+// // Make processResources depend on frontend build
+// processResources {
+//     dependsOn copyFrontendToResources
+// }
+// 
+// // Default build includes module
+// defaultTasks 'buildModule'
+// 
