@@ -16,15 +16,9 @@ java {
 repositories {
     mavenCentral()
     
-    // Ignition SDK repositories (from official examples)
+    // Inductive Automation Repository
     maven {
-        url = 'https://nexus.inductiveautomation.com/repository/inductiveautomation-releases'
-    }
-    maven {
-        url = 'https://nexus.inductiveautomation.com/repository/inductiveautomation-snapshots'
-    }
-    maven {
-        url = 'https://nexus.inductiveautomation.com/repository/inductiveautomation-thirdparty'
+        url = "https://nexus.inductiveautomation.com/repository/public"
     }
 }
 
@@ -35,21 +29,25 @@ ext {
 }
 
 dependencies {
-    // Ignition SDK Core Dependencies (for Gateway modules)
-    compileOnly "com.inductiveautomation.ignitionsdk:ignition-common:${ignitionVersion}"
-    compileOnly "com.inductiveautomation.ignitionsdk:gateway-api:${ignitionVersion}"
+    // Ignition SDK from local installation (compileOnly - provided by Ignition at runtime)
+    compileOnly files('/usr/local/ignition/lib/core/gateway/gateway-api-8.3.2.jar')
+    compileOnly files('/usr/local/ignition/lib/core/gateway/gateway-api-web-8.3.2.jar')
+    compileOnly files('/usr/local/ignition/lib/core/gateway/gateway-web-8.3.2.jar')
     
-    // Tag API - for tag subscription and management
-    compileOnly "com.inductiveautomation.ignitionsdk:tag-api:${ignitionVersion}"
+    // Common libraries from Ignition installation
+    compileOnly fileTree(dir: '/usr/local/ignition/lib/core/common', include: '*.jar')
     
-    // Logging (provided by Ignition)
+    // JAX-RS API for REST endpoints
+    compileOnly 'javax.ws.rs:javax.ws.rs-api:2.1.1'
+    
+    // Logging (provided by Ignition at runtime)
     compileOnly "org.slf4j:slf4j-api:${slf4jVersion}"
     
-    // Protobuf
+    // Protobuf - required for Zerobus SDK
     implementation "com.google.protobuf:protobuf-java:${protobufVersion}"
     
-    // Databricks Zerobus SDK (real, from GitHub)
-    implementation 'com.databricks:zerobus-sdk-java:0.1.0'
+    // Databricks Zerobus Ingest SDK - CONFIRMED available in Maven Central
+    implementation 'com.databricks:zerobus-ingest-sdk:0.1.0'
     
     // Testing
     testImplementation 'org.junit.jupiter:junit-jupiter:5.9.2'
