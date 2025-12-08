@@ -1,0 +1,104 @@
+syntax = "proto3";
+
+package com.example.ignition.zerobus.proto;
+
+option java_package = "com.example.ignition.zerobus.proto";
+option java_outer_classname = "OTEventProto";
+option java_multiple_files = true;
+
+/**
+ * OTEvent - Operational Technology event message for Zerobus Ingest.
+ * 
+ * This protobuf schema defines the structure of events sent from Ignition
+ * to Databricks Delta tables via Zerobus. It represents a single tag value
+ * change event with associated metadata.
+ * 
+ * The schema should match the target Delta table schema in Unity Catalog.
+ */
+message OTEvent {
+  // Event timestamp in milliseconds since Unix epoch
+  int64 event_time = 1;
+  
+  // Ignition tag path (e.g., "[default]Conveyor1/Speed")
+  string tag_path = 2;
+  
+  // Asset identifier (extracted from tag path or metadata)
+  string asset_id = 3;
+  
+  // Asset hierarchy path (e.g., "Plant1/Line2/Conveyor1")
+  string asset_path = 4;
+  
+  // Tag value - can be one of several types
+  oneof value {
+    double numeric_value = 5;
+    string string_value = 6;
+    bool boolean_value = 7;
+    int64 integer_value = 8;
+  }
+  
+  // Original value as string (for consistency)
+  string value_string = 9;
+  
+  // Data quality indicator
+  Quality quality = 10;
+  
+  // Source system identifier (e.g., "ignition-gw-01")
+  string source_system = 11;
+  
+  // Optional: Site/location information
+  string site = 12;
+  
+  // Optional: Production line
+  string line = 13;
+  
+  // Optional: Equipment unit
+  string unit = 14;
+  
+  // Optional: Tag metadata/description
+  string tag_description = 15;
+  
+  // Optional: Engineering units (e.g., "PSI", "RPM", "°C")
+  string engineering_units = 16;
+}
+
+/**
+ * Quality - Data quality enumeration.
+ * 
+ * Maps Ignition quality codes to a simplified enum.
+ */
+enum Quality {
+  QUALITY_UNKNOWN = 0;
+  QUALITY_GOOD = 1;
+  QUALITY_BAD = 2;
+  QUALITY_UNCERTAIN = 3;
+}
+
+/**
+ * OTEventBatch - Batch of OT events for efficient transmission.
+ * 
+ * Optional wrapper for sending multiple events in a single message.
+ */
+message OTEventBatch {
+  repeated OTEvent events = 1;
+  
+  // Batch metadata
+  int64 batch_timestamp = 2;
+  string batch_id = 3;
+  int32 event_count = 4;
+}
+
+/**
+ * AlarmEvent - Alarm/event message for alarm history.
+ * 
+ * Separate schema for alarm events (future enhancement).
+ */
+message AlarmEvent {
+  int64 event_time = 1;
+  string alarm_path = 2;
+  string asset_id = 3;
+  string alarm_state = 4;  // "ACTIVE", "CLEARED", "ACKNOWLEDGED"
+  string severity = 5;      // "LOW", "MEDIUM", "HIGH", "CRITICAL"
+  string message = 6;
+  string source_system = 7;
+}
+

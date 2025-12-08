@@ -1,0 +1,197 @@
+plugins {
+    id 'java'
+    id 'com.google.protobuf' version '0.9.4'
+    id 'com.github.node-gradle.node' version '7.0.1'
+}
+
+group = 'com.example.ignition'
+version = '1.0.0'
+sourceCompatibility = '17'
+targetCompatibility = '17'
+
+repositories {
+    mavenCentral()
+    
+    // Ignition SDK repositories (from official examples)
+    maven {
+        url = 'https://nexus.inductiveautomation.com/repository/inductiveautomation-releases'
+    }
+    maven {
+        url = 'https://nexus.inductiveautomation.com/repository/inductiveautomation-snapshots'
+    }
+    maven {
+        url = 'https://nexus.inductiveautomation.com/repository/inductiveautomation-thirdparty'
+    }
+}
+
+ext {
+    ignitionVersion = '8.3.0'
+    slf4jVersion = '1.7.36'
+    protobufVersion = '3.21.12'
+}
+
+dependencies {
+    // Ignition SDK Core Dependencies (for Gateway modules)
+    compileOnly "com.inductiveautomation.ignitionsdk:ignition-common:${ignitionVersion}"
+    compileOnly "com.inductiveautomation.ignitionsdk:gateway-api:${ignitionVersion}"
+    
+    // Tag API - for tag subscription and management
+    compileOnly "com.inductiveautomation.ignitionsdk:tag-api:${ignitionVersion}"
+    
+    // Logging (provided by Ignition)
+    compileOnly "org.slf4j:slf4j-api:${slf4jVersion}"
+    
+    // Protobuf
+    implementation "com.google.protobuf:protobuf-java:${protobufVersion}"
+    
+    // Databricks Zerobus SDK (real, from GitHub)
+    implementation 'com.databricks:zerobus-sdk-java:0.1.0'
+    
+    // Testing
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.9.2'
+    testImplementation 'org.mockito:mockito-core:5.1.1'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// Protobuf configuration
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:${protobufVersion}"
+    }
+    
+    generateProtoTasks {
+        all().each { task ->
+            task.builtins {
+                java {}
+            }
+        }
+    }
+}
+
+// Configure source sets for protobuf
+sourceSets {
+    main {
+        java {
+            srcDirs 'build/generated/source/proto/main/java'
+        }
+        proto {
+            srcDirs 'src/main/proto'
+        }
+    }
+}
+
+// Compile options
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+    options.compilerArgs << '-Xlint:unchecked' << '-Xlint:deprecation'
+}
+
+// Test configuration
+test {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+    }
+}
+
+// JAR configuration
+jar {
+    archiveBaseName = 'zerobus-connector'
+    archiveVersion = version
+    
+    manifest {
+        attributes(
+            'Implementation-Title': 'Ignition Zerobus Connector',
+            'Implementation-Version': version,
+            'Module-Id': 'com.example.ignition.zerobus',
+            'Module-Name': 'Zerobus Connector',
+            'Module-Version': version
+        )
+    }
+    
+    // Include module.xml and properties
+    from('src/main/resources') {
+        include 'module.xml'
+        include 'simplemodule.properties'
+    }
+}
+
+// Task to build the Ignition module (.modl file)
+task buildModule(type: Zip, dependsOn: jar) {
+    group = 'build'
+    description = 'Builds the Ignition module (.modl) file'
+    
+    archiveBaseName = 'zerobus-connector'
+    archiveVersion = version
+    archiveExtension = 'modl'
+    destinationDirectory = file("${buildDir}/modules")
+    
+    from(jar.archiveFile) {
+        into 'lib'
+    }
+    
+    // Include dependencies (if any runtime dependencies exist)
+    from(configurations.runtimeClasspath) {
+        into 'lib'
+        exclude 'ignition-*.jar'  // Exclude Ignition SDK JARs
+        exclude 'slf4j-*.jar'     // Exclude provided JARs
+    }
+    
+    // Include module descriptor
+    from('src/main/resources') {
+        include 'module.xml'
+    }
+}
+
+// Clean task
+clean {
+    delete 'build'
+}
+
+// Node.js configuration for React frontend build
+node {
+    version = '18.17.1'
+    npmVersion = '9.6.7'
+    download = true
+    nodeProjectDir = file("${project.projectDir}/src/main/javascript")
+}
+
+// Task to install npm dependencies
+tasks.register('npmInstall', com.github.gradle.node.npm.task.NpmTask) {
+    group = 'build'
+    description = 'Install React dependencies'
+    args = ['install']
+    inputs.file('src/main/javascript/package.json')
+    inputs.file('src/main/javascript/package-lock.json').optional(true)
+    outputs.dir('src/main/javascript/node_modules')
+}
+
+// Task to build React frontend
+tasks.register('buildFrontend', com.github.gradle.node.npm.task.NpmTask) {
+    dependsOn npmInstall
+    group = 'build'
+    description = 'Build React frontend'
+    args = ['run', 'build']
+    inputs.dir('src/main/javascript/src')
+    inputs.file('src/main/javascript/package.json')
+    outputs.dir('src/main/javascript/build')
+}
+
+// Task to copy React build to resources
+tasks.register('copyFrontendToResources', Copy) {
+    dependsOn buildFrontend
+    group = 'build'
+    description = 'Copy React build to Java resources'
+    from 'src/main/javascript/build'
+    into 'src/main/resources/web'
+}
+
+// Make processResources depend on frontend build
+processResources {
+    dependsOn copyFrontendToResources
+}
+
+// Default build includes module
+defaultTasks 'buildModule'
+

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<modules version="8.1">
+    <module>
+        <!-- Module Identification -->
+        <id>com.example.ignition.zerobus</id>
+        <name>Zerobus Connector</name>
+        <description>Streams Ignition tags to Databricks Delta via Zerobus Ingest</description>
+        <version>1.0.0</version>
+        
+        <!-- Module Metadata -->
+        <license>Commercial</license>
+        <documentation-url>https://github.com/example/lakeflow-ignition-zerobus-connector</documentation-url>
+        <support-url>https://github.com/example/lakeflow-ignition-zerobus-connector/issues</support-url>
+        
+        <!-- Module Scope: Gateway only -->
+        <scope>G</scope>
+        
+        <!-- Minimum Ignition Version -->
+        <required-ignition-version>8.3.0</required-ignition-version>
+        <requiredframeworkversion>8</requiredframeworkversion>
+        
+        <!-- Module Dependencies -->
+        <depends>
+            <!-- No external module dependencies for v1 -->
+        </depends>
+        
+        <!-- Hook Classes -->
+        <hooks>
+            <hook scope="G">
+                <classname>com.example.ignition.zerobus.ZerobusGatewayHook</classname>
+            </hook>
+        </hooks>
+        
+        <!-- Configuration Settings -->
+        <settings>
+            <!-- Settings are managed programmatically via ConfigModel -->
+        </settings>
+        
+        <!-- Status Information -->
+        <status>
+            <!-- Module status/diagnostics available via Gateway status page -->
+        </status>
+    </module>
+</modules>
+

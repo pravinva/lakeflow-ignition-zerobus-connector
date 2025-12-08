@@ -1,0 +1,47 @@
+{
+  "description": "Example configuration for Ignition Zerobus Connector",
+  "note": "This is a reference configuration. Actual configuration is done via Gateway Web UI.",
+  
+  "connection": {
+    "workspaceUrl": "https://my-workspace.cloud.databricks.com",
+    "zerobusEndpoint": "https://my-workspace.cloud.databricks.com/api/2.0/lakeflow/ingest/stream/abc123",
+    "oauthClientId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "oauthClientSecret": "*** REDACTED ***",
+    "targetTable": "dev_ot.bronze_ignition_events"
+  },
+  
+  "tagSelection": {
+    "mode": "folder",
+    "folderPath": "[default]Production",
+    "includeSubfolders": true,
+    "pattern": "",
+    "explicitPaths": []
+  },
+  
+  "batching": {
+    "batchSize": 500,
+    "batchFlushIntervalMs": 2000,
+    "maxQueueSize": 10000,
+    "maxEventsPerSecond": 1000
+  },
+  
+  "reliability": {
+    "maxRetries": 3,
+    "retryBackoffMs": 1000,
+    "connectionTimeoutMs": 30000,
+    "requestTimeoutMs": 60000
+  },
+  
+  "dataMapping": {
+    "sourceSystemId": "ignition-gw-01",
+    "includeQuality": true,
+    "onlyOnChange": false,
+    "numericDeadband": 0.0
+  },
+  
+  "control": {
+    "enabled": true,
+    "debugLogging": false
+  }
+}
+
