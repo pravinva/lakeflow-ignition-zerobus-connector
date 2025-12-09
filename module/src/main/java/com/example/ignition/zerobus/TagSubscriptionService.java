@@ -1,12 +1,7 @@
 package com.example.ignition.zerobus;
 
-import com.inductiveautomation.ignition.common.model.values.QualifiedValue;
-import com.inductiveautomation.ignition.common.tags.model.TagPath;
-import com.inductiveautomation.ignition.common.tags.model.event.TagChangeEvent;
-import com.inductiveautomation.ignition.common.tags.model.event.TagChangeListener;
-import com.inductiveautomation.ignition.common.tags.paths.parser.TagPathParser;
+import com.example.ignition.zerobus.web.TagEventPayload;
 import com.inductiveautomation.ignition.gateway.model.GatewayContext;
-import com.inductiveautomation.ignition.gateway.tags.managed.ManagedTagProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,20 +9,20 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.regex.Pattern;
 
 /**
- * TagSubscriptionService - Subscribes to Ignition tags and batches events.
+ * TagSubscriptionService - Event-driven tag event processing service.
  * 
- * Uses the real Ignition Tag API to:
- * - Subscribe to configured tags
- * - Handle tag value/quality/timestamp updates
- * - Batch events by count and time window
- * - Apply rate limiting and backpressure
- * - Send batches to ZerobusClientManager
+ * This service receives tag events from Ignition Event Streams via REST API:
+ * - Receives tag events from Event Stream Script handlers
+ * - Queues events with backpressure management
+ * - Batches events by count and time window
+ * - Applies rate limiting
+ * - Sends batches to ZerobusClientManager
  * 
- * Implementation based on official Ignition SDK examples:
- * https://github.com/inductiveautomation/ignition-sdk-examples/managed-tag-provider
+ * NOTE: This service does NOT poll tags. It is purely event-driven.
+ * Configure Ignition Event Streams with Tag Event sources to push events to this service.
+ * See docs/EVENT_STREAMS_SETUP.md for configuration guide.
  */
 public class TagSubscriptionService {
     
@@ -52,11 +47,6 @@ public class TagSubscriptionService {
     private AtomicLong eventsThisSecond = new AtomicLong(0);
     private volatile long currentSecond = 0;
     
-    // Tag subscriptions tracking
-    private final List<TagPath> subscribedTagPaths = new ArrayList<>();
-    private final List<com.inductiveautomation.ignition.common.tags.model.event.TagChangeListener> tagListeners = new ArrayList<>();
-    private final Map<String, Object> lastValues = new ConcurrentHashMap<>();
-    
     /**
      * Constructor.
      * 
@@ -76,7 +66,10 @@ public class TagSubscriptionService {
     }
     
     /**
-     * Start the tag subscription service.
+     * Start the tag event processing service.
+     * 
+     * NOTE: This service is event-driven only. It does not poll tags.
+     * Configure Ignition Event Streams to send events to /system/zerobus/ingest endpoint.
      */
     public void start() {
         if (running.get()) {
@@ -84,7 +77,9 @@ public class TagSubscriptionService {
             return;
         }
         
-        logger.info("Starting TagSubscriptionService...");
+        logger.info("Starting Zerobus Event Processing Service...");
+        logger.info("Mode: Event-driven (no polling)");
+        logger.info("Listening for events on: POST /system/zerobus/ingest");
         
         try {
             running.set(true);
@@ -96,37 +91,7 @@ public class TagSubscriptionService {
                 return t;
             });
             
-            // Create worker executor for processing events
-            workerExecutor = Executors.newSingleThreadExecutor(r -> {
-                Thread t = new Thread(r, "Zerobus-Worker-Thread");
-                t.setDaemon(true);
-                return t;
-            });
-            
-            // Subscribe to tags based on configuration (event-driven)
-            subscribeToTags();
-            
-            // FAST POLLING: Poll tags at 100ms intervals (10 Hz)
-            // This is a hybrid approach:
-            // - Event-driven subscriptions are set up (for future gateway-side events)
-            // - Fast polling ensures data flows NOW (100ms = 10 samples/sec per tag)
-            logger.info("Scheduling fast polling: 100ms interval, {} tags subscribed", subscribedTagPaths.size());
-            scheduledExecutor.scheduleAtFixedRate(
-                () -> {
-                    try {
-                        logger.debug("Fast polling tick");
-                        pollTagValues();
-                    } catch (Exception e) {
-                        logger.error("FATAL: Fast polling thread crashed", e);
-                    }
-                },
-                100,  // Initial delay: 100ms
-                100,  // Poll every 100ms (10 Hz)
-                TimeUnit.MILLISECONDS
-            );
-            logger.info("Fast polling enabled: 100ms interval (10 Hz per tag)");
-            
-            // Schedule periodic flushing
+            // Schedule periodic flushing of queued events
             scheduledExecutor.scheduleAtFixedRate(
                 this::flushBatch,
                 config.getBatchFlushIntervalMs(),
@@ -134,38 +99,36 @@ public class TagSubscriptionService {
                 TimeUnit.MILLISECONDS
             );
             
-            // Start worker thread for processing queue
-            workerExecutor.submit(this::processQueue);
-            
-            logger.info("TagSubscriptionService started successfully");
-            logger.info("  Tag selection mode: {}", config.getTagSelectionMode());
+            logger.info("Event processing service started successfully");
+            logger.info("  Event queue capacity: {}", config.getMaxQueueSize());
             logger.info("  Batch size: {}", config.getBatchSize());
             logger.info("  Flush interval: {}ms", config.getBatchFlushIntervalMs());
-            logger.info("  Subscribed to {} tags", subscribedTagPaths.size());
+            logger.info("");
+            logger.info("Configure Event Streams in Ignition Designer to push events:");
+            logger.info("  Source: Tag Event");
+            logger.info("  Handler: Script → POST to http://localhost:8088/system/zerobus/ingest");
+            logger.info("  See docs/EVENT_STREAMS_SETUP.md for complete guide");
             
         } catch (Exception e) {
-            logger.error("Failed to start TagSubscriptionService", e);
+            logger.error("Failed to start event processing service", e);
             running.set(false);
-            throw new RuntimeException("Failed to start tag subscription service", e);
+            throw new RuntimeException("Failed to start event processing service", e);
         }
     }
     
     /**
-     * Shutdown the tag subscription service.
+     * Shutdown the event processing service.
      */
     public void shutdown() {
         if (!running.get()) {
             return;
         }
         
-        logger.info("Shutting down TagSubscriptionService...");
+        logger.info("Shutting down event processing service...");
         
         running.set(false);
         
         try {
-            // Unsubscribe from all tags
-            unsubscribeFromTags();
-            
             // Flush any remaining events
             flushBatch();
             
@@ -177,455 +140,29 @@ public class TagSubscriptionService {
                 }
             }
             
-            if (workerExecutor != null) {
+            if (workerExecutor != null && !workerExecutor.isShutdown()) {
                 workerExecutor.shutdown();
                 if (!workerExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
                     workerExecutor.shutdownNow();
                 }
             }
             
-            logger.info("TagSubscriptionService shut down successfully");
+            logger.info("Event processing service shut down successfully");
             
         } catch (Exception e) {
-            logger.error("Error shutting down TagSubscriptionService", e);
+            logger.error("Error shutting down event processing service", e);
         }
     }
     
-    /**
-     * Subscribe to tags based on configuration using real Ignition Tag API.
-     * 
-     * Implementation based on official Ignition SDK examples.
-     */
-    private void subscribeToTags() {
-        String mode = config.getTagSelectionMode();
-        logger.info("Subscribing to tags using mode: {}", mode);
-        
-        try {
-            List<TagPath> tagPathsToSubscribe = new ArrayList<>();
-            
-            // Get tag paths based on selection mode
-            if ("folder".equals(mode)) {
-                tagPathsToSubscribe = browseTagsByFolder();
-            } else if ("pattern".equals(mode)) {
-                tagPathsToSubscribe = browseTagsByPattern();
-            } else if ("explicit".equals(mode)) {
-                tagPathsToSubscribe = parseExplicitTags();
-            } else {
-                throw new IllegalArgumentException("Invalid tag selection mode: " + mode);
-            }
-            
-            // Subscribe to each tag using Ignition's tag change listener
-            for (TagPath tagPath : tagPathsToSubscribe) {
-                subscribeToTag(tagPath);
-            }
-            
-            logger.info("Successfully subscribed to {} tags", subscribedTagPaths.size());
-            
-        } catch (Exception e) {
-            logger.error("Failed to subscribe to tags", e);
-            throw new RuntimeException("Tag subscription failed", e);
-        }
-    }
     
-    /**
-     * Browse tags by folder path.
-     * 
-     * @return List of tag paths found in the folder
-     */
-    private List<TagPath> browseTagsByFolder() {
-        List<TagPath> results = new ArrayList<>();
-        
-        try {
-            // Parse the folder path
-            TagPath folderPath = TagPathParser.parse(config.getTagFolderPath());
-            
-            // Get all tag providers
-            Collection<String> providerNames = gatewayContext.getTagManager().getTagProviderNames();
-            
-            for (String providerName : providerNames) {
-                // Browse tags in this provider
-                // Note: Actual browsing would use TagManager.browse() or similar
-                // For now, we log the intent
-                logger.debug("Would browse provider '{}' at path: {}", providerName, folderPath);
-                
-                // In a real implementation:
-                // List<BrowseTag> browsedTags = tagManager.browse(folderPath);
-                // for (BrowseTag tag : browsedTags) {
-                //     if (!tag.isFolder()) {
-                //         results.add(tag.getPath());
-                //     }
-                //     if (config.isIncludeSubfolders() && tag.isFolder()) {
-                //         // Recursively browse subfolders
-                //     }
-                // }
-            }
-            
-        } catch (Exception e) {
-            logger.error("Error browsing tags by folder", e);
-        }
-        
-        return results;
-    }
     
-    /**
-     * Browse tags by pattern matching.
-     * 
-     * @return List of tag paths matching the pattern
-     */
-    private List<TagPath> browseTagsByPattern() {
-        List<TagPath> results = new ArrayList<>();
-        
-        try {
-            // Convert wildcard pattern to regex
-            String patternStr = config.getTagPathPattern()
-                .replace("*", ".*")
-                .replace("?", ".");
-            Pattern pattern = Pattern.compile(patternStr);
-            
-            // Browse all tags and filter by pattern
-            Collection<String> providerNames = gatewayContext.getTagManager().getTagProviderNames();
-            
-            for (String providerName : providerNames) {
-                logger.debug("Would browse provider '{}' with pattern: {}", providerName, pattern);
-                
-                // In real implementation, browse and filter:
-                // List<BrowseTag> allTags = tagManager.browse(...);
-                // results.addAll(allTags.stream()
-                //     .filter(tag -> pattern.matcher(tag.getPath().toString()).matches())
-                //     .map(BrowseTag::getPath)
-                //     .collect(Collectors.toList()));
-            }
-            
-        } catch (Exception e) {
-            logger.error("Error browsing tags by pattern", e);
-        }
-        
-        return results;
-    }
     
-    /**
-     * Parse explicit tag paths from configuration.
-     * 
-     * @return List of parsed tag paths
-     */
-    private List<TagPath> parseExplicitTags() {
-        List<TagPath> results = new ArrayList<>();
-        
-        for (String tagPathStr : config.getExplicitTagPaths()) {
-            try {
-                TagPath tagPath = TagPathParser.parse(tagPathStr);
-                results.add(tagPath);
-            } catch (Exception e) {
-                logger.warn("Failed to parse tag path: {}", tagPathStr, e);
-            }
-        }
-        
-        return results;
-    }
     
     /**
      * Subscribe to a single tag using Ignition Tag API (event-driven).
      * 
      * @param tagPath The tag path to subscribe to
      */
-    private void subscribeToTag(TagPath tagPath) {
-        try {
-            // Create a tag change listener for this tag
-            com.inductiveautomation.ignition.common.tags.model.event.TagChangeListener listener = 
-                new com.inductiveautomation.ignition.common.tags.model.event.TagChangeListener() {
-                    @Override
-                    public void tagChanged(com.inductiveautomation.ignition.common.tags.model.event.TagChangeEvent event) {
-                        // Handle the tag change event
-                        try {
-                            TagPath eventTagPath = event.getTagPath();
-                            QualifiedValue qv = event.getValue();
-                            
-                            // Create TagEvent
-                            TagEvent tagEvent = new TagEvent(
-                                eventTagPath.toStringFull(),
-                                qv.getValue(),
-                                qv.getQuality().toString(),
-                                new Date(qv.getTimestamp().getTime())
-                            );
-                            
-                            // Handle the change
-                            handleTagChange(tagEvent);
-                            
-                            if (config.isDebugLogging()) {
-                                logger.debug("Tag change: {} = {}", eventTagPath.toStringFull(), qv.getValue());
-                            }
-                            
-                        } catch (Exception e) {
-                            logger.error("Error in tag change listener", e);
-                        }
-                    }
-                };
-            
-            // Subscribe to the tag asynchronously
-            CompletableFuture<Void> subscription = 
-                gatewayContext.getTagManager().subscribeAsync(tagPath, listener);
-            
-            // Wait for subscription to complete
-            subscription.get(5, TimeUnit.SECONDS);
-            
-            // Add to tracking lists
-            subscribedTagPaths.add(tagPath);
-            tagListeners.add(listener);
-            
-            logger.info("✅ Subscribed to tag: {}", tagPath.toStringFull());
-            
-        } catch (Exception e) {
-            logger.error("Failed to subscribe to tag: {}", tagPath, e);
-        }
-    }
-    
-    /**
-     * Handle a tag change and add it to the event queue.
-     * 
-     * @param event The tag event
-     */
-    // Fast polling state (instance variable - each service instance needs its own flag!)
-    private boolean firstPoll = true;
-    
-    /**
-     * Poll tag values at high frequency (100ms).
-     * This is the fast polling implementation for immediate data flow.
-     */
-    private void pollTagValues() {
-        boolean isFirstPoll = firstPoll;
-        if (isFirstPoll) {
-            logger.info("FIRST POLL EXECUTING: running={}, tags={}", running.get(), subscribedTagPaths.size());
-            firstPoll = false;
-        }
-        
-        if (!running.get()) {
-            logger.warn("Fast polling called but service not running");
-            return;
-        }
-        
-        if (subscribedTagPaths.isEmpty()) {
-            logger.warn("Fast polling called but no tags subscribed");
-            return;
-        }
-        
-        try {
-            // Read current values for all subscribed tags
-            if (isFirstPoll) {
-                logger.info("Reading {} tag paths...", subscribedTagPaths.size());
-            }
-            
-            CompletableFuture<List<QualifiedValue>> future = 
-                gatewayContext.getTagManager().readAsync(subscribedTagPaths);
-            
-            List<QualifiedValue> results = future.get(1, TimeUnit.SECONDS);
-            
-            if (isFirstPoll) {
-                logger.info("Got {} results from tag read", results != null ? results.size() : 0);
-            }
-            
-            int eventsGenerated = 0;
-            for (int i = 0; i < subscribedTagPaths.size() && i < results.size(); i++) {
-                TagPath tagPath = subscribedTagPaths.get(i);
-                QualifiedValue qv = results.get(i);
-                
-                if (isFirstPoll) {
-                    logger.info("Tag {}: value={}, quality={}", 
-                        tagPath.toStringFull(), qv.getValue(), qv.getQuality());
-                }
-                
-                // Create TagEvent from polled value
-                TagEvent event = new TagEvent(
-                    tagPath.toStringFull(),
-                    qv.getValue(),
-                    qv.getQuality().toString(),
-                    new Date(qv.getTimestamp().getTime())
-                );
-                
-                // Handle the event (applies filtering, queuing, etc.)
-                handleTagChange(event);
-                eventsGenerated++;
-            }
-            
-            if (isFirstPoll) {
-                logger.info("Generated {} events from polling", eventsGenerated);
-            }
-            
-            // Log polling activity every 100 polls (~10 seconds at 100ms interval)
-            long pollCount = totalEventsReceived.get() / 13; // Rough estimate
-            if (pollCount % 100 == 0 && eventsGenerated > 0) {
-                logger.info("Fast polling active: {} tags polled, {} events generated", 
-                    subscribedTagPaths.size(), eventsGenerated);
-            }
-            
-        } catch (TimeoutException e) {
-            logger.error("Timeout reading tags in fast polling");
-        } catch (Exception e) {
-            logger.error("Error in fast polling", e);
-        }
-    }
-    
-    private void handleTagChange(TagEvent event) {
-        if (!running.get()) {
-            return;
-        }
-        
-        try {
-            // Check rate limiting
-            long now = System.currentTimeMillis();
-            long second = now / 1000;
-            
-            if (second != currentSecond) {
-                currentSecond = second;
-                eventsThisSecond.set(0);
-            }
-            
-            if (eventsThisSecond.incrementAndGet() > config.getMaxEventsPerSecond()) {
-                totalEventsDropped.incrementAndGet();
-                if (config.isDebugLogging()) {
-                    logger.debug("Rate limit exceeded, dropping event: {}", event.getTagPath());
-                }
-                return;
-            }
-            
-            // Check if we should skip this event (on-change only mode)
-            if (config.isOnlyOnChange()) {
-                String tagPath = event.getTagPath();
-                Object lastValue = lastValues.get(tagPath);
-                Object currentValue = event.getValue();
-                
-                if (lastValue != null && lastValue.equals(currentValue)) {
-                    // Value hasn't changed, skip
-                    return;
-                }
-                
-                // Only store non-null values (ConcurrentHashMap doesn't allow nulls)
-                if (currentValue != null) {
-                    lastValues.put(tagPath, currentValue);
-                }
-            }
-            
-            // Try to add to queue
-            if (!eventQueue.offer(event)) {
-                totalEventsDropped.incrementAndGet();
-                logger.warn("Event queue full, dropping event: {}", event.getTagPath());
-            } else {
-                totalEventsReceived.incrementAndGet();
-            }
-            
-        } catch (Exception e) {
-            logger.error("Error handling tag change", e);
-        }
-    }
-    
-    
-    /**
-     * Unsubscribe from all tags.
-     */
-    private void unsubscribeFromTags() {
-        logger.info("Unsubscribing from {} tags...", subscribedTagPaths.size());
-        
-        try {
-            // Unsubscribe all listeners
-            if (!subscribedTagPaths.isEmpty() && !tagListeners.isEmpty()) {
-                CompletableFuture<Void> unsubscribe = 
-                    gatewayContext.getTagManager().unsubscribeAsync(subscribedTagPaths, tagListeners);
-                
-                // Wait for unsubscribe to complete
-                unsubscribe.get(5, TimeUnit.SECONDS);
-            }
-            
-            subscribedTagPaths.clear();
-            tagListeners.clear();
-            lastValues.clear();
-            
-            logger.info("Unsubscribed from all tags");
-            
-        } catch (Exception e) {
-            logger.error("Error unsubscribing from tags", e);
-        }
-    }
-    
-    /**
-     * Handle a tag value change event from Ignition.
-     * This is called by the Ignition Tag API when a subscribed tag changes.
-     * 
-     * @param tagPath The path of the tag that changed
-     * @param qualifiedValue The new qualified value (value + quality + timestamp)
-     */
-    public void handleTagChange(TagPath tagPath, QualifiedValue qualifiedValue) {
-        if (!running.get()) {
-            return;
-        }
-        
-        totalEventsReceived.incrementAndGet();
-        
-        // Apply rate limiting
-        if (!checkRateLimit()) {
-            if (config.isDebugLogging()) {
-                logger.debug("Rate limit exceeded, dropping event for tag: {}", tagPath);
-            }
-            totalEventsDropped.incrementAndGet();
-            return;
-        }
-        
-        // Extract values from QualifiedValue
-        Object value = qualifiedValue.getValue();
-        String quality = qualifiedValue.getQuality().getName();
-        Date timestamp = new Date(qualifiedValue.getTimestamp().getTime());
-        
-        // Apply change detection if configured
-        if (config.isOnlyOnChange() && !hasValueChanged(tagPath, value)) {
-            return;
-        }
-        
-        // Create TagEvent
-        TagEvent event = new TagEvent(
-            tagPath.toString(),
-            value,
-            quality,
-            timestamp
-        );
-        
-        // Try to add to queue
-        if (!eventQueue.offer(event)) {
-            // Queue is full - apply backpressure strategy (drop oldest)
-            logger.warn("Event queue full ({}), dropping event for tag: {}", 
-                config.getMaxQueueSize(), tagPath);
-            totalEventsDropped.incrementAndGet();
-        } else {
-            if (config.isDebugLogging()) {
-                logger.debug("Queued event for tag: {} = {} [{}]", 
-                    tagPath, value, quality);
-            }
-        }
-    }
-    
-    /**
-     * Process the event queue and send batches.
-     */
-    private void processQueue() {
-        logger.debug("Worker thread started");
-        
-        while (running.get()) {
-            try {
-                // Check if we have enough events for a batch
-                if (eventQueue.size() >= config.getBatchSize()) {
-                    flushBatch();
-                }
-                
-                // Sleep briefly to avoid busy-waiting
-                Thread.sleep(100);
-                
-            } catch (InterruptedException e) {
-                logger.debug("Worker thread interrupted");
-                break;
-            } catch (Exception e) {
-                logger.error("Error in worker thread", e);
-            }
-        }
-        
-        logger.debug("Worker thread stopped");
-    }
     
     /**
      * Flush a batch of events to Zerobus.
@@ -684,44 +221,6 @@ public class TagSubscriptionService {
         return count <= config.getMaxEventsPerSecond();
     }
     
-    /**
-     * Check if the tag value has changed significantly.
-     * Applies deadband logic for numeric values.
-     * 
-     * @param tagPath The tag path
-     * @param newValue The new value
-     * @return true if value has changed significantly
-     */
-    private boolean hasValueChanged(TagPath tagPath, Object newValue) {
-        String key = tagPath.toString();
-        Object oldValue = lastValues.get(key);
-        
-        if (oldValue == null) {
-            // First value, always consider it changed
-            lastValues.put(key, newValue);
-            return true;
-        }
-        
-        boolean changed = false;
-        
-        // Apply deadband for numeric values
-        if (newValue instanceof Number && oldValue instanceof Number) {
-            double newNum = ((Number) newValue).doubleValue();
-            double oldNum = ((Number) oldValue).doubleValue();
-            double deadband = config.getNumericDeadband();
-            
-            changed = Math.abs(newNum - oldNum) >= deadband;
-        } else {
-            // For non-numeric values, use equals
-            changed = !Objects.equals(oldValue, newValue);
-        }
-        
-        if (changed) {
-            lastValues.put(key, newValue);
-        }
-        
-        return changed;
-    }
     
     /**
      * Get diagnostics information.
@@ -730,9 +229,9 @@ public class TagSubscriptionService {
      */
     public String getDiagnostics() {
         StringBuilder sb = new StringBuilder();
-        sb.append("=== Tag Subscription Service Diagnostics ===\n");
+        sb.append("=== Event Processing Service Diagnostics ===\n");
         sb.append("Running: ").append(running.get()).append("\n");
-        sb.append("Subscribed Tags: ").append(subscribedTagPaths.size()).append("\n");
+        sb.append("Mode: Event-driven (Event Streams integration)\n");
         sb.append("Queue Size: ").append(eventQueue.size())
             .append("/").append(config.getMaxQueueSize()).append("\n");
         sb.append("Total Events Received: ").append(totalEventsReceived.get()).append("\n");
@@ -747,5 +246,137 @@ public class TagSubscriptionService {
         }
         
         return sb.toString();
+    }
+    
+    /**
+     * Ingest a single tag event from Event Streams.
+     * This method is called by the REST endpoint when Event Streams sends tag events.
+     * 
+     * @param payload Tag event payload from Event Streams
+     * @return true if event was accepted, false if queue is full
+     */
+    public boolean ingestEvent(TagEventPayload payload) {
+        if (!running.get()) {
+            logger.warn("Cannot ingest event: service not running");
+            return false;
+        }
+        
+        try {
+            // Convert payload to TagEvent
+            TagEvent event = convertPayloadToEvent(payload);
+            
+            // Try to add to queue
+            boolean accepted = eventQueue.offer(event);
+            
+            if (accepted) {
+                totalEventsReceived.incrementAndGet();
+                logger.debug("Event accepted from Event Stream: {}", payload.getTagPath());
+            } else {
+                totalEventsDropped.incrementAndGet();
+                logger.warn("Event queue full, dropped event from: {}", payload.getTagPath());
+            }
+            
+            return accepted;
+            
+        } catch (Exception e) {
+            logger.error("Error ingesting event from Event Streams", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Ingest a batch of tag events from Event Streams.
+     * This method is called by the REST endpoint when Event Streams sends batched tag events.
+     * 
+     * @param payloads Array of tag event payloads from Event Streams
+     * @return number of events accepted
+     */
+    public int ingestEventBatch(TagEventPayload[] payloads) {
+        if (!running.get()) {
+            logger.warn("Cannot ingest batch: service not running");
+            return 0;
+        }
+        
+        int accepted = 0;
+        
+        for (TagEventPayload payload : payloads) {
+            try {
+                TagEvent event = convertPayloadToEvent(payload);
+                
+                if (eventQueue.offer(event)) {
+                    accepted++;
+                    totalEventsReceived.incrementAndGet();
+                } else {
+                    totalEventsDropped.incrementAndGet();
+                    logger.warn("Event queue full, dropped event from batch: {}", payload.getTagPath());
+                }
+                
+            } catch (Exception e) {
+                logger.error("Error processing event from batch: {}", payload.getTagPath(), e);
+            }
+        }
+        
+        logger.debug("Batch ingestion: {} of {} events accepted", accepted, payloads.length);
+        return accepted;
+    }
+    
+    /**
+     * Convert TagEventPayload from Event Streams to internal TagEvent.
+     * 
+     * @param payload TagEventPayload from Event Streams
+     * @return TagEvent for internal processing
+     */
+    private TagEvent convertPayloadToEvent(TagEventPayload payload) {
+        // Extract timestamp (Event Streams provides it in milliseconds)
+        long timestamp = payload.getTimestamp() != null ? payload.getTimestamp() : System.currentTimeMillis();
+        
+        // Extract quality
+        String quality = payload.getQuality() != null ? payload.getQuality() : "GOOD";
+        int qualityCode = payload.getQualityCode() != null ? payload.getQualityCode() : 192; // 192 = GOOD
+        
+        // Extract data type
+        String dataType = payload.getDataType() != null ? payload.getDataType() : determineDataType(payload.getValue());
+        
+        // Create TagEvent
+        return new TagEvent(
+            UUID.randomUUID().toString(), // event_id
+            timestamp, // event_time
+            payload.getTagPath(), // tag_path
+            payload.getTagProvider(), // tag_provider
+            payload.getValue(), // value
+            quality, // quality
+            qualityCode, // quality_code
+            config.getSourceSystem(), // source_system
+            System.currentTimeMillis(), // ingestion_timestamp
+            dataType, // data_type
+            "", // alarm_state (not provided by Event Streams)
+            0 // alarm_priority (not provided by Event Streams)
+        );
+    }
+    
+    /**
+     * Determine the data type from the value object.
+     * 
+     * @param value The value object
+     * @return String representation of the data type
+     */
+    private String determineDataType(Object value) {
+        if (value == null) {
+            return "NULL";
+        } else if (value instanceof Boolean) {
+            return "Boolean";
+        } else if (value instanceof Integer) {
+            return "Int4";
+        } else if (value instanceof Long) {
+            return "Int8";
+        } else if (value instanceof Float) {
+            return "Float4";
+        } else if (value instanceof Double) {
+            return "Float8";
+        } else if (value instanceof String) {
+            return "String";
+        } else {
+            return value.getClass().getSimpleName();
+        }
     }
 }

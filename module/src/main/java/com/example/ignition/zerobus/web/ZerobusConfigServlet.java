@@ -91,6 +91,10 @@ public class ZerobusConfigServlet extends HttpServlet {
                 handleSaveConfig(req, resp);
             } else if (pathInfo.equals("/test-connection")) {
                 handleTestConnection(req, resp);
+            } else if (pathInfo.equals("/ingest")) {
+                handleIngestEvent(req, resp);
+            } else if (pathInfo.equals("/ingest/batch")) {
+                handleIngestBatch(req, resp);
             } else {
                 resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
                 Map<String, String> error = new HashMap<>();
@@ -179,6 +183,87 @@ public class ZerobusConfigServlet extends HttpServlet {
         resp.setStatus(HttpServletResponse.SC_OK);
         resp.setContentType("text/plain");
         resp.getWriter().write(diagnostics);
+    }
+    
+    /**
+     * Handle single tag event ingestion from Event Streams.
+     */
+    private void handleIngestEvent(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        try (BufferedReader reader = req.getReader()) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+        }
+        
+        String jsonBody = sb.toString();
+        logger.debug("Received tag event: {}", jsonBody);
+        
+        try {
+            TagEventPayload payload = gson.fromJson(jsonBody, TagEventPayload.class);
+            
+            ZerobusGatewayHook hook = resource.getGatewayHook();
+            boolean accepted = hook.ingestTagEvent(payload);
+            
+            if (accepted) {
+                resp.setStatus(HttpServletResponse.SC_OK);
+                Map<String, Object> result = new HashMap<>();
+                result.put("success", true);
+                result.put("message", "Event accepted");
+                resp.getWriter().write(gson.toJson(result));
+            } else {
+                resp.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+                Map<String, Object> result = new HashMap<>();
+                result.put("success", false);
+                result.put("message", "Event queue full - backpressure applied");
+                resp.getWriter().write(gson.toJson(result));
+            }
+        } catch (Exception e) {
+            logger.error("Error processing tag event", e);
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Invalid event payload: " + e.getMessage());
+            resp.getWriter().write(gson.toJson(error));
+        }
+    }
+    
+    /**
+     * Handle batch tag event ingestion from Event Streams.
+     */
+    private void handleIngestBatch(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        try (BufferedReader reader = req.getReader()) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+        }
+        
+        String jsonBody = sb.toString();
+        logger.debug("Received tag event batch (length: {})", jsonBody.length());
+        
+        try {
+            TagEventPayload[] payloads = gson.fromJson(jsonBody, TagEventPayload[].class);
+            
+            ZerobusGatewayHook hook = resource.getGatewayHook();
+            int accepted = hook.ingestTagEventBatch(payloads);
+            
+            resp.setStatus(HttpServletResponse.SC_OK);
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("accepted", accepted);
+            result.put("total", payloads.length);
+            result.put("dropped", payloads.length - accepted);
+            resp.getWriter().write(gson.toJson(result));
+            
+        } catch (Exception e) {
+            logger.error("Error processing tag event batch", e);
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Invalid batch payload: " + e.getMessage());
+            resp.getWriter().write(gson.toJson(error));
+        }
     }
 }
 
