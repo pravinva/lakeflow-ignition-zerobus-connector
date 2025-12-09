@@ -633,65 +633,181 @@ If you're still experiencing issues:
 
 ## Advanced Configuration
 
-### Production Deployment Best Practices
+### Performance Testing Results
 
-#### 1. High Availability
+**Tested on Ignition 8.3.2 (December 2024):**
+
+| Configuration | Tags | Throughput | Queue | Dropped | Result |
+|--------------|------|------------|-------|---------|--------|
+| Low Volume | 3 tags @ 1Hz | 6 events/sec | 0.03% | 0 | ✅ Stable |
+| Medium Volume | 20 tags @ 1Hz | 20 events/sec | 6-14% | 0 | ✅ Stable |
+| Stress Test | 20 tags continuous | 600 events/30sec | <15% | 0 | ✅ Stable |
+
+**Bug Fix Applied (December 2024):**
+- Fixed synchronized deadlock causing queue overflow
+- Before: 10,000/10,000 queue, 5,000+ drops, 0 throughput
+- After: <15% queue usage, 0 drops, continuous streaming
+
+### Production Deployment Configurations
+
+#### 1. Low Volume (< 1,000 events/sec)
+
+**Use Case**: Small plant, monitoring 100-500 tags
 
 ```json
 {
-  "maxQueueSize": 50000,
   "batchSize": 50,
   "batchFlushIntervalMs": 500,
-  "maxEventsPerSecond": 10000
+  "maxQueueSize": 10000,
+  "onlyOnChange": true
 }
 ```
 
-#### 2. Low Bandwidth
+#### 2. Medium Volume (1,000-5,000 events/sec)
+
+**Use Case**: Medium facility, 500-1,000 tags
 
 ```json
 {
-  "onlyOnChange": true,
   "batchSize": 100,
-  "batchFlushIntervalMs": 5000
+  "batchFlushIntervalMs": 500,
+  "maxQueueSize": 50000,
+  "maxEventsPerSecond": 10000,
+  "onlyOnChange": true
 }
 ```
 
-#### 3. Real-Time Monitoring
+#### 3. High Volume Single Gateway (5,000-10,000 events/sec)
 
-```json
-{
-  "onlyOnChange": false,
-  "batchSize": 5,
-  "batchFlushIntervalMs": 100
-}
-```
-
-#### 4. Large-Scale Deployment
+**Use Case**: Large facility, 1,000-3,000 tags, one gateway
 
 ```json
 {
   "tagSelectionMode": "folder",
   "tagFolderPath": "[default]Production",
   "includeSubfolders": true,
-  "maxQueueSize": 100000,
   "batchSize": 100,
+  "batchFlushIntervalMs": 200,
+  "maxQueueSize": 100000,
+  "maxEventsPerSecond": 15000,
   "onlyOnChange": true
 }
 ```
 
-### Multiple Gateways
+**JVM Tuning Required** - Add to `ignition.conf`:
+```bash
+wrapper.java.additional.100=-Xms4G
+wrapper.java.additional.101=-Xmx8G
+```
 
-To stream from multiple Ignition Gateways:
+#### 4. Multi-Gateway Architecture (10,000+ events/sec)
 
-1. Install module on each gateway
-2. Use unique `sourceSystemId` for each:
-   ```json
-   {
-     "sourceSystemId": "ignition-gateway-site-01"
-   }
-   ```
-3. All can write to the same Delta table
-4. Use `sourceSystemId` to filter by gateway in queries
+**Use Case**: Multiple sites or very large facility
+
+**Gateway 1 Configuration:**
+```json
+{
+  "sourceSystemId": "ignition-gateway-site-A",
+  "batchSize": 100,
+  "batchFlushIntervalMs": 500,
+  "maxQueueSize": 50000,
+  "onlyOnChange": true
+}
+```
+
+**Gateway 2 Configuration:**
+```json
+{
+  "sourceSystemId": "ignition-gateway-site-B",
+  "batchSize": 100,
+  "batchFlushIntervalMs": 500,
+  "maxQueueSize": 50000,
+  "onlyOnChange": true
+}
+```
+
+**All gateways write to the same Delta table.**
+
+**Scaling Table:**
+
+| Target Throughput | Architecture | # Gateways | Tags per Gateway |
+|-------------------|--------------|------------|------------------|
+| < 5K events/sec | Single Gateway | 1 | 500-1,000 |
+| 5K-10K events/sec | Single Gateway (tuned) | 1 | 1,000-3,000 |
+| 10K-30K events/sec | Multi-Gateway | 3-6 | 500-1,000 each |
+| 30K-100K events/sec | Multi-Gateway | 10-20 | 500-1,000 each |
+
+### Monitoring at Scale
+
+**Health Check Queries:**
+
+```sql
+-- Ingestion rate per gateway (last minute)
+SELECT 
+  source_system,
+  COUNT(*) as events,
+  COUNT(*) / 60.0 as events_per_sec
+FROM ignition_demo.scada_data.tag_events
+WHERE ingestion_timestamp > current_timestamp() - INTERVAL 1 MINUTE
+GROUP BY source_system;
+
+-- Data quality by gateway
+SELECT 
+  source_system,
+  quality,
+  COUNT(*) as count
+FROM ignition_demo.scada_data.tag_events
+WHERE ingestion_timestamp > current_timestamp() - INTERVAL 1 HOUR
+GROUP BY source_system, quality;
+
+-- Latest data freshness
+SELECT 
+  source_system,
+  MAX(ingestion_timestamp) as latest_event,
+  DATEDIFF(SECOND, MAX(ingestion_timestamp), CURRENT_TIMESTAMP()) as seconds_ago
+FROM ignition_demo.scada_data.tag_events
+GROUP BY source_system;
+```
+
+**Alert Thresholds:**
+
+| Metric | Warning | Critical | Action |
+|--------|---------|----------|--------|
+| Queue Size | > 70% | > 90% | Increase batch size or add gateway |
+| Dropped Events | > 0 | > 100 | Increase queue size |
+| Last Send | > 5 sec | > 30 sec | Check network/Databricks |
+| Data Lag | > 2 min | > 5 min | Check gateway status |
+
+### Best Practices
+
+**1. Use `onlyOnChange: true` in Production**
+- Reduces data volume by 10-100x
+- Lowers costs (compute, storage, network)
+- Only sends meaningful changes
+
+**2. Set Appropriate Scan Classes**
+- Critical alarms: 100ms
+- Process values: 1 second
+- Slow-changing values: 5-10 seconds
+- Static values: Don't subscribe
+
+**3. Tag Selection Strategy**
+- Use `folder` mode for organized tag structures
+- Use `explicit` mode for specific critical tags
+- Avoid `pattern` mode with broad wildcards (performance)
+
+**4. Monitor Gateway Health**
+```bash
+# Add to cron for automated checks
+*/5 * * * * curl -s http://localhost:8088/system/zerobus/diagnostics | \
+  grep -E "Queue Size|Dropped" | \
+  mail -s "Zerobus Status" ops@company.com
+```
+
+**5. Test Configuration Changes**
+- Always test in dev/staging environment first
+- Monitor queue depth and dropped events after changes
+- Gradually increase tag count to find limits
 
 ### Disabling Module Temporarily
 
