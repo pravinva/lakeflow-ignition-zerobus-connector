@@ -1,47 +1,33 @@
 {
   "description": "Example configuration for Ignition Zerobus Connector",
-  "note": "This is a reference configuration. Actual configuration is done via Gateway Web UI.",
+  "note": "Replace credentials with your own Service Principal credentials",
   
-  "connection": {
-    "workspaceUrl": "https://my-workspace.cloud.databricks.com",
-    "zerobusEndpoint": "https://my-workspace.cloud.databricks.com/api/2.0/lakeflow/ingest/stream/abc123",
-    "oauthClientId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "oauthClientSecret": "*** REDACTED ***",
-    "targetTable": "dev_ot.bronze_ignition_events"
-  },
+  "enabled": true,
   
-  "tagSelection": {
-    "mode": "folder",
-    "folderPath": "[default]Production",
-    "includeSubfolders": true,
-    "pattern": "",
-    "explicitPaths": []
-  },
+  "workspaceUrl": "https://your-workspace.cloud.databricks.com",
+  "zerobusEndpoint": "your-workspace-id.zerobus.region.cloud.databricks.com",
+  "oauthClientId": "your-service-principal-client-id",
+  "oauthClientSecret": "your-service-principal-secret",
   
-  "batching": {
-    "batchSize": 500,
-    "batchFlushIntervalMs": 2000,
-    "maxQueueSize": 10000,
-    "maxEventsPerSecond": 1000
-  },
+  "catalogName": "ignition_demo",
+  "schemaName": "scada_data",
+  "tableName": "tag_events",
+  "targetTable": "ignition_demo.scada_data.tag_events",
   
-  "reliability": {
-    "maxRetries": 3,
-    "retryBackoffMs": 1000,
-    "connectionTimeoutMs": 30000,
-    "requestTimeoutMs": 60000
-  },
+  "tagSelectionMode": "explicit",
+  "explicitTagPaths": [
+    "[Sample_Tags]Sine0",
+    "[Sample_Tags]Sine1",
+    "[Sample_Tags]Sine2"
+  ],
   
-  "dataMapping": {
-    "sourceSystemId": "ignition-gw-01",
-    "includeQuality": true,
-    "onlyOnChange": false,
-    "numericDeadband": 0.0
-  },
+  "batchSize": 10,
+  "batchFlushIntervalMs": 1000,
+  "maxQueueSize": 10000,
+  "maxEventsPerSecond": 10000,
   
-  "control": {
-    "enabled": true,
-    "debugLogging": false
-  }
+  "onlyOnChange": true,
+  "debugLogging": false,
+  
+  "sourceSystemId": "ignition-gateway-local"
 }
-
