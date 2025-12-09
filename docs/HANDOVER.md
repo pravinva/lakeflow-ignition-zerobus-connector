@@ -1,8 +1,8 @@
 # Ignition Zerobus Connector - User Handover Guide
 
 **Version**: 1.0.0  
-**Status**: ✅ Production Ready  
-**Last Updated**: December 9, 2024
+**Status**: Production Ready  
+**Last Updated**: December 9, 2025
 
 ---
 
@@ -27,12 +27,12 @@ The **Ignition Zerobus Connector** streams SCADA tag data from your Ignition Gat
 
 ### Key Benefits
 
-✅ **Real-Time Data Flow**: 100ms latency - events arrive in Databricks as they happen  
-✅ **Event-Based**: Only sends data when values actually change (optional)  
-✅ **Zero Infrastructure**: No Kafka, no message brokers - direct to Delta tables  
-✅ **Secure**: OAuth 2.0 M2M authentication with Service Principals  
-✅ **Reliable**: Automatic retry, zero data loss, proven stable  
-✅ **Simple**: 3-step installation, REST API configuration
+- **Real-Time Data Flow**: 100ms latency - events arrive in Databricks as they happen  
+- **Event-Based**: Only sends data when values actually change (optional)  
+- **Zero Infrastructure**: No Kafka, no message brokers - direct to Delta tables  
+- **Secure**: OAuth 2.0 M2M authentication with Service Principals  
+- **Reliable**: Automatic retry, zero data loss, proven stable  
+- **Simple**: 3-step installation, REST API configuration
 
 ### Data Flow
 
@@ -89,7 +89,7 @@ curl http://your-gateway:8088/system/zerobus/diagnostics
 - `Total Events Sent: > 0` (increasing)
 - `Total Failures: 0`
 
-**That's it!** Your data is now flowing to Databricks! 🎉
+**That's it!** Your data is now flowing to Databricks.
 
 ---
 
@@ -236,7 +236,7 @@ Config → System → Modules
 Look for:
 - **Name**: Zerobus Connector
 - **Version**: 1.0.0
-- **Status**: ✅ Running
+- **Status**: Running
 
 ---
 
@@ -271,9 +271,9 @@ Specify exact tag paths:
 }
 ```
 
-**⚠️ Important**: Tag paths must include the full folder structure as shown in Ignition Designer Tag Browser:
-- ✅ Correct: `[Sample_Tags]Realistic/Realistic0`
-- ❌ Wrong: `[Sample_Tags]Realistic0`
+**Important**: Tag paths must include the full folder structure as shown in Ignition Designer Tag Browser:
+- Correct: `[Sample_Tags]Realistic/Realistic0`
+- Wrong: `[Sample_Tags]Realistic0`
 
 #### Mode 2: Folder
 
@@ -353,7 +353,7 @@ Use wildcards to match tags:
 **Web UI:**
 1. Navigate to: `Config → System → Status`
 2. Look for: "Zerobus Connector"
-3. Status should be: ✅ Running
+3. Status should be: Running
 
 **Diagnostics API:**
 ```bash
@@ -389,14 +389,14 @@ Last Flush: 2 seconds ago
 
 ### What Each Metric Means
 
-✅ **Good Indicators:**
+**Good Indicators:**
 - `Stream State: OPENED` - Connected to Databricks
 - `Total Events Sent` - Increasing over time
 - `Total Failures: 0` - No errors
 - `Total Events Dropped: 0` - No data loss
 - `Last Successful Send: < 5 seconds` - Real-time streaming
 
-⚠️ **Warning Signs:**
+**Warning Signs:**
 - `Stream State: CLOSED` - Connection issue
 - `Total Failures > 0` - Authentication or network errors
 - `Total Events Dropped > 0` - Queue full, increase `maxQueueSize`
@@ -539,10 +539,10 @@ tail -f /var/log/ignition/wrapper.log | grep Zerobus
    - Use Ignition Designer Tag Browser to verify exact path structure
    - **Must include folder structure**: `[Provider]Folder/TagName`
    - Common mistakes:
-     - ❌ Missing folder: `[Sample_Tags]Sine0` 
-     - ✅ Correct with folder: `[Sample_Tags]Sine/Sine0`
-     - ❌ Wrong provider: `[default]Sample_Tags/Sine0`
-     - ✅ Correct provider: `[Sample_Tags]Sine/Sine0`
+     - Missing folder: `[Sample_Tags]Sine0` 
+     - Correct with folder: `[Sample_Tags]Sine/Sine0`
+     - Wrong provider: `[default]Sample_Tags/Sine0`
+     - Correct provider: `[Sample_Tags]Sine/Sine0`
 
 3. **Verify tags are changing:**
    - If `onlyOnChange: true`, events only sent when values change
@@ -635,15 +635,15 @@ If you're still experiencing issues:
 
 ### Performance Testing Results
 
-**Tested on Ignition 8.3.2 (December 2024):**
+**Tested on Ignition 8.3.2 (December 2025):**
 
 | Configuration | Tags | Throughput | Queue | Dropped | Result |
 |--------------|------|------------|-------|---------|--------|
-| Low Volume | 3 tags @ 1Hz | 6 events/sec | 0.03% | 0 | ✅ Stable |
-| Medium Volume | 20 tags @ 1Hz | 20 events/sec | 6-14% | 0 | ✅ Stable |
-| Stress Test | 20 tags continuous | 600 events/30sec | <15% | 0 | ✅ Stable |
+| Low Volume | 3 tags @ 1Hz | 6 events/sec | 0.03% | 0 | Stable |
+| Medium Volume | 20 tags @ 1Hz | 20 events/sec | 6-14% | 0 | Stable |
+| Stress Test | 20 tags continuous | 600 events/30sec | <15% | 0 | Stable |
 
-**Bug Fix Applied (December 2024):**
+**Bug Fix Applied (December 2025):**
 - Fixed synchronized deadlock causing queue overflow
 - Before: 10,000/10,000 queue, 5,000+ drops, 0 throughput
 - After: <15% queue usage, 0 drops, continuous streaming
@@ -862,11 +862,11 @@ See [GitHub Releases](https://github.com/pravinva/lakeflow-ignition-zerobus-conn
 
 ### What You Should Know
 
-✅ **Installation**: 3 steps - download, install, configure  
-✅ **Configuration**: REST API or configuration file  
-✅ **Verification**: Diagnostics endpoint + Databricks queries  
-✅ **Monitoring**: REST API, logs, and key metrics  
-✅ **Troubleshooting**: Common issues and solutions
+**Installation**: 3 steps - download, install, configure  
+**Configuration**: REST API or configuration file  
+**Verification**: Diagnostics endpoint + Databricks queries  
+**Monitoring**: REST API, logs, and key metrics  
+**Troubleshooting**: Common issues and solutions
 
 ### Next Steps
 
@@ -883,8 +883,6 @@ See [GitHub Releases](https://github.com/pravinva/lakeflow-ignition-zerobus-conn
 - Open an [issue on GitHub](https://github.com/pravinva/lakeflow-ignition-zerobus-connector/issues)
 
 ---
-
-**Happy Streaming!** 🚀
 
 *For questions or feedback, contact the development team or open a GitHub issue.*
 
