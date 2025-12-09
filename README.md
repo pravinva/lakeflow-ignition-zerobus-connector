@@ -8,7 +8,7 @@ A production-grade Ignition Gateway module that streams operational technology (
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Overview](#overview)
 - [Key Features](#key-features)
@@ -58,14 +58,14 @@ The Ignition Zerobus Connector bridges Ignition SCADA systems with Databricks La
 
 ## Key Features
 
-### ✅ Production Ready
+### Production Ready
 
 - **Zero Failures**: Proven stability with 100+ events successfully streamed
 - **Robust Error Handling**: Automatic retry with exponential backoff
 - **Graceful Degradation**: Queue-based buffering during network issues
 - **Clean Shutdown**: Proper resource cleanup and connection management
 
-### 🚀 High Performance
+### High Performance
 
 - **Real-Time Streaming**: 100ms polling interval (10 Hz sampling rate)
 - **Event-Based Behavior**: Optional `onlyOnChange` mode - only sends when values actually change
@@ -73,7 +73,7 @@ The Ignition Zerobus Connector bridges Ignition SCADA systems with Databricks La
 - **Async Operations**: Non-blocking tag reads and network I/O
 - **Minimal Overhead**: Lightweight module design (~18MB)
 
-### 🔧 Flexible Configuration
+### Flexible Configuration
 
 - **Tag Selection Modes**:
   - Explicit: List specific tag paths
@@ -90,7 +90,7 @@ The Ignition Zerobus Connector bridges Ignition SCADA systems with Databricks La
   - Change-only filtering
   - Quality-based filtering
 
-### 📊 Comprehensive Monitoring
+### Comprehensive Monitoring
 
 - **Real-Time Diagnostics**: REST API for operational metrics
 - **Metrics Tracked**:
@@ -211,7 +211,7 @@ The Ignition Zerobus Connector bridges Ignition SCADA systems with Databricks La
      }'
    ```
 
-**That's it!** The module will start streaming data immediately.
+The module will now begin streaming data immediately.
 
 ### Verify It's Working
 
@@ -723,4 +723,6 @@ limitations under the License.
 
 ---
 
-**Built with ❤️ for the Industrial IoT community**
+## About
+
+This module was developed by the Databricks Solutions Architecture team to demonstrate enterprise-grade integration patterns for streaming operational technology data to the Databricks Lakehouse Platform.
