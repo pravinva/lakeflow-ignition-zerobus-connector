@@ -223,11 +223,15 @@ Copyright 2024 Databricks, Inc.
 
 ## Checksums
 
-SHA256 checksums will be provided with the release assets.
+**zerobus-connector-1.0.0.modl**
+```
+SHA256: 775b7c925a4d22911b9029f5221c669c917518eb5b86f3598d8ef7d8b894a12b
+```
 
-To verify:
+To verify after download:
 ```bash
 sha256sum zerobus-connector-1.0.0.modl
+# Should match: 775b7c925a4d22911b9029f5221c669c917518eb5b86f3598d8ef7d8b894a12b
 ```
 
 ---
