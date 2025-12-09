@@ -110,7 +110,7 @@ public class ZerobusConfigServlet extends HttpServlet {
         ZerobusGatewayHook hook = resource.getGatewayHook();
         ConfigModel config = hook.getConfigModel();
         
-        resp.setStatus(HttpServletResponse.SC_OK);
+            resp.setStatus(HttpServletResponse.SC_OK);
         resp.getWriter().write(gson.toJson(config));
     }
     

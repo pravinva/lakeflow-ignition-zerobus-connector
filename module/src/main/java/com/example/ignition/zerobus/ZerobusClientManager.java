@@ -11,6 +11,7 @@ import com.example.ignition.zerobus.proto.OTEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -187,16 +188,22 @@ public class ZerobusClientManager {
         logger.debug("Sending batch of {} events to Zerobus", events.size());
         
         try {
-            // Convert and ingest each event
+            // Convert and ingest all events, collecting futures
+            List<CompletableFuture<Void>> futures = new ArrayList<>();
+            
             for (TagEvent event : events) {
                 OTEvent protoEvent = convertToProtobuf(event);
                 
                 // Ingest record - returns a future that completes when durably written
                 CompletableFuture<Void> ingestFuture = zerobusStream.ingestRecord(protoEvent);
-                
-                // Wait for acknowledgment (with timeout)
-                ingestFuture.get(config.getRequestTimeoutMs(), TimeUnit.MILLISECONDS);
+                futures.add(ingestFuture);
             }
+            
+            // Wait for ALL futures to complete (parallel, not serial!)
+            CompletableFuture<Void> allFutures = CompletableFuture.allOf(
+                futures.toArray(new CompletableFuture[0])
+            );
+            allFutures.get(config.getRequestTimeoutMs(), TimeUnit.MILLISECONDS);
             
             // Flush to ensure all records are sent
             zerobusStream.flush();

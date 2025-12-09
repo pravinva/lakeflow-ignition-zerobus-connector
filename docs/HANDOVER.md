@@ -70,8 +70,8 @@ curl -X POST http://your-gateway:8088/system/zerobus/config \
     "targetTable": "ignition_demo.scada_data.tag_events",
     "tagSelectionMode": "explicit",
     "explicitTagPaths": [
-      "[Sample_Tags]Sine0",
-      "[Sample_Tags]Sine1"
+      "[Sample_Tags]Sine/Sine0",
+      "[Sample_Tags]Sine/Sine1"
     ],
     "onlyOnChange": true
   }'
@@ -97,9 +97,10 @@ curl http://your-gateway:8088/system/zerobus/diagnostics
 
 ### 1. Ignition Gateway
 
-- **Version**: 8.3.x or later
+- **Version**: 8.3.0 or later (tested on 8.3.2)
 - **Access**: Gateway admin credentials
-- **Network**: Outbound HTTPS access to Databricks
+- **Network**: Outbound HTTPS access to Databricks (port 443)
+- **Note**: Module uses Jakarta Servlet API (compatible with Ignition 8.3.x)
 
 ### 2. Databricks Workspace
 
@@ -155,9 +156,31 @@ LOCATION 's3://your-bucket/ignition/tag_events';
 
 #### D. Grant Permissions
 
+**Important**: Use the Service Principal's **UUID** (not the display name) for permissions:
+
 ```sql
+-- Replace 'your-sp-uuid' with actual UUID like: 6ff2b11b-fdb8-4c2c-9360-ed105d5f6dcb
+
+-- Grant catalog access
+GRANT USE CATALOG ON CATALOG ignition_demo 
+TO `your-sp-uuid`;
+
+-- Grant schema access
+GRANT USE SCHEMA ON SCHEMA ignition_demo.scada_data 
+TO `your-sp-uuid`;
+
+-- Grant table modify (required for writing)
 GRANT MODIFY ON TABLE ignition_demo.scada_data.tag_events 
-TO `ignition-zerobus-connector`;
+TO `your-sp-uuid`;
+
+-- Grant table select (required for Zerobus to read table metadata)
+GRANT SELECT ON TABLE ignition_demo.scada_data.tag_events 
+TO `your-sp-uuid`;
+```
+
+**Verify permissions:**
+```sql
+SHOW GRANTS ON TABLE ignition_demo.scada_data.tag_events;
 ```
 
 ---
@@ -248,6 +271,10 @@ Specify exact tag paths:
 }
 ```
 
+**⚠️ Important**: Tag paths must include the full folder structure as shown in Ignition Designer Tag Browser:
+- ✅ Correct: `[Sample_Tags]Realistic/Realistic0`
+- ❌ Wrong: `[Sample_Tags]Realistic0`
+
 #### Mode 2: Folder
 
 Subscribe to all tags in a folder:
@@ -300,9 +327,9 @@ Use wildcards to match tags:
   
   "tagSelectionMode": "explicit",
   "explicitTagPaths": [
-    "[Sample_Tags]Sine0",
-    "[default]Sample_Tags/Sine1",
-    "[default]Sample_Tags/Sine2"
+    "[Sample_Tags]Sine/Sine0",
+    "[Sample_Tags]Realistic/Realistic0",
+    "[Sample_Tags]Realistic/Realistic1"
   ],
   
   "batchSize": 10,
@@ -462,28 +489,35 @@ tail -f /var/log/ignition/wrapper.log | grep Zerobus
 
 ### Problem: Can't Connect to Databricks
 
-**Symptoms:** `Stream State: CLOSED` or `Initialized: false`
+**Symptoms:** `Stream State: CLOSED` or `Initialized: false` or OAuth errors
 
 **Solutions:**
-1. **Verify credentials:**
-   ```bash
-   # Test OAuth token generation
-   curl -X POST https://your-workspace.cloud.databricks.com/oidc/v1/token \
-     -H "Content-Type: application/x-www-form-urlencoded" \
-     -d "grant_type=client_credentials&scope=all-apis" \
-     -u "client-id:client-secret"
+1. **Verify Service Principal has all required permissions:**
+   ```sql
+   -- Grant catalog access
+   GRANT USE CATALOG ON CATALOG your_catalog TO `service-principal-uuid`;
+   
+   -- Grant schema access
+   GRANT USE SCHEMA ON SCHEMA your_catalog.your_schema TO `service-principal-uuid`;
+   
+   -- Grant table modify (for writing)
+   GRANT MODIFY ON TABLE your_catalog.your_schema.tag_events TO `service-principal-uuid`;
+   
+   -- Grant table select (for reading metadata)
+   GRANT SELECT ON TABLE your_catalog.your_schema.tag_events TO `service-principal-uuid`;
    ```
+   
+   **Note**: Use the Service Principal's UUID (e.g., `6ff2b11b-fdb8-4c2c-9360-ed105d5f6dcb`), not the display name.
 
-2. **Check network connectivity:**
+2. **Verify Service Principal is added to workspace:**
+   - Go to: **Workspace Settings → Identity and Access → Service Principals**
+   - Confirm the Service Principal is listed and has **Workspace access** enabled
+
+3. **Check network connectivity:**
    ```bash
    # From Ignition server
    curl -v https://your-workspace.cloud.databricks.com
    ping workspace-id.zerobus.region.cloud.databricks.com
-   ```
-
-3. **Verify Service Principal permissions:**
-   ```sql
-   SHOW GRANTS ON TABLE ignition_demo.scada_data.tag_events;
    ```
 
 4. **Check Zerobus endpoint format:**
@@ -502,9 +536,13 @@ tail -f /var/log/ignition/wrapper.log | grep Zerobus
    Should show: `Subscribed Tags: N` (N > 0)
 
 2. **Check tag paths are correct:**
-   - Use Ignition Designer to verify exact path
-   - Format: `[provider]Folder/TagName`
-   - Common mistake: `[Sample_Tags]Sine0` vs `[default]Sample_Tags/Sine0`
+   - Use Ignition Designer Tag Browser to verify exact path structure
+   - **Must include folder structure**: `[Provider]Folder/TagName`
+   - Common mistakes:
+     - ❌ Missing folder: `[Sample_Tags]Sine0` 
+     - ✅ Correct with folder: `[Sample_Tags]Sine/Sine0`
+     - ❌ Wrong provider: `[default]Sample_Tags/Sine0`
+     - ✅ Correct provider: `[Sample_Tags]Sine/Sine0`
 
 3. **Verify tags are changing:**
    - If `onlyOnChange: true`, events only sent when values change

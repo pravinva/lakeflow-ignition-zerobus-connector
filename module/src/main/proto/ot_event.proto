@@ -31,7 +31,7 @@ message OTEvent {
   
   // Numeric tag value (for numeric tags)
   // Can be null/0.0 if not applicable
-  double numeric_value = 5;
+    double numeric_value = 5;
   
   // String tag value (for string tags)
   // Can be empty if not applicable

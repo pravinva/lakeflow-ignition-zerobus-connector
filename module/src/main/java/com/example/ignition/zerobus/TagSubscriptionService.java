@@ -629,8 +629,11 @@ public class TagSubscriptionService {
     
     /**
      * Flush a batch of events to Zerobus.
+     * 
+     * Note: Not synchronized - uses thread-safe queue operations.
+     * Multiple threads can call this concurrently without blocking each other.
      */
-    private synchronized void flushBatch() {
+    private void flushBatch() {
         if (eventQueue.isEmpty()) {
             return;
         }
