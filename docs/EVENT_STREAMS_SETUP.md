@@ -90,70 +90,7 @@ These settings ensure events are batched for efficiency while maintaining low la
 # Event Stream Script Handler for Zerobus Connector
 # Sends tag change events to the module's REST endpoint
 
-def handleEvent(event, state):
-    """
-    Handle a single tag event from Event Stream.
-    
-    Args:
-        event: Event object with data and metadata
-        state: Persistent state dictionary
-    """
-    import system.net
-    import system.util
-    
-    # Extract tag information from metadata
-    tag_path = event.metadata.get('tagPath', '')
-    tag_provider = event.metadata.get('provider', '')
-    quality = event.metadata.get('quality', 'GOOD')
-    quality_code = event.metadata.get('qualityCode', 192)
-    timestamp_ms = event.metadata.get('timestamp', system.date.now().time)
-    
-    # Extract value from data
-    value = event.data
-    
-    # Determine data type
-    data_type = 'Unknown'
-    if isinstance(value, bool):
-        data_type = 'Boolean'
-    elif isinstance(value, int):
-        data_type = 'Int4'
-    elif isinstance(value, long):
-        data_type = 'Int8'
-    elif isinstance(value, float):
-        data_type = 'Float8'
-    elif isinstance(value, basestring):
-        data_type = 'String'
-    
-    # Create payload
-    payload = {
-        'tagPath': tag_path,
-        'tagProvider': tag_provider,
-        'value': value,
-        'quality': quality,
-        'qualityCode': quality_code,
-        'timestamp': timestamp_ms,
-        'dataType': data_type
-    }
-    
-    # Send to Zerobus module
-    try:
-        response = system.net.httpPost(
-            url='http://localhost:8088/system/zerobus/ingest',
-            contentType='application/json',
-            postData=system.util.jsonEncode(payload),
-            timeout=5000
-        )
-        
-        if response.statusCode != 200:
-            logger = system.util.getLogger('EventStream.Zerobus')
-            logger.warn('Failed to send event: HTTP {}'.format(response.statusCode))
-            
-    except Exception as e:
-        logger = system.util.getLogger('EventStream.Zerobus')
-        logger.error('Error sending event to Zerobus: {}'.format(str(e)))
-
-
-def handleEvents(events, state):
+def onEventsReceived(events, state):
     """
     Handle multiple events (batch) from Event Stream.
     This function is called by Event Streams when events are batched.
