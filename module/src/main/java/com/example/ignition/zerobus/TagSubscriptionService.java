@@ -328,29 +328,19 @@ public class TagSubscriptionService {
      */
     private TagEvent convertPayloadToEvent(TagEventPayload payload) {
         // Extract timestamp (Event Streams provides it in milliseconds)
-        long timestamp = payload.getTimestamp() != null ? payload.getTimestamp() : System.currentTimeMillis();
+        long timestampMs = payload.getTimestamp() != null ? payload.getTimestamp() : System.currentTimeMillis();
+        Date timestamp = new Date(timestampMs);
         
         // Extract quality
         String quality = payload.getQuality() != null ? payload.getQuality() : "GOOD";
-        int qualityCode = payload.getQualityCode() != null ? payload.getQualityCode() : 192; // 192 = GOOD
         
-        // Extract data type
-        String dataType = payload.getDataType() != null ? payload.getDataType() : determineDataType(payload.getValue());
-        
-        // Create TagEvent
+        // Create TagEvent using simple constructor
+        // The ZerobusClientManager will extract additional metadata during protobuf conversion
         return new TagEvent(
-            UUID.randomUUID().toString(), // event_id
-            timestamp, // event_time
-            payload.getTagPath(), // tag_path
-            payload.getTagProvider(), // tag_provider
-            payload.getValue(), // value
-            quality, // quality
-            qualityCode, // quality_code
-            config.getSourceSystem(), // source_system
-            System.currentTimeMillis(), // ingestion_timestamp
-            dataType, // data_type
-            "", // alarm_state (not provided by Event Streams)
-            0 // alarm_priority (not provided by Event Streams)
+            payload.getTagPath(),
+            payload.getValue(),
+            quality,
+            timestamp
         );
     }
     
@@ -380,3 +370,4 @@ public class TagSubscriptionService {
         }
     }
 }
+
