@@ -92,12 +92,13 @@ These settings ensure events are batched for efficiency while maintaining low la
 
 def onEventsReceived(events, state):
     """
-    Handle multiple events (batch) from Event Stream.
-    This function is called by Event Streams when events are batched.
+    Handle events from Event Stream and send to Zerobus module.
+    
+    IMPORTANT: Function name MUST be 'onEventsReceived' - this is what Ignition calls.
     
     Args:
-        events: List of event objects
-        state: Persistent state dictionary
+        events: List of event objects (always a list, even if only one event)
+        state: Persistent state dictionary for maintaining state between calls
     """
     import system.net
     import system.util
