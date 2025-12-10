@@ -12,39 +12,38 @@ import shutil
 from datetime import datetime
 
 def generate_handler_script(gateway_url, stream_name):
-    """Generate handler script"""
+    """Generate handler script body (without def line - Ignition adds that)"""
     logger_name = stream_name.replace('_', '').replace('-', '')
     
-    return f"""def onEventsReceived(events, state):
-    import system.net
-    import system.util
-    
-    batch = []
-    for event in events:
-        batch.append({{
-            'tagPath': str(event.metadata.get('tagPath', '')),
-            'tagProvider': str(event.metadata.get('provider', '')),
-            'value': event.data,
-            'quality': str(event.metadata.get('quality', 'GOOD')),
-            'qualityCode': int(event.metadata.get('qualityCode', 192)),
-            'timestamp': long(event.metadata.get('timestamp', system.date.now().time)),
-            'dataType': type(event.data).__name__
-        }})
-    
-    try:
-        response = system.net.httpPost(
-            url='{gateway_url}/system/zerobus/ingest/batch',
-            contentType='application/json',
-            postData=system.util.jsonEncode(batch),
-            timeout=10000
-        )
-        if hasattr(response, 'statusCode') and response.statusCode == 200:
-            logger = system.util.getLogger('EventStream.{logger_name}')
-            logger.info('Sent {{}} events'.format(len(batch)))
-    except Exception as e:
+    # Note: userCode should NOT include the def line - Ignition wraps it
+    return f"""import system.net
+import system.util
+
+batch = []
+for event in events:
+    batch.append({{
+        'tagPath': str(event.metadata.get('tagPath', '')),
+        'tagProvider': str(event.metadata.get('provider', '')),
+        'value': event.data,
+        'quality': str(event.metadata.get('quality', 'GOOD')),
+        'qualityCode': int(event.metadata.get('qualityCode', 192)),
+        'timestamp': long(event.metadata.get('timestamp', system.date.now().time)),
+        'dataType': type(event.data).__name__
+    }})
+
+try:
+    response = system.net.httpPost(
+        url='{gateway_url}/system/zerobus/ingest/batch',
+        contentType='application/json',
+        postData=system.util.jsonEncode(batch),
+        timeout=10000
+    )
+    if hasattr(response, 'statusCode') and response.statusCode == 200:
         logger = system.util.getLogger('EventStream.{logger_name}')
-        logger.error('Error: {{}}'.format(str(e)))
-"""
+        logger.info('Sent {{}} events'.format(len(batch)))
+except Exception as e:
+    logger = system.util.getLogger('EventStream.{logger_name}')
+    logger.error('Error: {{}}'.format(str(e)))"""
 
 def find_project_path(ignition_data_dir, project_name):
     """Find project directory in Ignition data"""
