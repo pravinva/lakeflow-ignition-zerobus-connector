@@ -87,7 +87,7 @@ This module bridges Ignition SCADA systems with Databricks Lakehouse by:
                     │  5. Zerobus Streaming     │
                     └─────────────┬─────────────┘
                                   │ HTTPS/TLS
-                                  ▼
+                                     ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Databricks Lakehouse                          │
 │                                                                   │
@@ -149,73 +149,81 @@ This module bridges Ignition SCADA systems with Databricks Lakehouse by:
 ```
 lakeflow-ignition-zerobus-connector/
 │
-├── README.md                           # This file
-├── INSTALLATION.md                     # Step-by-step installation guide
-├── COMPLETE.md                         # Project completion summary
-├── architect.md                        # Architecture documentation
-├── developer.md                        # Development plan
-├── tester.md                          # Testing strategy
+├── 📄 Documentation (Root)
+│   ├── README.md                      # Project overview (this file)
+│   ├── USER_GUIDE.md                  # Complete user guide
+│   ├── QUICK_START.md                 # 10-minute deployment
+│   ├── AUTOMATION_SETUP_GUIDE.md      # Multi-environment automation
+│   ├── DOCUMENTATION_INDEX.md         # Documentation navigation
+│   ├── CONTRIBUTING.md                # Contribution guidelines
+│   ├── RELEASE_NOTES_v1.0.0.md       # Version history
+│   ├── LICENSE                        # Apache 2.0
+│   └── docker-compose.yml             # Docker environment (optional)
 │
-├── examples/
-│   ├── create-delta-table.sql         # Delta table DDL for Databricks
-│   └── example-config.json            # Configuration reference
+├── 📁 module/                         # Ignition Module Source
+│   ├── build.gradle                   # Build configuration
+│   ├── settings.gradle                # Gradle settings
+│   ├── gradlew                        # Gradle wrapper
+│   │
+│   └── src/
+│       ├── main/
+│       │   ├── java/com/example/ignition/zerobus/
+│       │   │   ├── ZerobusGatewayHook.java       # Module lifecycle
+│       │   │   ├── ConfigModel.java              # Configuration model
+│       │   │   ├── ZerobusClientManager.java     # Databricks client (Zerobus SDK)
+│       │   │   ├── TagSubscriptionService.java   # Event ingestion & batching
+│       │   │   └── web/
+│       │   │       ├── ZerobusConfigServlet.java # REST API endpoints
+│       │   │       └── TagEventPayload.java      # Event data model
+│       │   │
+│       │   ├── proto/
+│       │   │   └── ot_event.proto               # Protobuf schema for events
+│       │   │
+│       │   └── resources/
+│       │       └── module.xml                   # Module descriptor
+│       │
+│       └── test/java/                           # Unit tests
 │
-└── module/                            # Main module directory
-    │
-    ├── build.gradle                   # Gradle build configuration
-    ├── settings.gradle                # Gradle settings
-    ├── gradle/wrapper/                # Gradle wrapper
-    │
-    └── src/
-        │
-        ├── main/
-        │   │
-        │   ├── java/com/example/ignition/zerobus/
-        │   │   │
-        │   │   ├── ZerobusGatewayHook.java       # [ENTRY] Module lifecycle
-        │   │   ├── ConfigModel.java              # Configuration POJO
-        │   │   ├── ConfigPanel.java              # Config operations
-        │   │   │
-        │   │   ├── ZerobusClientManager.java     # [CORE] Databricks integration
-        │   │   ├── TagSubscriptionService.java   # [CORE] Tag subscription
-        │   │   ├── TagEvent.java                 # Event data model
-        │   │   │
-        │   │   └── web/
-        │   │       └── ZerobusConfigResource.java # [API] REST endpoints
-        │   │
-        │   ├── javascript/                       # React frontend
-        │   │   ├── package.json                  # npm configuration
-        │   │   ├── public/
-        │   │   │   └── index.html
-        │   │   └── src/
-        │   │       ├── App.js                    # Main config UI
-        │   │       ├── App.css                   # UI styling
-        │   │       ├── index.js                  # React entry
-        │   │       └── index.css                 # Global styles
-        │   │
-        │   ├── proto/
-        │   │   └── ot_event.proto               # Protobuf schema
-        │   │
-        │   └── resources/
-        │       ├── module.xml                   # Module descriptor
-        │       ├── simplemodule.properties      # Module metadata
-        │       └── web/                         # React build output (generated)
-        │
-        └── test/java/com/example/ignition/zerobus/
-            └── ConfigModelTest.java             # Unit tests
+├── 📁 scripts/                        # Automation Scripts
+│   ├── README.md                      # Scripts documentation
+│   ├── configure_eventstream.py       # Auto-configure Event Streams
+│   ├── configure_module.sh            # Module configuration via API
+│   ├── create_eventstream.py          # Generate Event Stream configs
+│   ├── generate_eventstream_instructions.py
+│   ├── release.sh                     # Release automation
+│   └── (other utility scripts)
+│
+├── 📁 docs/                           # Technical Documentation
+│   ├── EVENT_STREAMS_SETUP.md         # Detailed Event Streams setup
+│   └── ZERO_CONFIG_SETUP.md           # Gateway Script alternative
+│
+├── 📁 configs/                        # Configuration Examples
+│   ├── ramp_tags.txt                  # Example tag list
+│   └── (generated Event Stream configs)
+│
+├── 📁 examples/                       # Usage Examples
+│   ├── example-config.json            # Module config template
+│   └── create-delta-table.sql         # Databricks table DDL
+│
+├── 📁 setup/                          # Databricks Setup Scripts
+│   ├── setup-databricks-table.sql     # Table creation
+│   └── (other setup utilities)
+│
+└── 📁 tools/                          # Development Tools
+    ├── restart_gateway.sh             # Gateway restart helper
+    └── (other utilities)
 ```
 
-### Key Files Explained
+### Key Files
 
-| File | Purpose | LOC |
-|------|---------|-----|
-| **ZerobusGatewayHook.java** | Module entry point, lifecycle management, service orchestration | 230 |
-| **ZerobusClientManager.java** | Wraps Databricks Zerobus SDK, handles OAuth2, streaming, retries | 396 |
-| **TagSubscriptionService.java** | Subscribes to Ignition tags, batches events, manages queue | 468 |
-| **ZerobusConfigResource.java** | JAX-RS REST API for configuration UI | 185 |
-| **ConfigModel.java** | Configuration settings with validation | 472 |
-| **App.js** | React configuration UI | 286 |
-| **ot_event.proto** | Protobuf schema for OT events | 87 |
+| File | Purpose | Lines |
+|------|---------|-------|
+| `ZerobusGatewayHook.java` | Module lifecycle, service initialization | ~200 |
+| `ZerobusClientManager.java` | Zerobus SDK wrapper, OAuth, streaming | ~400 |
+| `TagSubscriptionService.java` | Event ingestion, queuing, batching | ~400 |
+| `ZerobusConfigServlet.java` | REST API for config and event ingestion | ~200 |
+| `ConfigModel.java` | Configuration model with validation | ~500 |
+| `ot_event.proto` | Protobuf schema for OT events | ~90 |
 
 ---
 
@@ -481,9 +489,9 @@ lakeflow-ignition-zerobus-connector/
 
 ### Quick Start
 
-```bash
+   ```bash
 # 1. Build the module
-cd module
+   cd module
 ./gradlew clean buildModule
 
 # Output: build/modules/zerobus-connector-1.0.0.modl
@@ -514,7 +522,7 @@ See [INSTALLATION.md](INSTALLATION.md) for detailed step-by-step instructions.
 Navigate to `http://gateway:8088/system/zerobus-config`
 
 **Required Settings**:
-- Workspace URL: `https://your-workspace.cloud.databricks.com`
+     - Workspace URL: `https://your-workspace.cloud.databricks.com`
 - Zerobus Endpoint: Provided by Databricks
 - OAuth Client ID: Service principal ID
 - OAuth Client Secret: Service principal secret
