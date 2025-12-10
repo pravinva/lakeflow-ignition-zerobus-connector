@@ -1,0 +1,7 @@
+#!/bin/bash
+# Quick wrapper for Event Stream creation
+
+cd "$(dirname "$0")/scripts"
+
+python3 generate_eventstream_instructions.py "$@"
+
