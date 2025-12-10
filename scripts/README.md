@@ -75,14 +75,14 @@ EOF
 ### Create Multiple Event Streams
 
 ```bash
-# Stream 1: Fast polling tags
+# Stream 1: High-frequency tags (fast-changing values)
 ./create_eventstream.py \
   --name "fast_tags" \
   --tag-file configs/fast_tags.txt \
   --debounce 50 \
   --max-wait 500
 
-# Stream 2: Slow polling tags
+# Stream 2: Low-frequency tags (slow-changing values)
 ./create_eventstream.py \
   --name "slow_tags" \
   --tag-file configs/slow_tags.txt \

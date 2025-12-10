@@ -1,14 +1,14 @@
 # Event Streams Integration Guide
 
-This guide explains how to configure Ignition Event Streams to send tag changes to the Zerobus Connector module without polling.
+This guide explains how to configure Ignition Event Streams to send tag changes to the Zerobus Connector module.
 
 ## Overview
 
-Instead of the module polling tags at regular intervals, you can configure Ignition Event Streams (8.3+) to push tag changes directly to the module. This provides:
+Configure Ignition Event Streams (8.3+) to push tag changes directly to the module. This provides:
 
-- **True event-driven architecture** - No polling overhead
-- **Lower latency** - Immediate tag change notification
-- **More flexibility** - Filter, transform, and batch events in the Designer
+- **Event-driven architecture** - Immediate notification when tags change
+- **Low latency** - Sub-second from tag change to Databricks
+- **Flexibility** - Filter, transform, and batch events in the Designer
 - **Better resource utilization** - Only process actual tag changes
 
 ## Architecture
@@ -245,7 +245,7 @@ Total Events Dropped: 0
 Total Batches Flushed: 45
 ```
 
-Note: `Subscribed Tags: 0` is expected when using Event Streams (no polling).
+Note: The module receives events via REST API from Event Streams.
 
 ## Optional: Add Filter Stage
 
@@ -323,8 +323,8 @@ Buffer settings:
 ### For Mixed Workloads
 
 Create **multiple Event Streams**:
-- One for high-frequency tags (fast polling)
-- One for low-frequency tags (slow polling)
+- One for high-frequency tags (fast-changing values)
+- One for low-frequency tags (slow-changing values)
 - Separate buffer tuning for each
 
 ## Troubleshooting
@@ -364,28 +364,34 @@ Check logs:
 - **Designer**: Console panel (Ctrl+Shift+C)
 - **Gateway**: System → Console → Scripting
 
-## Comparison: Polling vs Event Streams
+## Performance Optimization
 
-| Feature | Polling (Old) | Event Streams (New) |
-|---------|---------------|---------------------|
-| Latency | 100ms average | < 10ms |
-| CPU Usage | Continuous scanning | Event-driven |
-| Flexibility | Module config only | Filter/transform in Designer |
-| Debugging | Module logs only | Designer + Gateway metrics |
-| Scaling | Limited by poll rate | Limited by event volume |
-| Complexity | Simple | Moderate |
+### For High-Volume Deployments
 
-## Migration from Polling to Event Streams
+When processing 10,000+ events/second:
 
-To migrate existing deployments:
+1. **Increase Buffer Size**
+   - Max Queue Size: 50,000+
+   - Debounce: 50ms
+   - Max Wait: 500ms
 
-1. **Keep module configuration** as-is for now
-2. **Create Event Stream** following this guide
-3. **Test in parallel** - both systems running
-4. **Compare data** in Databricks to ensure parity
-5. **Monitor performance** - check latency and throughput
-6. **Disable polling** - set module `enabled: false` once Event Streams is validated
-7. **Remove polling config** - clean up unused tag paths from module
+2. **Increase Module Batch Size**
+   ```json
+   {
+     "batchSize": 1000,
+     "batchFlushIntervalMs": 1000,
+     "maxQueueSize": 100000
+   }
+   ```
+
+3. **Tune JVM Heap**
+   - Increase Gateway memory: 4GB+
+   - Monitor GC pauses
+
+4. **Multiple Event Streams**
+   - Separate streams by criticality
+   - Independent buffer tuning
+   - Load distribution
 
 ## Support
 
