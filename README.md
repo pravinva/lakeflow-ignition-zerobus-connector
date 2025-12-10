@@ -23,6 +23,14 @@ A production-grade Ignition Gateway module that streams operational technology (
 - [Monitoring](#monitoring)
 - [Troubleshooting](#troubleshooting)
 
+## 📚 Documentation
+
+- **[QUICK_START.md](QUICK_START.md)** - Deploy in 10 minutes
+- **[AUTOMATION_SETUP_GUIDE.md](AUTOMATION_SETUP_GUIDE.md)** - Multi-environment automation
+- **[docs/HANDOVER.md](docs/HANDOVER.md)** - Complete user guide
+- **[docs/EVENT_STREAMS_SETUP.md](docs/EVENT_STREAMS_SETUP.md)** - Event Streams integration
+- **[SUCCESS.md](SUCCESS.md)** - Working configuration example
+
 ---
 
 ## Overview
@@ -31,11 +39,14 @@ A production-grade Ignition Gateway module that streams operational technology (
 
 This module bridges Ignition SCADA systems with Databricks Lakehouse by:
 
-1. **Subscribing** to Ignition tags (folder/pattern/explicit selection)
-2. **Batching** tag change events with configurable size and time windows
-3. **Converting** events to Protobuf format
-4. **Streaming** via Databricks Zerobus SDK to Delta tables
-5. **Monitoring** with real-time diagnostics and metrics
+1. **Event-Driven Ingestion** via Ignition Event Streams (8.3+) or Gateway Scripts
+2. **REST API** for receiving tag events from Event Stream handlers
+3. **Batching** tag change events with configurable size and time windows
+4. **Converting** events to Protobuf format
+5. **Streaming** via Databricks Zerobus SDK to Delta tables
+6. **Monitoring** with real-time diagnostics and metrics
+
+**No Polling** - Pure event-driven architecture using native Ignition capabilities.
 
 ### Use Cases
 
