@@ -25,11 +25,18 @@ A production-grade Ignition Gateway module that streams operational technology (
 
 ## 📚 Documentation
 
+### For Users
+- **[USER_GUIDE.md](USER_GUIDE.md)** - Complete user guide (start here!)
 - **[QUICK_START.md](QUICK_START.md)** - Deploy in 10 minutes
 - **[AUTOMATION_SETUP_GUIDE.md](AUTOMATION_SETUP_GUIDE.md)** - Multi-environment automation
-- **[docs/HANDOVER.md](docs/HANDOVER.md)** - Complete user guide
-- **[docs/EVENT_STREAMS_SETUP.md](docs/EVENT_STREAMS_SETUP.md)** - Event Streams integration
-- **[SUCCESS.md](SUCCESS.md)** - Working configuration example
+
+### Technical Details
+- **[docs/EVENT_STREAMS_SETUP.md](docs/EVENT_STREAMS_SETUP.md)** - Detailed Event Streams setup
+- **[docs/ZERO_CONFIG_SETUP.md](docs/ZERO_CONFIG_SETUP.md)** - Gateway Script alternative
+
+### For Contributors
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
+- **[RELEASE_NOTES_v1.0.0.md](RELEASE_NOTES_v1.0.0.md)** - Version history
 
 ---
 
