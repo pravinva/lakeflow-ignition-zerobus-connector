@@ -7,8 +7,8 @@ CONFIG_FILE="module_config.json"
 cat > "$CONFIG_FILE" <<'EOF'
 {
   "enabled": true,
-  "workspaceUrl": "https://e2-demo-field-eng.cloud.databricks.com",
-  "zerobusEndpoint": "https://e2-demo-field-eng.cloud.databricks.com/api/2.0/zerobus/streams/ingest",
+  "workspaceUrl": "https://your-workspace.cloud.databricks.com",
+  "zerobusEndpoint": "WORKSPACE_ID.zerobus.REGION.cloud.databricks.com",
   "oauthClientId": "YOUR_CLIENT_ID",
   "oauthClientSecret": "YOUR_CLIENT_SECRET",
   "catalogName": "ignition_demo",

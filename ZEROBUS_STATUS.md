@@ -11,20 +11,43 @@
 - Error: `UNIMPLEMENTED` from Zerobus SDK
 - Stream creation fails
 
-## Configuration Applied
+## Working Configuration
 
 ```json
 {
   "enabled": true,
-  "workspaceUrl": "https://e2-demo-field-eng.cloud.databricks.com",
-  "zerobusEndpoint": "https://e2-demo-field-eng.cloud.databricks.com",
+  "workspaceUrl": "https://your-workspace.cloud.databricks.com",
+  "zerobusEndpoint": "WORKSPACE_ID.zerobus.REGION.cloud.databricks.com",
   "oauthClientId": "YOUR_SERVICE_PRINCIPAL_CLIENT_ID",
+  "oauthClientSecret": "YOUR_SERVICE_PRINCIPAL_SECRET",
   "catalogName": "ignition_demo",
   "schemaName": "scada_data",
   "tableName": "tag_events",
   "targetTable": "ignition_demo.scada_data.tag_events"
 }
 ```
+
+### ⚠️ Critical: Zerobus Endpoint Format
+
+The Zerobus endpoint must use this exact format:
+```
+WORKSPACE_ID.zerobus.REGION.cloud.databricks.com
+```
+
+**Examples:**
+- AWS: `1444828305810485.zerobus.us-west-2.cloud.databricks.com`
+- Azure: `1444828305810485.zerobus.westus2.azuredatabricks.net`
+- GCP: `1444828305810485.zerobus.us-central1.gcp.databricks.com`
+
+**NOT these formats:**
+- ❌ `https://workspace-name.cloud.databricks.com/api/2.0/zerobus/streams/ingest`
+- ❌ `https://workspace-name.cloud.databricks.com`
+- ❌ `workspace-name.cloud.databricks.com`
+
+**How to find your workspace ID:**
+1. Go to Databricks workspace settings
+2. Or check the URL: `https://xxxxx.cloud.databricks.com/?o=WORKSPACE_ID`
+3. Use the numeric workspace ID in the Zerobus endpoint
 
 ## Possible Causes of UNIMPLEMENTED Error
 
