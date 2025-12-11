@@ -57,7 +57,8 @@ Databricks Delta Table
 ## Prerequisites
 
 ### Ignition Gateway
-- **Version**: 8.3.0 or later (tested on 8.3.2)
+- **Version**: 8.1.0 or later
+- **Event Streams**: Requires 8.3.0+ (use Gateway Script for 8.1/8.2)
 - **License**: Standard or higher
 - **Network**: Outbound HTTPS access to Databricks
 
