@@ -23,16 +23,22 @@ repositories {
 }
 
 ext {
-    ignitionVersion = '8.1.0'
+    // Build version - what Ignition version to compile against
+    // For 8.1 customers: they need to rebuild on their own system with their JARs
+    buildForIgnitionVersion = '8.3.2'  // Use JARs from local Ignition installation
+    
+    // Minimum version - what the module will declare as minimum requirement
+    minIgnitionVersion = project.hasProperty('minIgnitionVersion') ? project.getProperty('minIgnitionVersion') : '8.1.0'
+    
     slf4jVersion = '1.7.36'
     protobufVersion = '3.21.12'
 }
 
 dependencies {
     // Ignition SDK from local installation (compileOnly - provided by Ignition at runtime)
-    compileOnly files('/usr/local/ignition/lib/core/gateway/gateway-api-8.1.0.jar')
-    compileOnly files('/usr/local/ignition/lib/core/gateway/gateway-api-web-8.1.0.jar')
-    compileOnly files('/usr/local/ignition/lib/core/gateway/gateway-web-8.1.0.jar')
+    compileOnly files("/usr/local/ignition/lib/core/gateway/gateway-api-${buildForIgnitionVersion}.jar")
+    compileOnly files("/usr/local/ignition/lib/core/gateway/gateway-api-web-${buildForIgnitionVersion}.jar")
+    compileOnly files("/usr/local/ignition/lib/core/gateway/gateway-web-${buildForIgnitionVersion}.jar")
     
     // Common libraries from Ignition installation
     compileOnly fileTree(dir: '/usr/local/ignition/lib/core/common', include: '*.jar')
@@ -129,7 +135,7 @@ task buildModule(type: Zip, dependsOn: jar) {
     description = 'Builds the Ignition module (.modl) file'
     
     archiveBaseName = 'zerobus-connector'
-    archiveVersion = version
+    archiveVersion = "${version}"
     archiveExtension = 'modl'
     destinationDirectory = file("${buildDir}/modules")
     
@@ -144,9 +150,22 @@ task buildModule(type: Zip, dependsOn: jar) {
         exclude 'slf4j-*.jar'     // Exclude provided JARs
     }
     
-    // Include module descriptor
+    // Include module descriptor (with version substitution)
     from('src/main/resources') {
         include 'module.xml'
+        filter { line ->
+            line.replaceAll('<requiredIgnitionVersion>.*</requiredIgnitionVersion>', 
+                           "<requiredIgnitionVersion>${minIgnitionVersion}</requiredIgnitionVersion>")
+        }
+    }
+    
+    doLast {
+        println "\n" + "="*70
+        println "✅ Module built successfully!"
+        println "   File: ${archiveFile.get()}"
+        println "   Built against: Ignition ${buildForIgnitionVersion}"
+        println "   Minimum version: Ignition ${minIgnitionVersion}+"
+        println "="*70
     }
 }
 

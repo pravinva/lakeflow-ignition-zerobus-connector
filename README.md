@@ -1,7 +1,9 @@
 # Ignition Zerobus Connector
 
 **Version**: 1.0.0  
-**Ignition Compatibility**: 8.1.0+ (Event Streams require 8.3.0+)  
+**Ignition Compatibility**: 8.1.0+ (see [VERSIONS_AND_COMPATIBILITY.md](VERSIONS_AND_COMPATIBILITY.md))  
+**Event Streams**: Ignition 8.3.0+ only  
+**Gateway Scripts**: All versions (8.1+)  
 **Status**: Production Ready
 
 A production-grade Ignition Gateway module that streams operational technology (OT) data from Ignition tags to Databricks Delta tables via Zerobus Ingest, enabling real-time data lakehouse analytics for industrial systems.
@@ -26,8 +28,13 @@ A production-grade Ignition Gateway module that streams operational technology (
 ## 📚 Documentation
 
 ### Quick Start
-- **[QUICK_START.md](QUICK_START.md)** - Deploy in 10 minutes
+- **[IGNITION_8.1_SETUP.md](IGNITION_8.1_SETUP.md)** - For Ignition 8.1/8.2 (Gateway Scripts)
+- **[QUICK_START.md](QUICK_START.md)** - For Ignition 8.3+ (Event Streams)
 - **[USER_GUIDE.md](USER_GUIDE.md)** - Complete user reference
+
+### Version & Compatibility
+- **[VERSIONS_AND_COMPATIBILITY.md](VERSIONS_AND_COMPATIBILITY.md)** - Which version to use
+- **[BUILD_FOR_YOUR_VERSION.md](BUILD_FOR_YOUR_VERSION.md)** - Rebuild for your Ignition version
 
 ### Detailed Guides
 - **[docs/AUTOMATION_SETUP_GUIDE.md](docs/AUTOMATION_SETUP_GUIDE.md)** - Multi-environment automation
