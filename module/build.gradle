@@ -23,16 +23,16 @@ repositories {
 }
 
 ext {
-    ignitionVersion = '8.3.0'
+    ignitionVersion = '8.1.0'
     slf4jVersion = '1.7.36'
     protobufVersion = '3.21.12'
 }
 
 dependencies {
     // Ignition SDK from local installation (compileOnly - provided by Ignition at runtime)
-    compileOnly files('/usr/local/ignition/lib/core/gateway/gateway-api-8.3.2.jar')
-    compileOnly files('/usr/local/ignition/lib/core/gateway/gateway-api-web-8.3.2.jar')
-    compileOnly files('/usr/local/ignition/lib/core/gateway/gateway-web-8.3.2.jar')
+    compileOnly files('/usr/local/ignition/lib/core/gateway/gateway-api-8.1.0.jar')
+    compileOnly files('/usr/local/ignition/lib/core/gateway/gateway-api-web-8.1.0.jar')
+    compileOnly files('/usr/local/ignition/lib/core/gateway/gateway-web-8.1.0.jar')
     
     // Common libraries from Ignition installation
     compileOnly fileTree(dir: '/usr/local/ignition/lib/core/common', include: '*.jar')
