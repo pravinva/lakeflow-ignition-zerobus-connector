@@ -1,5 +1,6 @@
 package com.example.ignition.zerobus;
 
+import com.example.ignition.zerobus.web.TagEventPayload;
 import com.example.ignition.zerobus.web.ZerobusConfigResource;
 import com.example.ignition.zerobus.web.ZerobusConfigServlet;
 import com.inductiveautomation.ignition.common.licensing.LicenseState;
@@ -310,5 +311,45 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
         }
         
         return info.toString();
+    }
+    
+    /**
+     * Ingest a single tag event from Event Streams.
+     * 
+     * @param payload Tag event payload from Event Streams
+     * @return true if event was accepted, false if queue is full
+     */
+    public boolean ingestTagEvent(TagEventPayload payload) {
+        if (tagSubscriptionService == null) {
+            logger.warn("Cannot ingest event: tag subscription service not initialized");
+            return false;
+        }
+        
+        if (!configModel.isEnabled()) {
+            logger.warn("Cannot ingest event: module is disabled");
+            return false;
+        }
+        
+        return tagSubscriptionService.ingestEvent(payload);
+    }
+    
+    /**
+     * Ingest a batch of tag events from Event Streams.
+     * 
+     * @param payloads Array of tag event payloads from Event Streams
+     * @return number of events accepted
+     */
+    public int ingestTagEventBatch(TagEventPayload[] payloads) {
+        if (tagSubscriptionService == null) {
+            logger.warn("Cannot ingest batch: tag subscription service not initialized");
+            return 0;
+        }
+        
+        if (!configModel.isEnabled()) {
+            logger.warn("Cannot ingest batch: module is disabled");
+            return 0;
+        }
+        
+        return tagSubscriptionService.ingestEventBatch(payloads);
     }
 }

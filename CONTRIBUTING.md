@@ -178,7 +178,7 @@ We welcome contributions in the following areas:
 ### Submitting a Pull Request
 
 1. **Title**: Use a clear, descriptive title
-   - Good: "Fix NullPointerException in tag polling"
+   - Good: "Fix NullPointerException in event ingestion"
    - Bad: "Bug fix"
 
 2. **Description**: Include:
@@ -234,7 +234,7 @@ Follow standard Java conventions:
 
 #### Naming Conventions
 - **Classes**: `PascalCase` (e.g., `TagSubscriptionService`)
-- **Methods**: `camelCase` (e.g., `pollTagValues()`)
+- **Methods**: `camelCase` (e.g., `ingestEvent()`, `flushBatch()`)
 - **Constants**: `UPPER_SNAKE_CASE` (e.g., `MAX_QUEUE_SIZE`)
 - **Variables**: `camelCase` (e.g., `tagPath`, `eventCount`)
 
@@ -263,11 +263,12 @@ public class TagSubscriptionService {
     private final ConfigModel config;
     
     /**
-     * Polls tag values at configured interval.
+     * Ingests a batch of tag events from Event Stream.
      * 
-     * @throws TimeoutException if tag read times out
+     * @param payloads List of tag event payloads to ingest
+     * @throws IllegalArgumentException if payloads is null or empty
      */
-    private void pollTagValues() throws TimeoutException {
+    public void ingestBatch(List<TagEventPayload> payloads) {
         // Implementation
     }
 }

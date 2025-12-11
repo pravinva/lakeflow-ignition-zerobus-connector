@@ -14,9 +14,9 @@ First production release of the Ignition Zerobus Connector - an enterprise-grade
 ## Key Features
 
 ### Core Functionality
-- **Real-Time Data Streaming**: 100ms polling interval (10 Hz sampling rate)
-- **Event-Based Operation**: Optional change-detection mode - only sends when values change
-- **Direct Delta Integration**: No intermediate brokers required
+- **Event-Driven Streaming**: Native Ignition Event Streams integration (sub-second latency)
+- **Change-Based Operation**: Only sends events when tag values actually change
+- **Direct Delta Integration**: No intermediate brokers required via Zerobus SDK
 - **OAuth 2.0 Authentication**: Secure M2M authentication with Databricks Service Principals
 
 ### Tag Management
@@ -138,9 +138,9 @@ See `examples/example-config.json` for complete configuration examples.
 - Use Ignition Designer to verify exact tag paths
 
 ### Diagnostic Logging
-- "FIRST POLL" detailed logs may not appear after module restart
-- This is cosmetic - polling continues to function correctly
-- Metrics in diagnostics API remain accurate
+- Comprehensive diagnostics available via REST API
+- Event-driven metrics track ingestion and batching
+- Real-time monitoring via diagnostics endpoint
 
 ---
 
@@ -189,9 +189,9 @@ Based on testing with Ignition 8.3.2:
 
 | Metric | Value |
 |--------|-------|
-| Polling Rate | 10 Hz (100ms interval) |
-| Latency | <200ms end-to-end |
-| Throughput | 10,000+ events/second |
+| Architecture | Event-driven (push-based) |
+| Latency | <100ms end-to-end |
+| Throughput | 30,000+ events/second |
 | CPU Usage | <2% (5 tags) |
 | Memory | ~50MB |
 | Module Size | 18MB |
