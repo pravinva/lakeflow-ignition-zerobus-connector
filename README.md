@@ -32,6 +32,9 @@ A production-grade Ignition Gateway module that streams operational technology (
 - **[QUICK_START.md](QUICK_START.md)** - For Ignition 8.3+ (Event Streams)
 - **[USER_GUIDE.md](USER_GUIDE.md)** - Complete user reference
 
+### Customer Onboarding Packs
+- **[onboarding/tilt/README.md](onboarding/tilt/README.md)** - Tilt-style renewables end-to-end (Bronze → Silver → Gold)
+
 ### Version & Compatibility
 - **[VERSIONS_AND_COMPATIBILITY.md](VERSIONS_AND_COMPATIBILITY.md)** - Which version to use
 - **[BUILD_FOR_YOUR_VERSION.md](BUILD_FOR_YOUR_VERSION.md)** - Rebuild for your Ignition version
@@ -279,9 +282,8 @@ lakeflow-ignition-zerobus-connector/
 │   ├── example-config.json            # Module config template
 │   └── create-delta-table.sql         # Databricks table DDL
 │
-├── 📁 setup/                          # Databricks Setup Scripts
-│   ├── setup-databricks-table.sql     # Table creation
-│   └── (other setup utilities)
+├── 📁 onboarding/                     # End-to-end onboarding packs (customer reference)
+│   └── tilt/                          # Renewables (Tilt-style): Bronze → Silver → Gold
 │
 └── 📁 tools/                          # Development Tools
     ├── restart_gateway.sh             # Gateway restart helper

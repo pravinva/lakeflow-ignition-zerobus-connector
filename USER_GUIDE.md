@@ -714,6 +714,7 @@ No. The pre-built module works with Ignition 8.1+. Only rebuild if you encounter
 - **[docs/EVENT_STREAMS_SETUP.md](docs/EVENT_STREAMS_SETUP.md)** - Event Streams details
 - **[docs/ZERO_CONFIG_SETUP.md](docs/ZERO_CONFIG_SETUP.md)** - Gateway Scripts details
 - **[VERSIONS_AND_COMPATIBILITY.md](VERSIONS_AND_COMPATIBILITY.md)** - Compatibility matrix
+- **[onboarding/tilt/README.md](onboarding/tilt/README.md)** - Renewables end-to-end (Bronze → Silver → Gold)
 
 ### Support
 - GitHub Issues: https://github.com/pravinva/lakeflow-ignition-zerobus-connector/issues
