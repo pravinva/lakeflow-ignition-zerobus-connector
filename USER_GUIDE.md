@@ -195,11 +195,14 @@ curl -X POST http://your-gateway:8088/system/zerobus/config \
   }'
 ```
 
-**Option B: Via Web UI**
+**Option B: Via REST only (current release)**
 
-1. Go to: `http://your-gateway:8088/web/config/zerobus`
-2. Fill in configuration form
-3. Click **Save**
+This release does not ship a dedicated configuration GUI page.
+Use the REST endpoints instead:
+
+- `GET  http://your-gateway:8088/system/zerobus/config`
+- `POST http://your-gateway:8088/system/zerobus/config`
+- `POST http://your-gateway:8088/system/zerobus/test-connection`
 
 ---
 

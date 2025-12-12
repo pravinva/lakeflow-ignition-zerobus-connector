@@ -184,13 +184,14 @@ Both trigger mechanisms:
 │  ┌────────────────────────────────────────────────────────┐  │
 │  │         Zerobus Connector Module (.modl)               │  │
 │  │                                                          │  │
-│  │  ┌──────────────────────┐   ┌──────────────────────┐  │  │
-│  │  │  React Web UI        │   │  Gateway Services     │  │  │
-│  │  │                      │   │                        │  │  │
-│  │  │ - Config Form        │◄──┤ REST API Resource     │  │  │
-│  │  │ - Test Connection    │   │ (JAX-RS)              │  │  │
-│  │  │ - Diagnostics View   │   │                        │  │  │
-│  │  └──────────────────────┘   └───────────┬────────────┘  │  │
+│  │  ┌───────────────────────────────────────────────┐     │  │
+│  │  │                Gateway Services               │     │  │
+│  │  │                                               │     │  │
+│  │  │ - REST servlet (/system/zerobus/*)            │     │  │
+│  │  │ - Config endpoints (GET/POST /config)         │     │  │
+│  │  │ - Health/diagnostics endpoints                │     │  │
+│  │  │ - Ingest endpoints (/ingest, /ingest/batch)   │     │  │
+│  │  └───────────────────────────┬───────────────────┘     │  │
 │  │                                          │                │  │
 │  │  ┌───────────────────────────────────────▼────────────┐  │  │
 │  │  │         ZerobusGatewayHook                          │  │  │
@@ -250,8 +251,10 @@ lakeflow-ignition-zerobus-connector/
 │       │   │   ├── ZerobusClientManager.java     # Databricks client (Zerobus SDK)
 │       │   │   ├── TagSubscriptionService.java   # Event ingestion & batching
 │       │   │   └── web/
-│       │   │       ├── ZerobusConfigServlet.java # REST API endpoints
-│       │   │       └── TagEventPayload.java      # Event data model
+│       │   │       ├── ZerobusConfigResourceHolder.java # Shared resource holder
+│       │   │       ├── servlet81/                       # Ignition 8.1/8.2 servlet (javax)
+│       │   │       ├── servlet83/                       # Ignition 8.3+ servlet (jakarta)
+│       │   │       └── TagEventPayload.java             # Event data model
 │       │   │
 │       │   ├── proto/
 │       │   │   └── ot_event.proto               # Protobuf schema for events
@@ -281,6 +284,9 @@ lakeflow-ignition-zerobus-connector/
 ├── 📁 examples/                       # Usage Examples
 │   ├── example-config.json            # Module config template
 │   └── create-delta-table.sql         # Databricks table DDL
+│
+├── 📁 setup/                          # Legacy/experimental setup scripts (keep for reference)
+│   └── (various setup utilities)
 │
 ├── 📁 onboarding/                     # End-to-end onboarding packs (customer reference)
 │   └── tilt/                          # Renewables (Tilt-style): Bronze → Silver → Gold
@@ -418,70 +424,22 @@ lakeflow-ignition-zerobus-connector/
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ User navigates to: http://gateway:8088/system/zerobus    │
+│ User (or automation) calls module REST endpoints         │
+│ Base: http://gateway:8088/system/zerobus                 │
 └────────────────┬─────────────────────────────────────────┘
                  ▼
 ┌──────────────────────────────────────────────────────────┐
-│ Ignition Gateway serves React app from module resources  │
-│  └─▶ Serves: index.html, App.js, App.css (bundled)      │
+│ GET /config → returns current module configuration JSON  │
 └────────────────┬─────────────────────────────────────────┘
                  ▼
 ┌──────────────────────────────────────────────────────────┐
-│ React App.js loads in browser                             │
-│  useEffect() → loadConfiguration()                        │
-│    └─▶ GET /system/zerobus/config                        │
+│ POST /config → saves configuration                        │
+│ POST /test-connection → validates Databricks connectivity │
 └────────────────┬─────────────────────────────────────────┘
                  ▼
 ┌──────────────────────────────────────────────────────────┐
-│ ZerobusConfigResource.getConfiguration() [JAX-RS]        │
-│  1. Call gatewayHook.getConfigModel()                    │
-│  2. Serialize to JSON                                     │
-│  3. Return Response.ok(configModel)                       │
+│ GET /health and GET /diagnostics for verification         │
 └────────────────┬─────────────────────────────────────────┘
-                 ▼
-┌──────────────────────────────────────────────────────────┐
-│ React UI displays form with current values                │
-│  - User edits fields                                      │
-│  - Clicks "Test Connection" button                        │
-└────────────────┬─────────────────────────────────────────┘
-                 ▼
-┌──────────────────────────────────────────────────────────┐
-│ handleTestConnection()                                    │
-│  └─▶ POST /system/zerobus/test-connection                │
-└────────────────┬─────────────────────────────────────────┘
-                 ▼
-┌──────────────────────────────────────────────────────────┐
-│ ZerobusConfigResource.testConnection()                   │
-│  1. Call configPanel.testConnection()                    │
-│  2. ConfigPanel → ZerobusGatewayHook → testConnection()  │
-│  3. Create temp Zerobus client with config                │
-│  4. Try to establish stream                               │
-│  5. Close stream                                          │
-│  6. Return success/failure as JSON                        │
-└────────────────┬─────────────────────────────────────────┘
-                 ▼
-┌──────────────────────────────────────────────────────────┐
-│ React UI shows success/error message                      │
-│  - User clicks "Save Configuration"                       │
-└────────────────┬─────────────────────────────────────────┘
-                 ▼
-┌──────────────────────────────────────────────────────────┐
-│ handleSaveConfiguration()                                 │
-│  └─▶ POST /system/zerobus/config + JSON body             │
-└────────────────┬─────────────────────────────────────────┘
-                 ▼
-┌──────────────────────────────────────────────────────────┐
-│ ZerobusConfigResource.saveConfiguration(ConfigModel)     │
-│  1. Validate config                                       │
-│  2. If valid: configPanel.saveConfiguration()            │
-│  3. ConfigPanel → gatewayHook.saveConfiguration()        │
-│  4. If config.requiresRestart(): restart services        │
-│  5. Return success/failure as JSON                        │
-└────────────────┬─────────────────────────────────────────┘
-                 ▼
-┌──────────────────────────────────────────────────────────┐
-│ React UI shows "Configuration saved successfully!"        │
-└──────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -545,11 +503,12 @@ lakeflow-ignition-zerobus-connector/
 - Asset metadata support
 
 **Configuration UI**
-- Modern React-based interface
-- Real-time validation
-- Connection testing
-- Diagnostics viewer
-- Responsive design
+This release exposes a **REST-only** configuration surface.
+
+- Base: `/system/zerobus`
+- Use `GET/POST /system/zerobus/config` to manage config
+- Use `POST /system/zerobus/test-connection` to validate connectivity
+- Use `GET /system/zerobus/health` and `GET /system/zerobus/diagnostics` to verify runtime
 
 **Monitoring & Diagnostics**
 - Events sent/received counters
@@ -612,12 +571,10 @@ curl -L -o zerobus-connector-1.0.0.modl \
 # - Upload zerobus-connector-1.0.0.modl
 # - Restart Gateway
 
-# 3. Access configuration UI
-# - Navigate to http://localhost:8088/system/zerobus-config
-# - Fill in Databricks connection details
-# - Test connection
-# - Save configuration
-# - Enable module
+# 3. Configure the module (REST)
+# - GET/POST http://localhost:8088/system/zerobus/config
+# - POST     http://localhost:8088/system/zerobus/test-connection
+# - Verify   http://localhost:8088/system/zerobus/health
 ```
 
 See [INSTALLATION.md](INSTALLATION.md) for detailed step-by-step instructions.
@@ -626,9 +583,12 @@ See [INSTALLATION.md](INSTALLATION.md) for detailed step-by-step instructions.
 
 ## Configuration
 
-### Via Web UI (Recommended)
+### Via REST API (Recommended)
 
-Navigate to `http://gateway:8088/system/zerobus-config`
+Configuration is managed via REST:
+- `GET /system/zerobus/config`
+- `POST /system/zerobus/config`
+- `POST /system/zerobus/test-connection`
 
 **Required Settings**:
      - Workspace URL: `https://your-workspace.cloud.databricks.com`
@@ -653,7 +613,7 @@ Navigate to `http://gateway:8088/system/zerobus-config`
 - Enable Module: Check to activate
 - Debug Logging: Check for verbose logs
 
-### Via REST API
+### Via REST API (Examples)
 
 ```bash
 # Get configuration
@@ -709,7 +669,7 @@ vim src/main/java/com/example/ignition/zerobus/...
 ./gradlew test
 ```
 
-**Frontend (React)**:
+**Frontend (React) (optional / not packaged in current release)**:
 ```bash
 cd src/main/javascript
 
@@ -731,11 +691,11 @@ npm run build
 ./gradlew buildModule
 
 # This will:
-# 1. Install Node.js and npm
-# 2. Build React app
-# 3. Compile Java
-# 4. Generate protobuf
-# 5. Package .modl file
+# 1. Compile Java
+# 2. Generate protobuf
+# 3. Package .modl file
+#
+# Note: React packaging is currently not wired into the Gradle build.
 ```
 
 ### Project Structure for Developers
@@ -748,9 +708,8 @@ Backend (Java):
   - ConfigModel: Configuration management
   - ZerobusConfigResource: REST API endpoints
 
-Frontend (React):
-  - App.js: Main configuration UI component
-  - REST API integration for config/test/diagnostics
+Frontend (UI):
+  - Not packaged in this release (REST-only)
 
 Data Model:
   - ot_event.proto: Protobuf schema
@@ -852,9 +811,10 @@ tail -f /var/ignition/logs/wrapper.log
 
 ### Diagnostics UI
 
-Access at: `http://gateway:8088/system/zerobus-config`
+Access diagnostics via:
+- `GET http://gateway:8088/system/zerobus/diagnostics`
 
-Click **"Refresh Diagnostics"** to see:
+It shows:
 - Module status
 - Events sent/received
 - Batch counts
@@ -1239,6 +1199,6 @@ From architect.md:
 
 ---
 
-**Built with**: Java 17, Ignition SDK 8.3.0, React 18, Databricks Zerobus SDK 0.1.0, Protobuf 3
+**Built with**: Java 17, Ignition SDK 8.3.0, Databricks Zerobus SDK 0.1.0, Protobuf 3
 
 **Status**: Production Ready | **No Stubs**: Verified | **Tests**: Passing

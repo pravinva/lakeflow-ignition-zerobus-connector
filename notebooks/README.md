@@ -6,6 +6,20 @@
 
 ## 📓 Available Notebooks
 
+### 0. Configure Ignition Module (REST)
+**File**: `00_Configure_Ignition_Module.py`  
+**Purpose**: Generate (and optionally execute) the REST calls needed to configure the Ignition module.
+
+**What it does:**
+- Builds a `POST /system/zerobus/config` payload using widgets
+- Prints a copy/paste `curl` command
+- Optionally POSTs the config (if your Ignition gateway is reachable from Databricks)
+- Provides Bronze/Silver/Gold verification queries
+
+**When to run:** After the Databricks table exists, before starting ingestion
+
+---
+
 ### 1. Setup Databricks Table
 **File**: `01_Setup_Databricks_Table.py`  
 **Purpose**: Complete Databricks setup for Ignition integration
