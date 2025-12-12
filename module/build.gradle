@@ -46,7 +46,10 @@ dependencies {
     // JAX-RS API for REST endpoints
     compileOnly 'javax.ws.rs:javax.ws.rs-api:2.1.1'
     
-    // Servlet API (provided by Ignition at runtime - Ignition 8.3.2 uses jakarta!)
+    // Servlet APIs (provided by Ignition at runtime)
+    // - Ignition 8.1/8.2: javax.servlet.*
+    // - Ignition 8.3+: jakarta.servlet.*
+    compileOnly 'javax.servlet:javax.servlet-api:4.0.1'
     compileOnly 'jakarta.servlet:jakarta.servlet-api:6.0.0'
     
     // Logging (provided by Ignition at runtime)

@@ -63,6 +63,9 @@ temp/
 *.tmp
 *.bak
 
+# Local tooling (downloaded JDKs, etc.)
+.tooling/
+
 # Maven (if used)
 target/
 pom.xml.tag

@@ -2,7 +2,7 @@ package com.example.ignition.zerobus;
 
 import com.example.ignition.zerobus.web.TagEventPayload;
 import com.example.ignition.zerobus.web.ZerobusConfigResource;
-import com.example.ignition.zerobus.web.ZerobusConfigServlet;
+import com.example.ignition.zerobus.web.ZerobusConfigResourceHolder;
 import com.inductiveautomation.ignition.common.licensing.LicenseState;
 import com.inductiveautomation.ignition.gateway.model.AbstractGatewayModuleHook;
 import com.inductiveautomation.ignition.gateway.model.GatewayContext;
@@ -38,14 +38,19 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
     public void setup(GatewayContext context) {
         this.gatewayContext = context;
         
-        // Register configuration servlet
+        // Register configuration servlet (runtime-select: Ignition 8.1 uses javax.servlet, 8.3+ uses jakarta.servlet)
         try {
             // Create REST resource and set it for servlet use
             this.restResource = new ZerobusConfigResource(context, this);
-            ZerobusConfigServlet.setResource(restResource);
+            ZerobusConfigResourceHolder.set(restResource);
             
             // Register servlet with Ignition's WebResourceManager
-            context.getWebResourceManager().addServlet("zerobus", ZerobusConfigServlet.class);
+            Class<?> servletClass = resolveZerobusServletClass();
+            // WebResourceManager is typed to the servlet API of the compiling Ignition SDK (8.3+ = jakarta).
+            // We intentionally cast to raw Class to support runtime selection between javax/jakarta servlets.
+            @SuppressWarnings({"rawtypes", "unchecked"})
+            Class servletClassRaw = (Class) servletClass;
+            context.getWebResourceManager().addServlet("zerobus", servletClassRaw);
             
             logger.info("Configuration servlet registered: 'zerobus' → /system/zerobus");
         } catch (Exception e) {
@@ -351,5 +356,36 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
         }
         
         return tagSubscriptionService.ingestEventBatch(payloads);
+    }
+
+    /**
+     * Select the correct servlet implementation for the running Ignition version.
+     *
+     * Ignition 8.1 / Jetty EE8 uses javax.servlet.*
+     * Ignition 8.3 / Jetty EE10 uses jakarta.servlet.*
+     */
+    private Class<?> resolveZerobusServletClass() throws ClassNotFoundException {
+        ClassLoader cl = getClass().getClassLoader();
+
+        // Prefer jakarta on 8.3+
+        if (classExists("jakarta.servlet.http.HttpServlet", cl)) {
+            return Class.forName("com.example.ignition.zerobus.web.servlet83.ZerobusConfigServletJakarta", true, cl);
+        }
+
+        // Fallback to javax on 8.1/8.2
+        if (classExists("javax.servlet.http.HttpServlet", cl)) {
+            return Class.forName("com.example.ignition.zerobus.web.servlet81.ZerobusConfigServletJavax", true, cl);
+        }
+
+        throw new ClassNotFoundException("No supported servlet API found (neither jakarta.servlet nor javax.servlet)");
+    }
+
+    private static boolean classExists(String fqcn, ClassLoader cl) {
+        try {
+            Class.forName(fqcn, false, cl);
+            return true;
+        } catch (Throwable ignored) {
+            return false;
+        }
     }
 }
