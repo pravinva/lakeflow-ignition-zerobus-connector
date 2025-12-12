@@ -100,6 +100,15 @@ print("Target table:", target_table)
 print("\nConfig JSON:\n")
 print(json.dumps(config, indent=2))
 
+if not config.get("oauthClientSecret"):
+    print("\n" + "=" * 80)
+    print("WARNING: oauthClientSecret is empty")
+    print("- The module requires oauthClientSecret (ConfigModel.validate()).")
+    print("- Recommended: store the secret in a Databricks Secret Scope and set:")
+    print("    oauthClientSecret_scope + oauthClientSecret_key")
+    print("- Fallback (not recommended): set oauthClientSecret_inline")
+    print("=" * 80 + "\n")
+
 # COMMAND ----------
 # MAGIC %md
 # MAGIC ## Generated curl command (run from a machine that can reach Ignition)
