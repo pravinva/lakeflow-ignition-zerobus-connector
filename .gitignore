@@ -1,5 +1,6 @@
 # Ignition Module Build Outputs
 *.modl
+!releases/*.modl
 module/build/
 module/.gradle/
 module/out/
