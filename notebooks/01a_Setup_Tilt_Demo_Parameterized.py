@@ -17,7 +17,7 @@
 # COMMAND ----------
 dbutils.widgets.text("catalog", "ignition_demo", "Catalog")
 dbutils.widgets.text("schema", "tilt_ot", "Schema")
-dbutils.widgets.text("sp", "pravin_zerobus", "Service Principal (name or app id)")
+dbutils.widgets.text("sp", "52393ed8-ea22-4830-a6ef-6b6545e6be5f", "Service Principal Application ID (UUID)")
 dbutils.widgets.dropdown("run_verify", "true", ["true", "false"], "Run verification queries")
 
 # COMMAND ----------

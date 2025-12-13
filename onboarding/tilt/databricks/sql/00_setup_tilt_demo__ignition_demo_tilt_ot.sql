@@ -14,6 +14,8 @@
 --   OR
 --   {{sp}} = 52393ed8-ea22-4830-a6ef-6b6545e6be5f
 --
+-- Note: Some workspaces require the Application ID (UUID) form. Prefer UUID.
+--
 -- IMPORTANT:
 -- The Bronze schema MUST match `module/src/main/proto/ot_event.proto` exactly (names + types + order).
 
