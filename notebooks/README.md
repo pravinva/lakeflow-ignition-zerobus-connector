@@ -27,6 +27,14 @@
 
 ---
 
+### 00. Prereqs & Permissions (Notebook, `%sql`)
+**File**: `00_Prereqs_And_Permissions_SQL.py`  
+**Purpose**: Notebook-first version of `00_prereqs_and_permissions.sql` (widgets + `%sql`).
+
+**When to run:** First step when setting up a new `catalog.schema` for Tilt
+
+---
+
 ### 1. Setup Databricks Table
 **File**: `01_Setup_Databricks_Table.py`  
 **Purpose**: Complete Databricks setup for Ignition integration
