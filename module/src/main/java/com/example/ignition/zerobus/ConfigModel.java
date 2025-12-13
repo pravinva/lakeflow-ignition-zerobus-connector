@@ -362,6 +362,16 @@ public class ConfigModel implements Serializable {
      */
     public List<String> validate() {
         List<String> errors = new ArrayList<>();
+
+        // Gson deserialization sets fields directly (it does not call setters),
+        // so catalog/schema/table may be empty even when targetTable is present.
+        // Ensure we derive catalog/schema/table from targetTable before validating.
+        if ((catalogName == null || catalogName.isEmpty()
+                || schemaName == null || schemaName.isEmpty()
+                || tableName == null || tableName.isEmpty())
+                && targetTable != null && !targetTable.isEmpty()) {
+            parseTableName();
+        }
         
         if (workspaceUrl == null || workspaceUrl.isEmpty()) {
             errors.add("Workspace URL is required");
@@ -423,7 +433,22 @@ public class ConfigModel implements Serializable {
             || !Objects.equals(this.tagSelectionMode, newConfig.tagSelectionMode)
             || !Objects.equals(this.tagFolderPath, newConfig.tagFolderPath)
             || !Objects.equals(this.tagPathPattern, newConfig.tagPathPattern)
-            || !Objects.equals(this.explicitTagPaths, newConfig.explicitTagPaths);
+            || !Objects.equals(this.explicitTagPaths, newConfig.explicitTagPaths)
+            || this.includeSubfolders != newConfig.includeSubfolders
+            || this.batchSize != newConfig.batchSize
+            || this.batchFlushIntervalMs != newConfig.batchFlushIntervalMs
+            || this.maxQueueSize != newConfig.maxQueueSize
+            || this.maxEventsPerSecond != newConfig.maxEventsPerSecond
+            || this.maxRetries != newConfig.maxRetries
+            || this.retryBackoffMs != newConfig.retryBackoffMs
+            || this.connectionTimeoutMs != newConfig.connectionTimeoutMs
+            || this.requestTimeoutMs != newConfig.requestTimeoutMs
+            || !Objects.equals(this.sourceSystemId, newConfig.sourceSystemId)
+            || this.includeQuality != newConfig.includeQuality
+            || this.onlyOnChange != newConfig.onlyOnChange
+            || Double.compare(this.numericDeadband, newConfig.numericDeadband) != 0
+            || this.enabled != newConfig.enabled
+            || this.debugLogging != newConfig.debugLogging;
     }
     
     /**

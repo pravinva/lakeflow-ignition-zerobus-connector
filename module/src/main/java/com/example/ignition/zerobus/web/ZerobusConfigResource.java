@@ -7,22 +7,17 @@ import com.inductiveautomation.ignition.gateway.model.GatewayContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.*;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-
 /**
- * REST API resource for Zerobus Connector configuration.
- * 
- * Provides HTTP endpoints for the React configuration UI.
- * 
- * Endpoints:
- * - GET  /system/zerobus/config         - Get current configuration
- * - POST /system/zerobus/config         - Save configuration
- * - POST /system/zerobus/test-connection - Test Databricks connection
- * - GET  /system/zerobus/diagnostics    - Get diagnostics info
+ * Configuration & diagnostics helper for Zerobus Connector.
+ *
+ * IMPORTANT (Ignition 8.1/8.2): Do not use JAX-RS annotations here.
+ * Many 8.1/8.2 Gateways do not ship a JAX-RS API/runtime on the module classpath, which can cause the module to fail
+ * during class loading and appear as "not registering".
+ *
+ * HTTP endpoints are served via servlet implementations selected at runtime:
+ * - Ignition 8.1/8.2: `web.servlet81.ZerobusConfigServletJavax`
+ * - Ignition 8.3+:    `web.servlet83.ZerobusConfigServletJakarta`
  */
-@Path("/system/zerobus")
 public class ZerobusConfigResource {
     
     private static final Logger logger = LoggerFactory.getLogger(ZerobusConfigResource.class);
@@ -53,62 +48,31 @@ public class ZerobusConfigResource {
     }
     
     /**
-     * GET /system/zerobus/config
-     * 
      * Get the current module configuration.
-     * 
-     * @return Current configuration as JSON
      */
-    @GET
-    @Path("/config")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getConfiguration() {
-        logger.debug("GET /system/zerobus/config");
-        
+    public ConfigModel getConfiguration() {
         try {
-            ConfigModel config = gatewayHook.getConfigModel();
-            
-            if (config == null) {
-                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("{\"error\": \"Configuration not initialized\"}")
-                    .build();
-            }
-            
-            return Response.ok(config).build();
-            
+            return gatewayHook.getConfigModel();
         } catch (Exception e) {
             logger.error("Error getting configuration", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                .entity("{\"error\": \"" + e.getMessage() + "\"}")
-                .build();
+            return null;
         }
     }
     
     /**
-     * POST /system/zerobus/config
-     * 
      * Save new configuration.
-     * 
+     *
      * @param config New configuration
-     * @return Response indicating success or failure
+     * @return true if saved successfully
      */
-    @POST
-    @Path("/config")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response saveConfiguration(ConfigModel config) {
-        logger.info("POST /system/zerobus/config");
-        
+    public boolean saveConfiguration(ConfigModel config) {
         try {
             // Validate configuration
             java.util.List<String> errors = config.validate();
             if (!errors.isEmpty()) {
                 String errorMsg = String.join(", ", errors);
                 logger.warn("Configuration validation failed: {}", errorMsg);
-                
-                return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("{\"error\": \"Validation failed\", \"details\": \"" + errorMsg + "\"}")
-                    .build();
+                return false;
             }
             
             // Save configuration
@@ -117,73 +81,38 @@ public class ZerobusConfigResource {
             
             if (success) {
                 logger.info("Configuration saved successfully");
-                return Response.ok()
-                    .entity("{\"message\": \"Configuration saved successfully\", \"success\": true}")
-                    .build();
+                return true;
             } else {
                 logger.error("Failed to save configuration");
-                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("{\"error\": \"Failed to save configuration\", \"success\": false}")
-                    .build();
+                return false;
             }
             
         } catch (Exception e) {
             logger.error("Error saving configuration", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                .entity("{\"error\": \"" + e.getMessage() + "\", \"success\": false}")
-                .build();
+            return false;
         }
     }
     
     /**
-     * POST /system/zerobus/test-connection
-     * 
      * Test connection to Databricks.
-     * 
-     * @return Response indicating connection test result
+     *
+     * @return true if successful
      */
-    @POST
-    @Path("/test-connection")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response testConnection() {
-        logger.info("POST /system/zerobus/test-connection");
-        
+    public boolean testConnection() {
         try {
-            boolean success = configPanel.testConnection();
-            
-            if (success) {
-                logger.info("Connection test successful");
-                return Response.ok()
-                    .entity("{\"success\": true, \"message\": \"Connection test successful! Databricks endpoint is reachable and credentials are valid.\"}")
-                    .build();
-            } else {
-                logger.warn("Connection test failed");
-                return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("{\"success\": false, \"message\": \"Connection test failed. Check Gateway logs for details.\"}")
-                    .build();
-            }
-            
+            return configPanel.testConnection();
         } catch (Exception e) {
             logger.error("Error testing connection", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                .entity("{\"success\": false, \"message\": \"Connection test error: " + e.getMessage() + "\"}")
-                .build();
+            return false;
         }
     }
     
     /**
-     * GET /system/zerobus/diagnostics
-     * 
      * Get module diagnostics information.
-     * 
+     *
      * @return Diagnostics as plain text
      */
-    @GET
-    @Path("/diagnostics")
-    @Produces(MediaType.TEXT_PLAIN)
-    public Response getDiagnostics() {
-        logger.debug("GET /system/zerobus/diagnostics");
-        
+    public String getDiagnostics() {
         try {
             String diagnostics = configPanel.refreshDiagnostics();
             
@@ -191,41 +120,22 @@ public class ZerobusConfigResource {
                 diagnostics = "No diagnostics available";
             }
             
-            return Response.ok(diagnostics).build();
-            
+            return diagnostics;
         } catch (Exception e) {
             logger.error("Error getting diagnostics", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                .entity("Error: " + e.getMessage())
-                .build();
+            return "Error: " + e.getMessage();
         }
     }
     
     /**
-     * GET /system/zerobus/health
-     * 
-     * Health check endpoint.
-     * 
-     * @return Health status
+     * Lightweight health check helper.
      */
-    @GET
-    @Path("/health")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response healthCheck() {
-        logger.debug("GET /system/zerobus/health");
-        
+    public boolean healthCheck() {
         try {
-            boolean enabled = gatewayHook.getConfigModel().isEnabled();
-            
-            return Response.ok()
-                .entity("{\"status\": \"ok\", \"enabled\": " + enabled + "}")
-                .build();
-                
+            return gatewayHook.getConfigModel() != null;
         } catch (Exception e) {
             logger.error("Health check failed", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                .entity("{\"status\": \"error\", \"message\": \"" + e.getMessage() + "\"}")
-                .build();
+            return false;
         }
     }
 }

@@ -1,6 +1,0 @@
-# Ramp tags for zerobus_gateway Event Stream
-[Sample_Tags]Ramp/Ramp0
-[Sample_Tags]Ramp/Ramp1
-[Sample_Tags]Ramp/Ramp2
-[Sample_Tags]Ramp/Ramp3
-

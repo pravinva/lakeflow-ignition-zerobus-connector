@@ -63,6 +63,10 @@ temp/
 *.tmp
 *.bak
 
+# Local tooling / caches
+.tooling/
+scripts/__pycache__/
+
 # Maven (if used)
 target/
 pom.xml.tag

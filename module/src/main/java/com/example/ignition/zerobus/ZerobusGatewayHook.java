@@ -2,6 +2,7 @@ package com.example.ignition.zerobus;
 
 import com.example.ignition.zerobus.web.TagEventPayload;
 import com.example.ignition.zerobus.web.ZerobusConfigResource;
+import com.example.ignition.zerobus.web.ZerobusConfigResourceHolder;
 import com.example.ignition.zerobus.web.ZerobusConfigServlet;
 import com.inductiveautomation.ignition.common.licensing.LicenseState;
 import com.inductiveautomation.ignition.gateway.model.AbstractGatewayModuleHook;
@@ -42,14 +43,20 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
         try {
             // Create REST resource and set it for servlet use
             this.restResource = new ZerobusConfigResource(context, this);
-            ZerobusConfigServlet.setResource(restResource);
+            ZerobusConfigResourceHolder.set(restResource);
             
-            // Register servlet with Ignition's WebResourceManager
-            context.getWebResourceManager().addServlet("zerobus", ZerobusConfigServlet.class);
+            // Register servlet with Ignition's WebResourceManager.
+            // We support both Ignition 8.1/8.2 (javax.servlet) and 8.3+ (jakarta.servlet) by selecting at runtime.
+            Class<?> servletClass = ZerobusConfigServlet.pickServletClass();
+            context.getWebResourceManager()
+                .getClass()
+                .getMethod("addServlet", String.class, Class.class)
+                .invoke(context.getWebResourceManager(), "zerobus", servletClass);
             
             logger.info("Configuration servlet registered: 'zerobus' → /system/zerobus");
-        } catch (Exception e) {
-            logger.error("Failed to register configuration servlet", e);
+        } catch (Throwable t) {
+            // Don't prevent the module from registering if servlet registration fails.
+            logger.error("Failed to register configuration servlet (module will still load)", t);
         }
         
         logger.info("Zerobus Gateway Module setup complete");
@@ -105,10 +112,13 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
             // Unregister servlet
             if (gatewayContext != null) {
                 try {
-                    gatewayContext.getWebResourceManager().removeServlet("zerobus");
+                    gatewayContext.getWebResourceManager()
+                        .getClass()
+                        .getMethod("removeServlet", String.class)
+                        .invoke(gatewayContext.getWebResourceManager(), "zerobus");
                     logger.info("Configuration servlet unregistered");
-                } catch (Exception e) {
-                    logger.warn("Error unregistering servlet: {}", e.getMessage());
+                } catch (Throwable t) {
+                    logger.warn("Error unregistering servlet: {}", t.getMessage());
                 }
             }
             
@@ -263,7 +273,8 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook {
      */
     @Override
     public boolean isFreeModule() {
-        return false; // Requires Ignition license
+        // Must match module.xml <freeModule>true</freeModule>
+        return true;
     }
     
     /**
