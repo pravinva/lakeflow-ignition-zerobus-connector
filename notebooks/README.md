@@ -18,6 +18,13 @@
 
 **When to run:** After the Databricks table exists, before starting ingestion
 
+**If your gateway is on your laptop (localhost):**
+- Databricks will not be able to POST to `http://localhost:8099` directly.
+- Use the notebook to generate the config JSON, save it locally as `config.json` (without secrets),
+  then run the laptop helper:
+  - Template: `tools/config.template.json`
+  - CLI (prompts for secret): `python3 tools/configure_gateway.py --gateway-url http://localhost:8099 --config config.json --verify`
+
 ---
 
 ### 1. Setup Databricks Table

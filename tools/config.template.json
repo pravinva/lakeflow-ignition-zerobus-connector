@@ -1,0 +1,26 @@
+{
+  "enabled": true,
+
+  "workspaceUrl": "https://e2-demo-field-eng.cloud.databricks.com",
+  "zerobusEndpoint": "1444828305810485.zerobus.us-west-2.cloud.databricks.com",
+  "oauthClientId": "6ff2b11b-fdb8-4c2c-9360-ed105d5f6dcb",
+
+  "oauthClientSecret": "",
+
+  "targetTable": "ignition_demo.tilt_ot.ot_events_bronze",
+  "sourceSystemId": "tilt-siteA-ignition",
+
+  "tagSelectionMode": "folder",
+  "tagFolderPath": "[Sample_Tags]Ramp",
+  "includeSubfolders": true,
+
+  "batchSize": 200,
+  "batchFlushIntervalMs": 500,
+  "maxQueueSize": 10000,
+  "maxEventsPerSecond": 10000,
+  "onlyOnChange": true,
+  "numericDeadband": 0.0,
+  "debugLogging": true
+}
+
+

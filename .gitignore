@@ -83,4 +83,11 @@ dependency-reduced-pom.xml
 keystore
 
 my-config.json
-*.json
+# JSON (avoid committing secrets, but allow templates/examples)
+config*.json
+*credentials*.json
+*secret*.json
+
+# Allow non-secret templates/examples
+!**/*.template.json
+!tools/config.template.json
