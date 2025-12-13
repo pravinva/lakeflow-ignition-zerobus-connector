@@ -46,6 +46,20 @@
 
 ---
 
+### 1a. Tilt Demo Setup (Parameterized, Notebook)
+**File**: `01a_Setup_Tilt_Demo_Parameterized.py`  
+**Purpose**: Notebook-first setup that replaces the SQL editor “add parameter” prompt.
+
+**What it does:**
+- Widgets for `catalog`, `schema`, `sp`
+- Creates catalog/schema
+- Creates `{{catalog}}.{{schema}}.ot_events_bronze`
+- Grants `USE CATALOG`, `USE SCHEMA`, `SELECT, MODIFY` to your SP
+
+**When to run:** First step for the Tilt demo (before configuring Ignition)
+
+---
+
 ### 2. Monitor Data Flow
 **File**: `02_Monitor_Data_Flow.py`  
 **Purpose**: Real-time monitoring of tag events
