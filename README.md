@@ -13,6 +13,7 @@
 - [Choose your setup path](#choose-your-setup-path)
 - [Architecture](#architecture)
 - [Repository layout](#repository-layout)
+- [Release artifacts (two `.modl` files)](#release-artifacts-two-modl-files)
 - [Quick start](#quick-start)
 - [Configuration](#configuration)
 - [Ingestion modes (when to use which)](#ingestion-modes-when-to-use-which)
@@ -83,6 +84,30 @@ onboarding/
       config/zerobus_config_event_streams.json.example
       README.md
 ```
+
+## Release artifacts (two `.modl` files)
+
+There are **two** prebuilt module packages under `releases/`:
+
+- **`releases/zerobus-connector-1.0.0.modl`**:
+  - **Install on**: Ignition **8.1.x** (and 8.2.x if you run it)
+  - **Why**: the packaged `module.xml` sets `<requiredIgnitionVersion>` to `8.1.0`
+
+- **`releases/zerobus-connector-1.0.0-ignition-8.3.modl`**:
+  - **Install on**: Ignition **8.3.x**
+  - **Why**: the packaged `module.xml` sets `<requiredIgnitionVersion>` to `8.3.0`
+
+### What’s different between them?
+
+Ignition enforces compatibility based on `module.xml` during install. Because 8.3 refuses modules whose `requiredIgnitionVersion` is below 8.3, we ship two `.modl` artifacts.
+
+The **runtime behavior and code are the same**; the important differences are:
+
+- **`module.xml` gate**: different `<requiredIgnitionVersion>` value, produced by the Gradle `-PminIgnitionVersion=...` build flag.
+- **Servlet API at runtime**:
+  - Ignition 8.1 uses **`javax.servlet`**
+  - Ignition 8.3 uses **`jakarta.servlet`**
+  - The module includes both servlet implementations and selects the right one at runtime via `module/src/main/java/com/example/ignition/zerobus/web/ZerobusConfigServlet.java`.
 
 ## Quick start
 
