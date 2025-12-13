@@ -62,6 +62,27 @@ Tags → Gateway Tag Change Script → POST /system/zerobus/ingest/batch → mod
 Tags → Event Streams (Designer) → POST /system/zerobus/ingest/batch → module → Zerobus → Delta
 ```
 
+### Gateway → Zerobus → Databricks: what’s the transport?
+
+There are **two hops**:
+
+#### 1) Ignition Gateway → Zerobus Connector module
+
+This hop is either **in-process** (no network) or **HTTP/JSON**, depending on ingestion mode:
+
+- **Direct subscriptions (recommended)**: the module subscribes to tags via the Gateway TagManager and receives `TagChangeEvent`s as **in-JVM callbacks** (no HTTP, no gRPC).
+- **Gateway Tag Change Script**: a Gateway script **POSTs JSON** to:
+  - `POST /system/zerobus/ingest` (single event)
+  - `POST /system/zerobus/ingest/batch` (array of events)
+- **Event Streams (Ignition 8.3+)**: Event Streams **POSTs JSON** to the same ingest endpoints.
+
+#### 2) Zerobus Connector module → Databricks
+
+This hop is always **Zerobus ingest over gRPC + protobuf**:
+
+- The module converts tag events to protobuf (`module/src/main/proto/ot_event.proto`) and streams over **gRPC** to the Databricks Zerobus endpoint.
+- Authentication uses **OAuth2 client credentials** (service principal).
+
 ## Repository layout
 
 ```
