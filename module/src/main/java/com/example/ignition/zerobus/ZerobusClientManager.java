@@ -49,6 +49,10 @@ public class ZerobusClientManager {
     private ZerobusStream<OTEvent> zerobusStream;
     private TableProperties<OTEvent> tableProperties;
     private StreamConfigurationOptions streamOptions;
+
+    // Cache stream identity/state for diagnostics (avoid calling into SDK from HTTP thread)
+    private volatile String cachedStreamId = null;
+    private volatile String cachedStreamState = null;
     
     /**
      * Constructor.
@@ -125,6 +129,14 @@ public class ZerobusClientManager {
             initialized.set(true);
             connected.set(true);
             lastError = null;
+
+            // Cache stream details for safe diagnostics
+            try {
+                cachedStreamId = zerobusStream.getStreamId();
+                cachedStreamState = String.valueOf(zerobusStream.getState());
+            } catch (Exception ignored) {
+                // If SDK getters ever misbehave, diagnostics should still work.
+            }
             
             logger.info("Zerobus client initialized successfully");
             logger.info("  Stream ID: {}", zerobusStream.getStreamId());
@@ -160,6 +172,8 @@ public class ZerobusClientManager {
             
             connected.set(false);
             initialized.set(false);
+            cachedStreamId = null;
+            cachedStreamState = null;
             
             logger.info("Zerobus client shut down successfully");
             
@@ -330,6 +344,11 @@ public class ZerobusClientManager {
             
             connected.set(true);
             lastError = null;
+            try {
+                cachedStreamId = zerobusStream.getStreamId();
+                cachedStreamState = String.valueOf(zerobusStream.getState());
+            } catch (Exception ignored) {
+            }
             logger.info("Stream recovery successful");
             logger.info("  Stream ID: {}", zerobusStream.getStreamId());
             logger.info("  Stream State: {}", zerobusStream.getState());
@@ -436,10 +455,12 @@ public class ZerobusClientManager {
         sb.append("=== Zerobus Client Diagnostics ===\n");
         sb.append("Initialized: ").append(initialized.get()).append("\n");
         sb.append("Connected: ").append(connected.get()).append("\n");
-        
-        if (zerobusStream != null) {
-            sb.append("Stream ID: ").append(zerobusStream.getStreamId()).append("\n");
-            sb.append("Stream State: ").append(zerobusStream.getState()).append("\n");
+
+        if (cachedStreamId != null) {
+            sb.append("Stream ID: ").append(cachedStreamId).append("\n");
+        }
+        if (cachedStreamState != null) {
+            sb.append("Stream State: ").append(cachedStreamState).append("\n");
         }
         
         sb.append("Total Events Sent: ").append(totalEventsSent.get()).append("\n");
@@ -484,6 +505,6 @@ public class ZerobusClientManager {
     }
     
     public String getStreamId() {
-        return zerobusStream != null ? zerobusStream.getStreamId() : null;
+        return cachedStreamId;
     }
 }
