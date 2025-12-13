@@ -1,12 +1,12 @@
 {
   "enabled": true,
-  "workspaceUrl": "https://YOUR_WORKSPACE.cloud.databricks.com",
-  "zerobusEndpoint": "YOUR_WORKSPACE_ID.zerobus.YOUR_REGION.cloud.databricks.com",
-  "oauthClientId": "YOUR_SERVICE_PRINCIPAL_CLIENT_ID",
+  "workspaceUrl": "https://e2-demo-field-eng.cloud.databricks.com",
+  "zerobusEndpoint": "1444828305810485.zerobus.us-west-2.cloud.databricks.com",
+  "oauthClientId": "52393ed8-ea22-4830-a6ef-6b6545e6be5f",
   "oauthClientSecret": "YOUR_SERVICE_PRINCIPAL_CLIENT_SECRET",
 
-  "targetTable": "YOUR_CATALOG.YOUR_SCHEMA.ot_events_bronze",
-  "sourceSystemId": "tilt-SITEA-ignition",
+  "targetTable": "ignition_demo.tilt_ot.ot_events_bronze",
+  "sourceSystemId": "tilt-siteA-ignition",
 
   "batchSize": 200,
   "batchFlushIntervalMs": 500,

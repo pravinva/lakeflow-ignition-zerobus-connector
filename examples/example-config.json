@@ -4,15 +4,15 @@
   
   "enabled": true,
   
-  "workspaceUrl": "https://your-workspace.cloud.databricks.com",
-  "zerobusEndpoint": "your-workspace-id.zerobus.region.cloud.databricks.com",
-  "oauthClientId": "your-service-principal-client-id",
+  "workspaceUrl": "https://e2-demo-field-eng.cloud.databricks.com",
+  "zerobusEndpoint": "1444828305810485.zerobus.us-west-2.cloud.databricks.com",
+  "oauthClientId": "52393ed8-ea22-4830-a6ef-6b6545e6be5f",
   "oauthClientSecret": "your-service-principal-secret",
   
   "catalogName": "ignition_demo",
-  "schemaName": "scada_data",
-  "tableName": "tag_events",
-  "targetTable": "ignition_demo.scada_data.tag_events",
+  "schemaName": "tilt_ot",
+  "tableName": "ot_events_bronze",
+  "targetTable": "ignition_demo.tilt_ot.ot_events_bronze",
   
   "tagSelectionMode": "explicit",
   "explicitTagPaths": [

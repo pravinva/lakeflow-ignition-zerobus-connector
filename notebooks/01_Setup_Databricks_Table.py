@@ -33,7 +33,7 @@ TABLE_NAME = "tag_events"
 
 # Service Principal UUID (NOT the client ID!)
 # Get this from: Account Console → Service Principals → UUID column
-SERVICE_PRINCIPAL_UUID = "your-service-principal-uuid-here"  # e.g., "6ff2b11b-fdb8-4c2c-9360-ed105d5f6dcb"
+SERVICE_PRINCIPAL_UUID = "your-service-principal-uuid-here"  # e.g., "52393ed8-ea22-4830-a6ef-6b6545e6be5f"
 
 # Full table name
 FULL_TABLE_NAME = f"{CATALOG_NAME}.{SCHEMA_NAME}.{TABLE_NAME}"
