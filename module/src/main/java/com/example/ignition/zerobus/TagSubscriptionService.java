@@ -2,11 +2,19 @@ package com.example.ignition.zerobus;
 
 import com.example.ignition.zerobus.web.TagEventPayload;
 import com.inductiveautomation.ignition.gateway.model.GatewayContext;
+import com.inductiveautomation.ignition.gateway.tags.model.GatewayTagManager;
+import com.inductiveautomation.ignition.common.model.values.QualifiedValue;
+import com.inductiveautomation.ignition.common.tags.model.TagPath;
+import com.inductiveautomation.ignition.common.tags.paths.parser.TagPathParser;
+import com.inductiveautomation.ignition.common.tags.model.event.TagChangeEvent;
+import com.inductiveautomation.ignition.common.tags.model.event.TagChangeListener;
+import com.inductiveautomation.ignition.common.tags.model.event.InvalidListenerException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -20,9 +28,9 @@ import java.util.concurrent.atomic.AtomicLong;
  * - Applies rate limiting
  * - Sends batches to ZerobusClientManager
  * 
- * NOTE: This service does NOT poll tags. It is purely event-driven.
- * Configure Ignition Event Streams with Tag Event sources to push events to this service.
- * See docs/EVENT_STREAMS_SETUP.md for configuration guide.
+ * ALSO SUPPORTED (recommended for Ignition 8.1): direct Gateway tag subscriptions:
+ * - Subscribes to tags using Ignition TagManager (no scripts, no HTTP hop)
+ * - Converts TagChangeEvent → TagEvent and queues for batching
  */
 public class TagSubscriptionService {
     
@@ -36,6 +44,11 @@ public class TagSubscriptionService {
     private BlockingQueue<TagEvent> eventQueue;
     private ScheduledExecutorService scheduledExecutor;
     private ExecutorService workerExecutor;
+
+    // Direct tag subscription state
+    private volatile GatewayTagManager tagManager;
+    private final Map<TagPath, TagChangeListener> subscribedListeners = new ConcurrentHashMap<>();
+    private final Map<String, Object> lastSentValueByTag = new ConcurrentHashMap<>();
     
     // Metrics
     private AtomicLong totalEventsReceived = new AtomicLong(0);
@@ -68,8 +81,9 @@ public class TagSubscriptionService {
     /**
      * Start the tag event processing service.
      * 
-     * NOTE: This service is event-driven only. It does not poll tags.
-     * Configure Ignition Event Streams to send events to /system/zerobus/ingest endpoint.
+     * This service is event-driven. It can ingest events in two ways:
+     * - Direct Gateway tag subscription (preferred for Ignition 8.1/8.2)
+     * - REST ingest endpoints (for Event Streams or external forwarding)
      */
     public void start() {
         if (running.get()) {
@@ -78,8 +92,7 @@ public class TagSubscriptionService {
         }
         
         logger.info("Starting Zerobus Event Processing Service...");
-        logger.info("Mode: Event-driven (no polling)");
-        logger.info("Listening for events on: POST /system/zerobus/ingest");
+        logger.info("Mode: Event-driven (Gateway subscriptions + optional REST ingest)");
         
         try {
             running.set(true);
@@ -103,11 +116,9 @@ public class TagSubscriptionService {
             logger.info("  Event queue capacity: {}", config.getMaxQueueSize());
             logger.info("  Batch size: {}", config.getBatchSize());
             logger.info("  Flush interval: {}ms", config.getBatchFlushIntervalMs());
-            logger.info("");
-            logger.info("Configure Event Streams in Ignition Designer to push events:");
-            logger.info("  Source: Tag Event");
-            logger.info("  Handler: Script → POST to http://localhost:8088/system/zerobus/ingest");
-            logger.info("  See docs/EVENT_STREAMS_SETUP.md for complete guide");
+
+            // Direct subscription: subscribe to configured tags
+            subscribeConfiguredTags();
             
         } catch (Exception e) {
             logger.error("Failed to start event processing service", e);
@@ -129,6 +140,9 @@ public class TagSubscriptionService {
         running.set(false);
         
         try {
+            // Unsubscribe tags first (stop incoming events)
+            unsubscribeAll();
+
             // Flush any remaining events
             flushBatch();
             
@@ -158,11 +172,176 @@ public class TagSubscriptionService {
     
     
     
-    /**
-     * Subscribe to a single tag using Ignition Tag API (event-driven).
-     * 
-     * @param tagPath The tag path to subscribe to
-     */
+    private void subscribeConfiguredTags() {
+        try {
+            // If disabled, don't subscribe
+            if (!config.isEnabled()) {
+                logger.info("Module disabled; skipping direct tag subscriptions");
+                return;
+            }
+
+            // Only implement explicit mode for now; it's the safest and most deterministic.
+            String mode = config.getTagSelectionMode();
+            if (!"explicit".equals(mode)) {
+                logger.warn("Direct tag subscriptions currently support tagSelectionMode='explicit' only. Current mode='{}'. " +
+                        "You can still ingest via REST endpoints (/system/zerobus/ingest).", mode);
+                return;
+            }
+
+            List<String> paths = config.getExplicitTagPaths();
+            if (paths == null || paths.isEmpty()) {
+                logger.warn("No explicitTagPaths configured; nothing to subscribe to");
+                return;
+            }
+
+            this.tagManager = (GatewayTagManager) gatewayContext.getTagManager();
+
+            List<TagPath> tagPaths = new ArrayList<>();
+            List<TagChangeListener> listeners = new ArrayList<>();
+
+            for (String pathStr : paths) {
+                if (pathStr == null || pathStr.trim().isEmpty()) {
+                    continue;
+                }
+                try {
+                    TagPath tagPath = TagPathParser.parse(pathStr.trim());
+                    TagChangeListener listener = new DirectTagChangeListener();
+                    tagPaths.add(tagPath);
+                    listeners.add(listener);
+                    subscribedListeners.put(tagPath, listener);
+                } catch (Exception parseErr) {
+                    logger.warn("Invalid tag path '{}': {}", pathStr, parseErr.getMessage());
+                }
+            }
+
+            if (tagPaths.isEmpty()) {
+                logger.warn("No valid tag paths to subscribe to after parsing");
+                return;
+            }
+
+            tagManager.subscribeAsync(tagPaths, listeners)
+                    .whenComplete((ok, err) -> {
+                        if (err != null) {
+                            logger.error("Failed to subscribe to {} tags", tagPaths.size(), err);
+                        } else {
+                            logger.info("Subscribed to {} tags via Gateway TagManager", tagPaths.size());
+                            if (config.isDebugLogging()) {
+                                for (TagPath tp : tagPaths) {
+                                    logger.debug("  subscribed: {}", tp.toString());
+                                }
+                            }
+                        }
+                    });
+
+        } catch (Throwable t) {
+            logger.error("Error starting direct tag subscriptions", t);
+        }
+    }
+
+    private void unsubscribeAll() {
+        try {
+            if (tagManager == null || subscribedListeners.isEmpty()) {
+                return;
+            }
+            List<TagPath> paths = new ArrayList<>(subscribedListeners.keySet());
+            List<TagChangeListener> listeners = new ArrayList<>();
+            for (TagPath tp : paths) {
+                TagChangeListener l = subscribedListeners.get(tp);
+                if (l != null) {
+                    listeners.add(l);
+                }
+            }
+
+            // Clear maps immediately to avoid double-unsubscribe
+            subscribedListeners.clear();
+            lastSentValueByTag.clear();
+
+            if (paths.isEmpty() || listeners.isEmpty()) {
+                return;
+            }
+
+            tagManager.unsubscribeAsync(paths, listeners)
+                    .whenComplete((ok, err) -> {
+                        if (err != null) {
+                            logger.warn("Error unsubscribing from tags", err);
+                        } else {
+                            logger.info("Unsubscribed from {} tags", paths.size());
+                        }
+                    });
+        } catch (Throwable t) {
+            logger.warn("Error while unsubscribing tags", t);
+        } finally {
+            tagManager = null;
+        }
+    }
+
+    private final class DirectTagChangeListener implements TagChangeListener {
+        @Override
+        public void tagChanged(TagChangeEvent event) throws InvalidListenerException {
+            if (!running.get()) {
+                return;
+            }
+            if (event == null) {
+                return;
+            }
+
+            // Avoid startup floods by skipping initial values
+            if (event.isInitial()) {
+                return;
+            }
+
+            // Rate limiting
+            if (!checkRateLimit()) {
+                totalEventsDropped.incrementAndGet();
+                return;
+            }
+
+            TagPath tagPath = event.getTagPath();
+            String tagPathStr = tagPath != null ? tagPath.toString() : "";
+
+            QualifiedValue qv = event.getValue();
+            Object value = qv != null ? qv.getValue() : null;
+            Date ts = (qv != null && qv.getTimestamp() != null) ? qv.getTimestamp() : new Date();
+            String quality = (qv != null && qv.getQuality() != null) ? qv.getQuality().toString() : "UNKNOWN";
+
+            // optional filtering: onlyOnChange + numeric deadband
+            if (config.isOnlyOnChange()) {
+                Object last = lastSentValueByTag.get(tagPathStr);
+                if (!hasMeaningfulChange(last, value)) {
+                    return;
+                }
+                lastSentValueByTag.put(tagPathStr, value);
+            }
+
+            TagEvent te = new TagEvent(tagPathStr, value, quality, ts);
+            boolean accepted = eventQueue.offer(te);
+            if (accepted) {
+                totalEventsReceived.incrementAndGet();
+                if (config.isDebugLogging()) {
+                    logger.debug("Accepted tag event: {}", tagPathStr);
+                }
+            } else {
+                totalEventsDropped.incrementAndGet();
+                logger.warn("Event queue full, dropped direct tag event: {}", tagPathStr);
+            }
+        }
+    }
+
+    private boolean hasMeaningfulChange(Object last, Object current) {
+        if (last == null && current == null) {
+            return false;
+        }
+        if (last == null || current == null) {
+            return true;
+        }
+        if (last instanceof Number && current instanceof Number) {
+            double a = ((Number) last).doubleValue();
+            double b = ((Number) current).doubleValue();
+            double deadband = config.getNumericDeadband();
+            return Math.abs(a - b) > deadband;
+        }
+        return !Objects.equals(last, current);
+    }
     
     /**
      * Flush a batch of events to Zerobus.
@@ -231,12 +410,13 @@ public class TagSubscriptionService {
         StringBuilder sb = new StringBuilder();
         sb.append("=== Event Processing Service Diagnostics ===\n");
         sb.append("Running: ").append(running.get()).append("\n");
-        sb.append("Mode: Event-driven (Event Streams integration)\n");
+        sb.append("Mode: Event-driven (Gateway subscriptions + optional REST ingest)\n");
         sb.append("Queue Size: ").append(eventQueue.size())
             .append("/").append(config.getMaxQueueSize()).append("\n");
         sb.append("Total Events Received: ").append(totalEventsReceived.get()).append("\n");
         sb.append("Total Events Dropped: ").append(totalEventsDropped.get()).append("\n");
         sb.append("Total Batches Flushed: ").append(totalBatchesFlushed.get()).append("\n");
+        sb.append("Direct Subscriptions: ").append(subscribedListeners.size()).append(" tags\n");
         
         if (lastFlushTime > 0) {
             long secondsAgo = (System.currentTimeMillis() - lastFlushTime) / 1000;
@@ -262,6 +442,10 @@ public class TagSubscriptionService {
         }
         
         try {
+            if (!checkRateLimit()) {
+                totalEventsDropped.incrementAndGet();
+                return false;
+            }
             // Convert payload to TagEvent
             TagEvent event = convertPayloadToEvent(payload);
             
@@ -301,6 +485,10 @@ public class TagSubscriptionService {
         
         for (TagEventPayload payload : payloads) {
             try {
+                if (!checkRateLimit()) {
+                    totalEventsDropped.incrementAndGet();
+                    continue;
+                }
                 TagEvent event = convertPayloadToEvent(payload);
                 
                 if (eventQueue.offer(event)) {

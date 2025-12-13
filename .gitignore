@@ -63,8 +63,9 @@ temp/
 *.tmp
 *.bak
 
-# Local tooling (downloaded JDKs, etc.)
+# Local tooling / caches
 .tooling/
+scripts/__pycache__/
 
 # Maven (if used)
 target/
@@ -83,11 +84,4 @@ dependency-reduced-pom.xml
 keystore
 
 my-config.json
-# JSON (avoid committing secrets, but allow templates/examples)
-config*.json
-*credentials*.json
-*secret*.json
-
-# Allow non-secret templates/examples
-!**/*.template.json
-!tools/config.template.json
+*.json

@@ -8,9 +8,19 @@ plugins {
 group = 'com.example.ignition'
 version = '1.0.0'
 
+// Cross-version compatibility:
+// - Many Ignition 8.1-era gateways run on Java 11 (class version 55).
+// - Ignition 8.3+ runs on Java 17 (class version 61).
+//
+// IMPORTANT: On this machine, the Ignition SDK jars under /usr/local/ignition8.1 are themselves Java 17 bytecode,
+// so the compiler must be JDK 17+ to even *read* those jars. We still *emit* Java 11 bytecode for runtime
+// compatibility by using `--release 11`.
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
 }
 
 repositories {
@@ -24,8 +34,13 @@ repositories {
 
 ext {
     // Build version - what Ignition version to compile against
-    // For 8.1 customers: they need to rebuild on their own system with their JARs
-    buildForIgnitionVersion = '8.3.2'  // Use JARs from local Ignition installation
+    // Build against the lowest supported version for best compatibility.
+    // Override with: -PbuildForIgnitionVersion=8.1.5
+    buildForIgnitionVersion = project.hasProperty('buildForIgnitionVersion') ? project.getProperty('buildForIgnitionVersion') : '8.1.5'
+
+    // Ignition installation home (used to locate SDK jars). Override with:
+    // -PignitionHome=/path/to/ignition OR env IGNITION_HOME
+    ignitionHome = project.hasProperty('ignitionHome') ? project.getProperty('ignitionHome') : (System.getenv('IGNITION_HOME') ?: '/usr/local/ignition')
     
     // Minimum version - what the module will declare as minimum requirement
     minIgnitionVersion = project.hasProperty('minIgnitionVersion') ? project.getProperty('minIgnitionVersion') : '8.1.0'
@@ -36,21 +51,20 @@ ext {
 
 dependencies {
     // Ignition SDK from local installation (compileOnly - provided by Ignition at runtime)
-    compileOnly files("/usr/local/ignition/lib/core/gateway/gateway-api-${buildForIgnitionVersion}.jar")
-    compileOnly files("/usr/local/ignition/lib/core/gateway/gateway-api-web-${buildForIgnitionVersion}.jar")
-    compileOnly files("/usr/local/ignition/lib/core/gateway/gateway-web-${buildForIgnitionVersion}.jar")
+    compileOnly files("${ignitionHome}/lib/core/gateway/gateway-api-${buildForIgnitionVersion}.jar")
+    compileOnly files("${ignitionHome}/lib/core/gateway/gateway-api-web-${buildForIgnitionVersion}.jar")
+    compileOnly files("${ignitionHome}/lib/core/gateway/gateway-web-${buildForIgnitionVersion}.jar")
     
     // Common libraries from Ignition installation
-    compileOnly fileTree(dir: '/usr/local/ignition/lib/core/common', include: '*.jar')
+    compileOnly fileTree(dir: "${ignitionHome}/lib/core/common", include: '*.jar')
     
     // JAX-RS API for REST endpoints
-    compileOnly 'javax.ws.rs:javax.ws.rs-api:2.1.1'
+    // NOTE: Avoid JAX-RS dependency for Ignition 8.1/8.2 compatibility.
     
-    // Servlet APIs (provided by Ignition at runtime)
-    // - Ignition 8.1/8.2: javax.servlet.*
-    // - Ignition 8.3+: jakarta.servlet.*
-    compileOnly 'javax.servlet:javax.servlet-api:4.0.1'
+    // Servlet API (provided by Ignition at runtime - Ignition 8.3.2 uses jakarta!)
     compileOnly 'jakarta.servlet:jakarta.servlet-api:6.0.0'
+    // For Ignition 8.1/8.2 compatibility (servlet namespace is javax.*)
+    compileOnly 'javax.servlet:javax.servlet-api:4.0.1'
     
     // Logging (provided by Ignition at runtime)
     compileOnly "org.slf4j:slf4j-api:${slf4jVersion}"
@@ -65,6 +79,38 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter:5.9.2'
     testImplementation 'org.mockito:mockito-core:5.1.1'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// Fail fast if the Ignition SDK jars we intend to compile against aren't present.
+tasks.register('verifyIgnitionSdkJars') {
+    group = 'verification'
+    description = 'Verifies Ignition SDK jar paths exist for the configured ignitionHome/buildForIgnitionVersion.'
+
+    doLast {
+        def gatewayDir = file("${ignitionHome}/lib/core/gateway")
+        def commonDir = file("${ignitionHome}/lib/core/common")
+
+        if (!gatewayDir.exists()) {
+            throw new GradleException("Ignition gateway lib dir not found: ${gatewayDir}. Set -PignitionHome=... or IGNITION_HOME.")
+        }
+        if (!commonDir.exists()) {
+            throw new GradleException("Ignition common lib dir not found: ${commonDir}. Set -PignitionHome=... or IGNITION_HOME.")
+        }
+
+        def required = [
+                "${gatewayDir}/gateway-api-${buildForIgnitionVersion}.jar",
+                "${gatewayDir}/gateway-api-web-${buildForIgnitionVersion}.jar",
+                "${gatewayDir}/gateway-web-${buildForIgnitionVersion}.jar"
+        ]
+
+        def missing = required.findAll { !(file(it).exists()) }
+        if (!missing.isEmpty()) {
+            throw new GradleException("Missing required Ignition SDK jars:\n- " + missing.join("\n- ") +
+                    "\n\nYou likely pointed at the wrong install. Example for 8.1 SDK:\n" +
+                    "  export IGNITION_HOME=/usr/local/ignition8.1\n" +
+                    "  ./gradlew clean buildModule -PbuildForIgnitionVersion=8.1.50")
+        }
+    }
 }
 
 // Protobuf configuration
@@ -97,6 +143,8 @@ sourceSets {
 // Compile options
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
+    // Emit Java 11 bytecode even when compiling with JDK 17
+    options.release = 11
     options.compilerArgs << '-Xlint:unchecked' << '-Xlint:deprecation'
 }
 
@@ -133,7 +181,7 @@ jar {
 }
 
 // Task to build the Ignition module (.modl file)
-task buildModule(type: Zip, dependsOn: jar) {
+task buildModule(type: Zip, dependsOn: [jar, verifyIgnitionSdkJars]) {
     group = 'build'
     description = 'Builds the Ignition module (.modl) file'
     

@@ -1,18 +1,20 @@
 package com.example.ignition.zerobus.web;
 
 /**
- * Static holder used by servlet implementations (javax/jakarta) to access the shared resource.
+ * Simple static holder for the module's REST/resource wiring.
  *
- * This indirection avoids hard dependencies on a specific servlet API package (javax vs jakarta)
- * in the module startup code.
+ * We keep this in a separate class so both servlet implementations (javax/jakarta)
+ * can access the same resource without creating a hard dependency between them.
  */
 public final class ZerobusConfigResourceHolder {
     private static volatile ZerobusConfigResource resource;
 
-    private ZerobusConfigResourceHolder() {}
+    private ZerobusConfigResourceHolder() {
+        // no-op
+    }
 
-    public static void set(ZerobusConfigResource res) {
-        resource = res;
+    public static void set(ZerobusConfigResource newResource) {
+        resource = newResource;
     }
 
     public static ZerobusConfigResource get() {
