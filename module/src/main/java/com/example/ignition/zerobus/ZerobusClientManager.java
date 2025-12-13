@@ -124,6 +124,7 @@ public class ZerobusClientManager {
             
             initialized.set(true);
             connected.set(true);
+            lastError = null;
             
             logger.info("Zerobus client initialized successfully");
             logger.info("  Stream ID: {}", zerobusStream.getStreamId());
@@ -212,6 +213,7 @@ public class ZerobusClientManager {
             totalEventsSent.addAndGet(events.size());
             totalBatchesSent.incrementAndGet();
             lastSuccessfulSendTime = System.currentTimeMillis();
+            lastError = null;
             
             if (config.isDebugLogging()) {
                 logger.debug("Batch sent successfully - {} events", events.size());
@@ -289,6 +291,7 @@ public class ZerobusClientManager {
             testStream.close();
             
             logger.info("Connection test successful");
+            lastError = null;
             return true;
             
         } catch (NonRetriableException e) {
@@ -326,6 +329,7 @@ public class ZerobusClientManager {
             );
             
             connected.set(true);
+            lastError = null;
             logger.info("Stream recovery successful");
             logger.info("  Stream ID: {}", zerobusStream.getStreamId());
             logger.info("  Stream State: {}", zerobusStream.getState());
