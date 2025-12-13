@@ -8,14 +8,14 @@
 
 ```bash
 python3 ../../../../scripts/configure_gateway.py \
-  --gateway-url http://localhost:8099 \
+  --gateway-url http://localhost:8088 \
   --config ./config/zerobus_config_direct_explicit.json.example
 ```
 
 3) Verify:
 
 ```bash
-curl -sS http://localhost:8099/system/zerobus/diagnostics | head -n 120
+curl -sS http://localhost:8088/system/zerobus/diagnostics | head -n 120
 ```
 
 ## Optional: Event Streams mode
@@ -27,7 +27,7 @@ to POST to the module’s ingest endpoint.
 
 ```bash
 python3 ../../../../scripts/configure_gateway.py \
-  --gateway-url http://localhost:8099 \
+  --gateway-url http://localhost:8088 \
   --config ./config/zerobus_config_event_streams.json.example
 ```
 
