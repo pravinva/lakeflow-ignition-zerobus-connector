@@ -1,0 +1,22 @@
+{
+  "enabled": true,
+  "workspaceUrl": "https://YOUR_WORKSPACE.cloud.databricks.com",
+  "zerobusEndpoint": "YOUR_WORKSPACE_ID.zerobus.YOUR_REGION.cloud.databricks.com",
+  "oauthClientId": "YOUR_SERVICE_PRINCIPAL_CLIENT_ID",
+  "oauthClientSecret": "YOUR_SERVICE_PRINCIPAL_CLIENT_SECRET",
+
+  "targetTable": "YOUR_CATALOG.YOUR_SCHEMA.ot_events_bronze",
+  "sourceSystemId": "tilt-SITEA-ignition",
+
+  "batchSize": 200,
+  "batchFlushIntervalMs": 500,
+  "maxQueueSize": 10000,
+  "maxEventsPerSecond": 10000,
+
+  "onlyOnChange": true,
+  "numericDeadband": 0.0,
+
+  "debugLogging": false
+}
+
+

@@ -28,6 +28,15 @@ This pack is a **reference end-to-end implementation** for a renewables operator
 
 Run the SQL scripts in order:
 
+### Option A (recommended for the demo): one-shot setup for `ignition_demo.tilt_ot`
+
+If you want the demo defaults (catalog = `ignition_demo`, schema = `tilt_ot`) in one step, run:
+
+1. `databricks/sql/00_setup_tilt_demo__ignition_demo_tilt_ot.sql` (replace `{{sp}}`)
+2. Then continue at: `databricks/sql/02_silver__asset_registry.sql` … `08_gold__example_features.sql`
+
+### Option B: fully parameterized scripts
+
 1. `databricks/sql/00_prereqs_and_permissions.sql`
 2. `databricks/sql/01_bronze__ot_events_v1.sql`
 3. `databricks/sql/02_silver__asset_registry.sql`
