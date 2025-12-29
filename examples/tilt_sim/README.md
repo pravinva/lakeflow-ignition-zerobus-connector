@@ -84,9 +84,9 @@ SELECT
   source_system,
   tag_provider,
   COUNT(*) AS events_2m,
-  MAX(from_unixtime(ingestion_timestamp/1000)) AS last_ingested_at
+  MAX(from_unixtime(unix_timestamp(ingestion_timestamp))) AS last_ingested_at
 FROM ignition_demo.scada_data.tag_events
-WHERE from_unixtime(ingestion_timestamp/1000) >= current_timestamp() - INTERVAL 2 MINUTES
+WHERE unix_timestamp(ingestion_timestamp) >= unix_timestamp() - 120
 GROUP BY source_system, tag_provider
 ORDER BY events_2m DESC, last_ingested_at DESC;
 ```
