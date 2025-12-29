@@ -10,6 +10,7 @@ def handleTimerEvent():
     import math, random
 
     BASE = "[tilt_sim]Tilt/Windfarm01"
+    CONFIG = BASE + "/Config"
     SITE = BASE + "/Site"
     TURBINES = [BASE + "/Turbines/T01", BASE + "/Turbines/T02", BASE + "/Turbines/T03"]
 
@@ -43,25 +44,106 @@ def handleTimerEvent():
         if state is None:
             state = {
                 "lastTs": now,
+                "accumMs": 0,
                 "wind": 8.0,
                 "windDir": 180.0,
                 "faultUntil": dict((t, None) for t in TURBINES),
+                "cfg": None,
+                "cfgLastReadTs": now,
             }
             g["tilt_sim_state"] = state
+
+        # --- Config (Tilt AU defaults, but operator can tune via tags under [tilt_sim].../Config/*) ---
+        # Cache config reads to reduce tag reads; refresh every 5 seconds.
+        cfg = state.get("cfg")
+        cfg_last = state.get("cfgLastReadTs", now)
+        if cfg is None or system.date.millisBetween(cfg_last, now) >= 5000:
+            cfg_paths = [
+                CONFIG + "/SimEnabled",
+                CONFIG + "/UpdateEveryMs",
+                CONFIG + "/MeanWind_mps",
+                CONFIG + "/MeanReversion_k",
+                CONFIG + "/TurbulenceSigma",
+                CONFIG + "/WindDirNoiseSigma_deg",
+                CONFIG + "/WakeBias_T03_mps",
+                CONFIG + "/LocalWindNoiseSigma_mps",
+                CONFIG + "/YawGain",
+                CONFIG + "/YawNoiseSigma_deg",
+                CONFIG + "/YawDerateExponent",
+                CONFIG + "/CutIn_mps",
+                CONFIG + "/RatedWind_mps",
+                CONFIG + "/CutOut_mps",
+                CONFIG + "/RatedPower_T01_kW",
+                CONFIG + "/RatedPower_T02_kW",
+                CONFIG + "/RatedPower_T03_kW",
+                CONFIG + "/GearRatio",
+                CONFIG + "/RotorRatedRPM",
+                CONFIG + "/FaultRatePerSecond",
+                CONFIG + "/FaultMinSeconds",
+                CONFIG + "/FaultMaxSeconds",
+                CONFIG + "/VoltageLL_V",
+                CONFIG + "/PF_Mean",
+                CONFIG + "/PF_Sigma",
+            ]
+            vals = system.tag.readBlocking(cfg_paths)
+            def _v(i, default):
+                try:
+                    x = vals[i].value
+                    return default if x is None else x
+                except Exception:
+                    return default
+            cfg = {
+                "simEnabled": bool(_v(0, True)),
+                "updateEveryMs": int(_v(1, 1000)),
+                "mu": float(_v(2, 9.0)),
+                "k": float(_v(3, 0.06)),
+                "sigma": float(_v(4, 0.7)),
+                "windDirNoiseSigma": float(_v(5, 4.0)),
+                "wakeBiasT03": float(_v(6, -0.3)),
+                "localWindNoiseSigma": float(_v(7, 0.4)),
+                "yawGain": float(_v(8, 0.35)),
+                "yawNoiseSigma": float(_v(9, 0.6)),
+                "yawDerateExp": float(_v(10, 1.88)),
+                "cutIn": float(_v(11, 3.0)),
+                "ratedWind": float(_v(12, 12.0)),
+                "cutOut": float(_v(13, 25.0)),
+                "ratedKw": [float(_v(14, 3500.0)), float(_v(15, 3600.0)), float(_v(16, 3400.0))],
+                "gearRatio": float(_v(17, 80.0)),
+                "rotorRatedRpm": float(_v(18, 16.0)),
+                "faultRatePerSec": float(_v(19, 0.0008)),
+                "faultMinSec": int(_v(20, 20)),
+                "faultMaxSec": int(_v(21, 90)),
+                "vLL": float(_v(22, 690.0)),
+                "pfMean": float(_v(23, 0.97)),
+                "pfSigma": float(_v(24, 0.01)),
+            }
+            state["cfg"] = cfg
+            state["cfgLastReadTs"] = now
+
+        if not cfg.get("simEnabled", True):
+            return
 
         dt_ms = system.date.millisBetween(state["lastTs"], now)
         dt_s = max(0.2, min(5.0, dt_ms / 1000.0))
         state["lastTs"] = now
+        state["accumMs"] = int(state.get("accumMs", 0)) + int(max(0, dt_ms))
+
+        # Optional throttling: allow UpdateEveryMs > timer period.
+        update_every = max(100, int(cfg.get("updateEveryMs", 1000)))
+        if state["accumMs"] < update_every:
+            return
+        state["accumMs"] = 0
 
         # Site weather (mean reversion + turbulence)
-        mu = 9.0
-        k = 0.06
-        sigma = 0.7
+        mu = float(cfg.get("mu", 9.0))
+        k = float(cfg.get("k", 0.06))
+        sigma = float(cfg.get("sigma", 0.7))
         state["wind"] = clamp(
             state["wind"] + (mu - state["wind"]) * k * dt_s + random.gauss(0, sigma) * math.sqrt(dt_s),
             0.0, 30.0
         )
-        state["windDir"] = wrap_deg(state["windDir"] + random.gauss(0, 4.0) * math.sqrt(dt_s))
+        wind_dir_noise = float(cfg.get("windDirNoiseSigma", 4.0))
+        state["windDir"] = wrap_deg(state["windDir"] + random.gauss(0, wind_dir_noise) * math.sqrt(dt_s))
 
         site_wind = state["wind"]
         site_dir = state["windDir"]
@@ -74,10 +156,12 @@ def handleTimerEvent():
             curtail_pct = 0.0
         curtail_frac = clamp(curtail_pct / 100.0, 0.0, 1.0)
 
-        rated_kw_by_turb = {TURBINES[0]: 3500.0, TURBINES[1]: 3600.0, TURBINES[2]: 3400.0}
-        gear_ratio = 80.0
-        v_rated = 12.0
-        rotor_rated_rpm = 16.0
+        rated_kw_by_turb = {TURBINES[0]: cfg["ratedKw"][0], TURBINES[1]: cfg["ratedKw"][1], TURBINES[2]: cfg["ratedKw"][2]}
+        gear_ratio = float(cfg.get("gearRatio", 80.0))
+        v_rated = float(cfg.get("ratedWind", 12.0))
+        rotor_rated_rpm = float(cfg.get("rotorRatedRpm", 16.0))
+        cut_in = float(cfg.get("cutIn", 3.0))
+        cut_out = float(cfg.get("cutOut", 25.0))
 
         writes = []
         total_power_kw = 0.0
@@ -87,8 +171,9 @@ def handleTimerEvent():
             rated_kw = rated_kw_by_turb[tpath]
 
             # Local wind (turbulence + small wake bias)
-            wake_bias = -0.3 if tpath.endswith("T03") else 0.0
-            v = clamp(site_wind + wake_bias + random.gauss(0, 0.4), 0.0, 30.0)
+            wake_bias = float(cfg.get("wakeBiasT03", -0.3)) if tpath.endswith("T03") else 0.0
+            local_sigma = float(cfg.get("localWindNoiseSigma", 0.4))
+            v = clamp(site_wind + wake_bias + random.gauss(0, local_sigma), 0.0, 30.0)
 
             # Yaw control (lags wind direction)
             try:
@@ -96,15 +181,20 @@ def handleTimerEvent():
             except Exception:
                 yaw_pos = site_dir
 
-            yaw_pos = wrap_deg(yaw_pos + ang_diff_deg(site_dir, yaw_pos) * 0.35 + random.gauss(0, 0.6))
+            yaw_gain = float(cfg.get("yawGain", 0.35))
+            yaw_sigma = float(cfg.get("yawNoiseSigma", 0.6))
+            yaw_pos = wrap_deg(yaw_pos + ang_diff_deg(site_dir, yaw_pos) * yaw_gain + random.gauss(0, yaw_sigma))
             yaw_err = ang_diff_deg(site_dir, yaw_pos)
 
             # Random faults (rare, short)
             fault_until = state["faultUntil"].get(tpath)
             in_fault = (fault_until is not None) and system.date.isAfter(fault_until, now)
 
-            if (not in_fault) and (random.random() < (0.0008 * dt_s)):
-                fault_seconds = random.randint(20, 90)
+            fault_rate = float(cfg.get("faultRatePerSec", 0.0008))
+            if (not in_fault) and (random.random() < (fault_rate * dt_s)):
+                fault_min = int(cfg.get("faultMinSec", 20))
+                fault_max = int(cfg.get("faultMaxSec", 90))
+                fault_seconds = random.randint(min(fault_min, fault_max), max(fault_min, fault_max))
                 fault_until = system.date.addSeconds(now, fault_seconds)
                 state["faultUntil"][tpath] = fault_until
                 in_fault = True
@@ -115,10 +205,11 @@ def handleTimerEvent():
             last_fault = "" if not in_fault else ("FAULT_%d" % fault_code)
 
             # Wind -> power curve
-            p_kw_raw = power_curve_kw(v, rated_kw, cut_in=3.0, rated=v_rated, cut_out=25.0)
+            p_kw_raw = power_curve_kw(v, rated_kw, cut_in=cut_in, rated=v_rated, cut_out=cut_out)
 
             # Yaw misalignment derate
-            yaw_derate = max(0.0, math.cos(math.radians(yaw_err))) ** 1.88
+            yaw_exp = float(cfg.get("yawDerateExp", 1.88))
+            yaw_derate = max(0.0, math.cos(math.radians(yaw_err))) ** yaw_exp
             p_kw = p_kw_raw * yaw_derate
 
             # Curtailment / availability
@@ -137,8 +228,10 @@ def handleTimerEvent():
             gen_rpm = rotor_rpm * gear_ratio
 
             # Electrical approximations
-            pf = clamp(0.97 + random.gauss(0, 0.01), 0.90, 1.0)
-            v_ll = 690.0
+            pf_mean = float(cfg.get("pfMean", 0.97))
+            pf_sigma = float(cfg.get("pfSigma", 0.01))
+            pf = clamp(pf_mean + random.gauss(0, pf_sigma), 0.90, 1.0)
+            v_ll = float(cfg.get("vLL", 690.0))
             current_a = 0.0 if p_kw <= 0 else (p_kw * 1000.0) / (math.sqrt(3.0) * v_ll * max(0.1, pf))
             try:
                 kvar = p_kw * math.tan(math.acos(pf))

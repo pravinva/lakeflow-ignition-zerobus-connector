@@ -59,6 +59,24 @@ In the Designer:
 
 If values stay constant, check the Gateway logs for messages from logger name **`tilt_sim`**.
 
+### Configure it (Tilt AU assumptions, but tunable)
+
+This example includes editable config tags under:
+
+- `[tilt_sim]Tilt/Windfarm01/Config/*`
+
+Key knobs:
+
+- **`SimEnabled`**: set false to pause simulation
+- **`UpdateEveryMs`**: throttle updates (e.g., 1000, 2000, 5000)
+- **`MeanWind_mps`**, **`TurbulenceSigma`**, **`WindDirNoiseSigma_deg`**: site wind regime (typical AU wind sites: mean ~8–10 m/s)
+- **`CutIn_mps`**, **`RatedWind_mps`**, **`CutOut_mps`**: turbine power curve
+- **`RatedPower_T01_kW`** / `T02` / `T03`: nameplate ratings
+- **`FaultRatePerSecond`**, **`FaultMinSeconds`**, **`FaultMaxSeconds`**: fault frequency/duration
+- **`YawGain`**, **`YawNoiseSigma_deg`**, **`YawDerateExponent`**: yaw response + derating
+
+The timer script reads these values (cached, refreshed every ~5s) so you can tune behavior live without editing code.
+
 ### 5) Ingest to Databricks with Zerobus (optional)
 
 The module’s current **direct subscriptions** implementation supports **`tagSelectionMode = explicit` only**.

@@ -7,6 +7,45 @@
       "tagType": "Folder",
       "tags": [
         {
+          "name": "Config",
+          "tagType": "Folder",
+          "tags": [
+            { "name": "SimEnabled", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Boolean", "value": true },
+            { "name": "UpdateEveryMs", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Int4", "value": 1000 },
+
+            { "name": "MeanWind_mps", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": 9.0 },
+            { "name": "MeanReversion_k", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": 0.06 },
+            { "name": "TurbulenceSigma", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": 0.7 },
+            { "name": "WindDirNoiseSigma_deg", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": 4.0 },
+
+            { "name": "WakeBias_T03_mps", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": -0.3 },
+            { "name": "LocalWindNoiseSigma_mps", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": 0.4 },
+
+            { "name": "YawGain", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": 0.35 },
+            { "name": "YawNoiseSigma_deg", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": 0.6 },
+            { "name": "YawDerateExponent", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": 1.88 },
+
+            { "name": "CutIn_mps", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": 3.0 },
+            { "name": "RatedWind_mps", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": 12.0 },
+            { "name": "CutOut_mps", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": 25.0 },
+
+            { "name": "RatedPower_T01_kW", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": 3500.0 },
+            { "name": "RatedPower_T02_kW", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": 3600.0 },
+            { "name": "RatedPower_T03_kW", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": 3400.0 },
+
+            { "name": "GearRatio", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": 80.0 },
+            { "name": "RotorRatedRPM", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": 16.0 },
+
+            { "name": "FaultRatePerSecond", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": 0.0008 },
+            { "name": "FaultMinSeconds", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Int4", "value": 20 },
+            { "name": "FaultMaxSeconds", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Int4", "value": 90 },
+
+            { "name": "VoltageLL_V", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": 690.0 },
+            { "name": "PF_Mean", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": 0.97 },
+            { "name": "PF_Sigma", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": 0.01 }
+          ]
+        },
+        {
           "name": "Site",
           "tagType": "Folder",
           "tags": [
