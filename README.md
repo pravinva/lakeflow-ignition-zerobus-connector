@@ -246,6 +246,32 @@ cd module
 
 **Note**: Changing module ID means Ignition treats it as a **different module** (no in-place upgrade/migration).
 
+### 3.5) Signing `.modl` artifacts (for distribution)
+
+Ignition modules should be **signed** for distribution.
+This repo supports signing as an **optional** build step, without hardcoding any secrets.
+
+You will need Inductive Automation’s `module-signer.jar` (see IA SDK docs on module signing) and a keystore.
+
+Provide signing config via Gradle properties or environment variables:
+
+- `MODULE_SIGNER_JAR` (or `-PmoduleSignerJar=...`)
+- `SIGNING_KEYSTORE` (or `-PsigningKeystore=...`)
+- `SIGNING_STOREPASS` (or `-PsigningKeystorePassword=...`)
+- `SIGNING_ALIAS` (or `-PsigningAlias=...`)
+- `SIGNING_KEYPASS` (or `-PsigningAliasPassword=...`)
+- Optional: `SIGNING_CHAIN` (or `-PsigningChain=...`) for CA-signed cert chains
+
+Then run:
+
+```bash
+cd module
+./gradlew signModule83
+./gradlew signModule81
+```
+
+The signer outputs a new file next to the unsigned module with a `-signed.modl` suffix.
+
 ### 3.5) Run unit tests (8.1 vs 8.3 SDK jars)
 
 Gradle needs to know which local Ignition SDK jars to compile against. Run tests like:
