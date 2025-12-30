@@ -8,6 +8,12 @@ plugins {
 group = 'com.example.ignition'
 version = '1.0.1'
 
+// Module ID:
+// - Default is the current internal/dev module id.
+// - For Module Showcase publishing, pass: -PmoduleId=com.databricks.ignition.zerobus (or similar)
+// IMPORTANT: Changing module ID means Ignition will treat it as a different module (no in-place upgrade).
+def moduleId = project.hasProperty('moduleId') ? project.getProperty('moduleId') : 'com.example.ignition.zerobus'
+
 // Some local builds were previously run with sudo, which can leave the default ./build directory
 // owned by root and therefore unwritable. To keep builds reliable, always use a user-writable build dir.
 // Also, keep 8.1 and 8.3 builds from stepping on each other by using distinct build dirs.
@@ -222,15 +228,23 @@ jar {
         attributes(
             'Implementation-Title': 'Ignition Zerobus Connector',
             'Implementation-Version': version,
-            'Module-Id': 'com.example.ignition.zerobus',
+            'Module-Id': moduleId,
             'Module-Name': 'Zerobus Connector',
             'Module-Version': version
         )
     }
     
-    // Include module.xml and simplemodule.properties explicitly (avoid walking src/main/resources/ which may
-    // contain unreadable directories like web/ in some environments).
-    from('src/main/resources/module.xml')
+    // Include a module.xml inside the jar for visibility/debugging; we keep it aligned with the build target
+    // (8.1 vs 8.3) and apply moduleId override if provided.
+    def jarModuleDescriptor = buildForIgnitionVersion.startsWith('8.3')
+            ? 'src/main/resources/module-8.3.xml'
+            : 'src/main/resources/module.xml'
+    from(jarModuleDescriptor) {
+        rename { 'module.xml' }
+        filter { line ->
+            line.replace('<id>com.example.ignition.zerobus</id>', "<id>${moduleId}</id>")
+        }
+    }
     from('src/main/resources/simplemodule.properties')
 }
 
@@ -266,6 +280,10 @@ task buildModule(type: Zip, dependsOn: [jar, verifyIgnitionSdkJars]) {
     def moduleDescriptor = buildForIgnitionVersion.startsWith('8.3') ? 'src/main/resources/module-8.3.xml' : 'src/main/resources/module.xml'
     from(moduleDescriptor) {
         rename { 'module.xml' }
+        // Allow override of the module ID at build time (e.g., Module Showcase publishing).
+        filter { line ->
+            line.replace('<id>com.example.ignition.zerobus</id>', "<id>${moduleId}</id>")
+        }
     }
     
     doLast {
@@ -362,6 +380,8 @@ tasks.register('buildModule81', GradleBuild) {
     startParameter.projectProperties.put('ignitionHome', '/usr/local/ignition8.1')
     startParameter.projectProperties.put('buildForIgnitionVersion', '8.1.50')
     startParameter.projectProperties.put('minIgnitionVersion', '8.1.0')
+    // Propagate moduleId override into the nested build (if provided to the outer build).
+    startParameter.projectProperties.put('moduleId', moduleId)
 }
 
 tasks.register('buildModule83', GradleBuild) {
@@ -371,6 +391,8 @@ tasks.register('buildModule83', GradleBuild) {
     startParameter.projectProperties.put('ignitionHome', '/usr/local/ignition')
     startParameter.projectProperties.put('buildForIgnitionVersion', '8.3.2')
     startParameter.projectProperties.put('minIgnitionVersion', '8.3.0')
+    // Propagate moduleId override into the nested build (if provided to the outer build).
+    startParameter.projectProperties.put('moduleId', moduleId)
 }
 
 // // Make processResources depend on frontend build

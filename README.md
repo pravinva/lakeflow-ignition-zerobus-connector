@@ -231,6 +231,21 @@ Output: `module/build-user-8.3/modules/zerobus-connector-1.0.1-ignition-8.3.modl
 
 After building, the Gradle task also copies the `.modl` into the repo-level `releases/` directory.
 
+### 3.4) Module ID override (Module Showcase / alternate namespaces)
+
+By default, the module ID is:
+- `com.example.ignition.zerobus`
+
+To build a `.modl` with a different module ID (for example, to publish under a Module Showcase namespace),
+pass `-PmoduleId=...`:
+
+```bash
+cd module
+./gradlew buildModule83 -PmoduleId=com.databricks.ignition.zerobus
+```
+
+**Note**: Changing module ID means Ignition treats it as a **different module** (no in-place upgrade/migration).
+
 ### 3.5) Run unit tests (8.1 vs 8.3 SDK jars)
 
 Gradle needs to know which local Ignition SDK jars to compile against. Run tests like:
