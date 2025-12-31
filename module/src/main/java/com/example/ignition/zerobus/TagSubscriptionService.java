@@ -168,8 +168,12 @@ public class TagSubscriptionService {
             // Unsubscribe tags first (stop incoming events)
             unsubscribeAll();
 
-            // Flush any remaining events
-            flushBatch();
+            // IMPORTANT:
+            // - In disk SAF mode, events are already persisted; do NOT block shutdown on network/auth recovery.
+            // - In memory mode, we can do a best-effort flush, but we must NOT attempt reconnect during shutdown.
+            if (!buffer.isDiskBacked()) {
+                flushBatch(false);
+            }
             
             // Shutdown executors
             if (scheduledExecutor != null) {
@@ -368,6 +372,16 @@ public class TagSubscriptionService {
      * Multiple threads can call this concurrently without blocking each other.
      */
     private void flushBatch() {
+        flushBatch(true);
+    }
+
+    /**
+     * Flush a batch of events.
+     *
+     * @param allowReconnect if false, do not attempt to reconnect. This is used during shutdown so the gateway
+     *                       is not held hostage by connectionTimeoutMs/auth recovery.
+     */
+    private void flushBatch(boolean allowReconnect) {
         try {
             // Update backpressure + pause/resume subscriptions when disk-backed
             buffer.refreshBackpressure();
@@ -386,7 +400,9 @@ public class TagSubscriptionService {
             // Sink-down behavior: do NOT drain (especially disk spool) unless the sink is connected/ready.
             // This avoids repeatedly reading/parsing the same records when disconnected.
             if (!sink.isReady()) {
-                sink.tryEnsureReady();
+                if (allowReconnect) {
+                    sink.tryEnsureReady();
+                }
                 if (!sink.isReady()) {
                     return;
                 }

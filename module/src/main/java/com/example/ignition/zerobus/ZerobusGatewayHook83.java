@@ -281,6 +281,29 @@ public class ZerobusGatewayHook83 extends AbstractGatewayModuleHook implements Z
     }
 
     @Override
+    public boolean restartServices() {
+        if (configModel == null || !configModel.isEnabled()) {
+            logger.warn("Cannot restart services: module is disabled or config not initialized (8.3)");
+            return false;
+        }
+        synchronized (this) {
+            try {
+                logger.info("Restarting Zerobus services on request (8.3)...");
+                if (tagSubscriptionService != null) tagSubscriptionService.shutdown();
+                if (zerobusClientManager != null) zerobusClientManager.shutdown();
+                tagSubscriptionService = null;
+                zerobusClientManager = null;
+                startServices();
+                logger.info("Zerobus services restarted successfully (8.3)");
+                return true;
+            } catch (Exception e) {
+                logger.error("Failed to restart Zerobus services (8.3)", e);
+                return false;
+            }
+        }
+    }
+
+    @Override
     public boolean ingestTagEvent(TagEventPayload payload) {
         if (configModel == null || !configModel.isEnabled()) {
             logger.warn("Cannot ingest: module is disabled");
