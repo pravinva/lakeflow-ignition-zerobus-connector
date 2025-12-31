@@ -126,10 +126,20 @@ public class ZerobusClientManager {
             scan = scan.getCause();
             depth++;
         }
+        // AUTH classification:
+        // Only classify as AUTH when we see explicit authorization/credential signals.
+        // NOTE: Do NOT classify generic "token" failures as AUTH. In practice, transient network issues can surface
+        // as "failed to get token" and we don't want to mislead operators or apply long AUTH backoff.
         if (msg.contains("unauthorized") || msg.contains("forbidden") || msg.contains("401") || msg.contains("403")
-                || msg.contains("oauth") || msg.contains("token") || msg.contains("client secret")
-                || msg.contains("invalid_client") || msg.contains("invalid grant") || msg.contains("invalid_grant")) {
+                || msg.contains("invalid_client") || msg.contains("invalid grant") || msg.contains("invalid_grant")
+                || msg.contains("client secret") || msg.contains("client_secret")) {
             return ErrorClass.AUTH;
+        }
+
+        // Zerobus SDK sometimes throws "Failed to get Zerobus token" without indicating whether it's auth vs network.
+        // Treat it as TRANSIENT unless the message also includes explicit auth signals above.
+        if (msg.contains("failed to get zerobus token")) {
+            return ErrorClass.TRANSIENT;
         }
 
         // NonRetriableException from the SDK generally means "operator action required" (bad table, schema, etc).
