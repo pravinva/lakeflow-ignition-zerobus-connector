@@ -18,19 +18,19 @@ The point of the demo is to show:
 ```mermaid
 flowchart LR
   subgraph Ignition[Ignition Gateway]
-    SG[[sg: plant telemetry<br/>furnace, conveyor, cutting, KPIs]]
-    GRID[[sg_grid: dispatch + energy context]]
-    CMMS[[sg_cmms: maintenance/work orders]]
-    FC[[sg_forecast: next-hour forecasts]]
+    SG["sg: plant telemetry\nfurnace, conveyor, cutting, KPIs"]
+    GRID["sg_grid: dispatch + energy context"]
+    CMMS["sg_cmms: maintenance/work orders"]
+    FC["sg_forecast: next-hour forecasts"]
   end
 
-  ZB[Zerobus Connector<br/>(explicit tag paths)]
+  ZB["Zerobus Connector\n(explicit tag paths)"]
 
   subgraph DBX[Databricks Lakehouse]
-    B[(Bronze<br/>ignition_demo.scada_data.tag_events)]
-    MAP[(Silver mapping<br/>saint_ot.silver_signal_mapping)]
-    S1[(Silver views<br/>saint_ot.silver_* / normalized)]
-    G1[(Gold views<br/>saint_ot.gold_* KPIs)]
+    B["Bronze\nignition_demo.scada_data.tag_events"]
+    MAP["Silver mapping\nsaint_ot.silver_signal_mapping"]
+    S1["Silver views\nsaint_ot.silver_* / normalized"]
+    G1["Gold views\nsaint_ot.gold_* KPIs"]
   end
 
   SG --> ZB
