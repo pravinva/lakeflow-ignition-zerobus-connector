@@ -3,12 +3,12 @@ def handleTimerEvent():
     Ignition Gateway Timer Script (Jython)
     Source: Plant telemetry (SCADA-like): Wind + Solar + BESS + Met
 
-    Provider: [tilt_sim]
-    Base:     [tilt_sim]Tilt/Site01/...
+    Provider: [tilt]
+    Base:     [tilt]Tilt/Site01/...
 
     Business story wiring:
-    - Reads [grid_sim] curtailment/target/price to influence plant output and BESS behavior.
-    - Reads [cmms_sim] ForcedOutage flags to force assets offline (maintenance impacts production).
+    - Reads [grid] curtailment/target/price to influence plant output and BESS behavior.
+    - Reads [cmms] ForcedOutage flags to force assets offline (maintenance impacts production).
 
     Paste into: Designer -> Scripting -> Gateway Events -> Timer
     Recommended: Fixed Delay 1000ms (or 2000ms), Enabled=true
@@ -16,9 +16,9 @@ def handleTimerEvent():
     import math, random
 
     # --- Providers / paths ---
-    TILT = "[tilt_sim]Tilt/Site01"
-    GRID = "[grid_sim]Tilt/Site01"
-    CMMS = "[cmms_sim]Tilt/Site01"
+    TILT = "[tilt]Tilt/Site01"
+    GRID = "[grid]Tilt/Site01"
+    CMMS = "[cmms]Tilt/Site01"
 
     CFG = TILT + "/Config"
     MET = TILT + "/MetMast01"

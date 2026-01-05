@@ -17,27 +17,27 @@ This folder contains an end-to-end example to simulate a small windfarm in Ignit
 In the Gateway UI:
 
 - Go to **Configure → Tags → Realtime Tag Providers**
-- Create a **Standard Tag Provider** (internal provider) named **`tilt_sim`**
+- Create a **Standard Tag Provider** (internal provider) named **`tilt`**
 - Ensure it is:
   - **Enabled**
   - **NOT Read Only**
 
-> The provider name **must** match `tilt_sim` exactly, because all tag paths in this example start with `[tilt_sim]...`.
+> The provider name **must** match `tilt` exactly, because all tag paths in this example start with `[tilt]...`.
 
 ### 2) Import the tags
 
 In the Designer connected to the same gateway:
 
 - Open the **Tag Browser**
-- Select provider **`tilt_sim`**
+- Select provider **`tilt`**
 - Right-click → **Import**
 - Choose **JSON**
 - Import `examples/tilt_sim/tilt_sim_windfarm01_tags.json`
 
 You should now see tags under:
 
-- `[tilt_sim]Tilt/Windfarm01/Site/...`
-- `[tilt_sim]Tilt/Windfarm01/Turbines/T01/...` (and T02/T03)
+- `[tilt]Tilt/Windfarm01/Site/...`
+- `[tilt]Tilt/Windfarm01/Turbines/T01/...` (and T02/T03)
 
 ### 3) Add the Gateway Timer Script (simulator)
 
@@ -54,16 +54,16 @@ In the Designer:
 ### 4) Validate it’s working (Ignition)
 
 - Watch these tags; they should change about once per second:
-  - `[tilt_sim]Tilt/Windfarm01/Site/WindSpeed_mps`
-  - `[tilt_sim]Tilt/Windfarm01/Turbines/T01/Electrical/Power_kW`
+  - `[tilt]Tilt/Windfarm01/Site/WindSpeed_mps`
+  - `[tilt]Tilt/Windfarm01/Turbines/T01/Electrical/Power_kW`
 
-If values stay constant, check the Gateway logs for messages from logger name **`tilt_sim`**.
+If values stay constant, check the Gateway logs for messages from logger name **`tilt`**.
 
 ### Configure it (Tilt AU assumptions, but tunable)
 
 This example includes editable config tags under:
 
-- `[tilt_sim]Tilt/Windfarm01/Config/*`
+- `[tilt]Tilt/Windfarm01/Config/*`
 
 Key knobs:
 
@@ -84,16 +84,16 @@ That means you must list the specific tag paths you want to ingest (folder/patte
 
 Add a few example paths in the Zerobus config UI:
 
-- `[tilt_sim]Tilt/Windfarm01/Site/WindSpeed_mps`
-- `[tilt_sim]Tilt/Windfarm01/Site/Power_Total_kW`
-- `[tilt_sim]Tilt/Windfarm01/Turbines/T01/Electrical/Power_kW`
-- `[tilt_sim]Tilt/Windfarm01/Turbines/T02/Electrical/Power_kW`
-- `[tilt_sim]Tilt/Windfarm01/Turbines/T03/Electrical/Power_kW`
+- `[tilt]Tilt/Windfarm01/Site/WindSpeed_mps`
+- `[tilt]Tilt/Windfarm01/Site/Power_Total_kW`
+- `[tilt]Tilt/Windfarm01/Turbines/T01/Electrical/Power_kW`
+- `[tilt]Tilt/Windfarm01/Turbines/T02/Electrical/Power_kW`
+- `[tilt]Tilt/Windfarm01/Turbines/T03/Electrical/Power_kW`
 
 Then verify:
 
 - `GET /system/zerobus/diagnostics` shows `Direct Subscriptions: <N> tags`
-- Your target table receives rows with `tag_provider = 'tilt_sim'`
+- Your target table receives rows with `tag_provider = 'tilt'`
 
 ### Databricks SQL: last 2 minutes by provider
 

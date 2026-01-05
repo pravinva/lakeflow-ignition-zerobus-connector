@@ -3,21 +3,21 @@ def handleTimerEvent():
     Ignition Gateway Timer Script (Jython)
     Source: Grid + Market
 
-    Provider: [grid_sim]
-    Base:     [grid_sim]Tilt/Site01/...
+    Provider: [grid]
+    Base:     [grid]Tilt/Site01/...
 
     Responsibilities:
     - Market price shape + spikes
     - Dispatch target + curtailment / constraint windows
-    - POI metering (reads plant telemetry from [tilt_sim] and produces POI measurements)
+    - POI metering (reads plant telemetry from [tilt] and produces POI measurements)
 
     Paste into: Designer -> Scripting -> Gateway Events -> Timer
     Recommended: Fixed Delay 1000ms (or 2000ms), Enabled=true
     """
     import math, random
 
-    GRID = "[grid_sim]Tilt/Site01"
-    TILT = "[tilt_sim]Tilt/Site01"
+    GRID = "[grid]Tilt/Site01"
+    TILT = "[tilt]Tilt/Site01"
 
     POI = GRID + "/Substation01/POI"
     DISPATCH = GRID + "/Dispatch"

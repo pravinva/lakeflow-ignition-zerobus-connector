@@ -3,8 +3,8 @@ def handleTimerEvent():
     Ignition Gateway Timer Script (Jython)
     Source: Maintenance / CMMS events
 
-    Provider: [cmms_sim]
-    Base:     [cmms_sim]Tilt/Site01/...
+    Provider: [cmms]
+    Base:     [cmms]Tilt/Site01/...
 
     Responsibilities:
     - Create/close work orders
@@ -16,8 +16,8 @@ def handleTimerEvent():
     """
     import random
 
-    CMMS = "[cmms_sim]Tilt/Site01"
-    GRID = "[grid_sim]Tilt/Site01"
+    CMMS = "[cmms]Tilt/Site01"
+    GRID = "[grid]Tilt/Site01"
 
     ASSETS = [
         ("Windfarm01/T01", CMMS + "/Assets/Windfarm01/T01"),

@@ -3,8 +3,8 @@ def handleTimerEvent():
     Ignition Gateway Timer Script (Jython)
     Source: Weather + production forecast (next hour)
 
-    Provider: [forecast_sim]
-    Base:     [forecast_sim]Tilt/Site01/Forecast/H01/...
+    Provider: [forecast]
+    Base:     [forecast]Tilt/Site01/Forecast/H01/...
 
     Responsibilities:
     - Produce a next-hour forecast for wind/solar/net power.
@@ -16,9 +16,9 @@ def handleTimerEvent():
     """
     import math, random
 
-    FORE = "[forecast_sim]Tilt/Site01/Forecast/H01"
-    TILT = "[tilt_sim]Tilt/Site01"
-    GRID = "[grid_sim]Tilt/Site01"
+    FORE = "[forecast]Tilt/Site01/Forecast/H01"
+    TILT = "[tilt]Tilt/Site01"
+    GRID = "[grid]Tilt/Site01"
 
     log = system.util.getLogger("tilt_site01.forecast")
 

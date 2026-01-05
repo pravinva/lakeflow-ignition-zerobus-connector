@@ -1,7 +1,7 @@
 def handleTimerEvent():
     """
     Ignition Gateway Timer Script (Jython)
-    Updates [tilt_sim]Tilt/Windfarm01/... once per second with a realistic wind->power simulation.
+    Updates [tilt]Tilt/Windfarm01/... once per second with a realistic wind->power simulation.
 
     Paste into: Designer -> Scripting -> Gateway Events -> Timer
     Set: Delay Type = Fixed Delay, Delay (ms) = 1000, Enabled = true
@@ -9,12 +9,12 @@ def handleTimerEvent():
 
     import math, random
 
-    BASE = "[tilt_sim]Tilt/Windfarm01"
+    BASE = "[tilt]Tilt/Windfarm01"
     CONFIG = BASE + "/Config"
     SITE = BASE + "/Site"
     TURBINES = [BASE + "/Turbines/T01", BASE + "/Turbines/T02", BASE + "/Turbines/T03"]
 
-    log = system.util.getLogger("tilt_sim")
+    log = system.util.getLogger("tilt")
 
     def clamp(x, lo, hi):
         return lo if x < lo else hi if x > hi else x
@@ -53,7 +53,7 @@ def handleTimerEvent():
             }
             g["tilt_sim_state"] = state
 
-        # --- Config (Tilt AU defaults, but operator can tune via tags under [tilt_sim].../Config/*) ---
+        # --- Config (Tilt AU defaults, but operator can tune via tags under [tilt].../Config/*) ---
         # Cache config reads to reduce tag reads; refresh every 5 seconds.
         cfg = state.get("cfg")
         cfg_last = state.get("cfgLastReadTs", now)
@@ -297,7 +297,7 @@ def handleTimerEvent():
         if bad:
             log.warn("Tag write failures (first 10): %r" % bad[:10])
         else:
-            log.info("tilt_sim tick ok (wrote %d tags)" % len(paths))
+            log.info("tilt tick ok (wrote %d tags)" % len(paths))
 
     except Exception as e:
         log.error("Timer script failed", e)

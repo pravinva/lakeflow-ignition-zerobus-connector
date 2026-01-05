@@ -14,17 +14,17 @@ This demo uses **Memory tags** + **Gateway Timer Scripts** (Jython) so it works 
 
 This demo uses **four “sources”** (four tag providers) to make the business story realistic:
 
-- **Plant telemetry SCADA**: `[tilt_sim]...` (Wind + Solar + BESS + Met)
-- **Grid + market**: `[grid_sim]...` (POI meter, dispatch target, curtailment, price)
-- **Maintenance / CMMS**: `[cmms_sim]...` (forced outage flags, work orders, reasons)
-- **Forecast**: `[forecast_sim]...` (next-hour forecasts for wind/solar/net)
+- **Plant telemetry SCADA**: `[tilt]...` (Wind + Solar + BESS + Met)
+- **Grid + market**: `[grid]...` (POI meter, dispatch target, curtailment, price)
+- **Maintenance / CMMS**: `[cmms]...` (forced outage flags, work orders, reasons)
+- **Forecast**: `[forecast]...` (next-hour forecasts for wind/solar/net)
 
 Included files:
 
-- **`tilt_sim_site01_tags.json`**: Import into provider **`tilt_sim`**.
-- **`grid_sim_site01_tags.json`**: Import into provider **`grid_sim`**.
-- **`cmms_sim_site01_tags.json`**: Import into provider **`cmms_sim`**.
-- **`forecast_sim_site01_tags.json`**: Import into provider **`forecast_sim`**.
+- **`tilt_sim_site01_tags.json`**: Import into provider **`tilt`**.
+- **`grid_sim_site01_tags.json`**: Import into provider **`grid`**.
+- **`cmms_sim_site01_tags.json`**: Import into provider **`cmms`**.
+- **`forecast_sim_site01_tags.json`**: Import into provider **`forecast`**.
 
 Gateway Timer Scripts (create 4 timers at 1s or 2s):
 
@@ -39,10 +39,10 @@ In the Gateway UI:
 
 - Go to **Configure → Tags → Realtime Tag Providers**
 - Create **four** **Standard Tag Providers**:
-  - `tilt_sim`
-  - `grid_sim`
-  - `cmms_sim`
-  - `forecast_sim`
+  - `tilt`
+  - `grid`
+  - `cmms`
+  - `forecast`
 - Ensure each is **Enabled** and **NOT Read Only**
 
 > The provider names matter because each JSON export assumes you import into the matching provider.
@@ -53,20 +53,20 @@ In the Designer:
 
 - Open **Tag Browser**
 - For each provider, select it and import its JSON:
-  - Provider `tilt_sim` → import `tilt_sim_site01_tags.json`
-  - Provider `grid_sim` → import `grid_sim_site01_tags.json`
-  - Provider `cmms_sim` → import `cmms_sim_site01_tags.json`
-  - Provider `forecast_sim` → import `forecast_sim_site01_tags.json`
+  - Provider `tilt` → import `tilt_sim_site01_tags.json`
+  - Provider `grid` → import `grid_sim_site01_tags.json`
+  - Provider `cmms` → import `cmms_sim_site01_tags.json`
+  - Provider `forecast` → import `forecast_sim_site01_tags.json`
 
 You should see (examples):
 
-- `[tilt_sim]Tilt/Site01/MetMast01/...`
-- `[tilt_sim]Tilt/Site01/Windfarm01/...`
-- `[tilt_sim]Tilt/Site01/SolarFarm01/...`
-- `[tilt_sim]Tilt/Site01/BESS01/...`
-- `[grid_sim]Tilt/Site01/Substation01/...`
-- `[cmms_sim]Tilt/Site01/...`
-- `[forecast_sim]Tilt/Site01/...`
+- `[tilt]Tilt/Site01/MetMast01/...`
+- `[tilt]Tilt/Site01/Windfarm01/...`
+- `[tilt]Tilt/Site01/SolarFarm01/...`
+- `[tilt]Tilt/Site01/BESS01/...`
+- `[grid]Tilt/Site01/Substation01/...`
+- `[cmms]Tilt/Site01/...`
+- `[forecast]Tilt/Site01/...`
 
 ## 3) Add the Gateway Timer Scripts (simulators)
 
@@ -87,16 +87,16 @@ The module’s **direct subscriptions** currently support `tagSelectionMode = ex
 
 Start with a small, high-signal list:
 
-- `[tilt_sim]Tilt/Site01/MetMast01/WindSpeed_mps`
-- `[tilt_sim]Tilt/Site01/MetMast01/Irradiance_Wm2`
-- `[tilt_sim]Tilt/Site01/Windfarm01/Turbines/T01/Electrical/Power_kW`
-- `[tilt_sim]Tilt/Site01/SolarFarm01/Inverters/I01/AC/Power_kW`
-- `[tilt_sim]Tilt/Site01/BESS01/Power/NetPower_kW`
-- `[grid_sim]Tilt/Site01/Substation01/POI/ExportPower_kW`
-- `[grid_sim]Tilt/Site01/Substation01/POI/Frequency_Hz`
-- `[grid_sim]Tilt/Site01/Dispatch/Curtailment_pct`
-- `[cmms_sim]Tilt/Site01/WorkOrders/ActiveCount`
-- `[forecast_sim]Tilt/Site01/Forecast/H01/NetPower_kW`
+- `[tilt]Tilt/Site01/MetMast01/WindSpeed_mps`
+- `[tilt]Tilt/Site01/MetMast01/Irradiance_Wm2`
+- `[tilt]Tilt/Site01/Windfarm01/Turbines/T01/Electrical/Power_kW`
+- `[tilt]Tilt/Site01/SolarFarm01/Inverters/I01/AC/Power_kW`
+- `[tilt]Tilt/Site01/BESS01/Power/NetPower_kW`
+- `[grid]Tilt/Site01/Substation01/POI/ExportPower_kW`
+- `[grid]Tilt/Site01/Substation01/POI/Frequency_Hz`
+- `[grid]Tilt/Site01/Dispatch/Curtailment_pct`
+- `[cmms]Tilt/Site01/WorkOrders/ActiveCount`
+- `[forecast]Tilt/Site01/Forecast/H01/NetPower_kW`
 
 Then validate:
 
