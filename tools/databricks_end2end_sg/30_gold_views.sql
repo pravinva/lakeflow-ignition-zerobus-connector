@@ -9,8 +9,8 @@ SELECT
   MAX(CASE WHEN asset_id='sg_cut' AND signal_name='quality_score' THEN value_last END) AS quality_score,
   MAX(CASE WHEN asset_id='sg_site01' AND signal_name='target_throughput' THEN value_last END) AS target_upm,
   MAX(CASE WHEN asset_id='sg_site01' AND signal_name='curtailment' THEN value_last END) AS curtail_pct,
-  MAX(CASE WHEN asset_id='sg_site01' AND signal_name='gas_price' THEN value_last END) AS gas_price_aud_gj,
-  MAX(CASE WHEN asset_id='sg_site01' AND signal_name='elec_price' THEN value_last END) AS elec_price_aud_mwh,
+  MAX(CASE WHEN asset_id='sg_site01' AND signal_name='gas_price' THEN value_last END) AS gas_price_eur_gj,
+  MAX(CASE WHEN asset_id='sg_site01' AND signal_name='elec_price' THEN value_last END) AS elec_price_eur_mwh,
   MAX(CASE WHEN asset_id='sg_site01' AND signal_name='active_work_orders' THEN value_last END) AS active_wos,
   MAX(CASE WHEN asset_id='sg_site01' AND signal_name='high_priority_work_orders' THEN value_last END) AS high_wos,
   MAX(CASE WHEN asset_id='sg_site01' AND signal_name='throughput_forecast_h01' THEN value_last END) AS thr_forecast_h01,
@@ -29,8 +29,8 @@ SELECT
   AVG(scrap_pct) AS scrap_pct_avg,
   AVG(quality_score) AS quality_score_avg,
   AVG(curtail_pct) AS curtail_pct_avg,
-  AVG(gas_price_aud_gj) AS gas_price_avg,
-  AVG(elec_price_aud_mwh) AS elec_price_avg,
+  AVG(gas_price_eur_gj) AS gas_price_avg,
+  AVG(elec_price_eur_mwh) AS elec_price_avg,
   AVG(active_wos) AS active_wos_avg,
   AVG(high_wos) AS high_wos_avg,
   AVG(thr_forecast_h01) AS thr_forecast_h01_avg,
@@ -46,8 +46,8 @@ WITH x AS (
     throughput_upm,
     scrap_pct,
     quality_score,
-    gas_price_aud_gj,
-    elec_price_aud_mwh
+    gas_price_eur_gj,
+    elec_price_eur_mwh
   FROM ignition_demo.saint_ot._sg_site01_1m
 )
 SELECT
@@ -55,11 +55,11 @@ SELECT
   AVG(throughput_upm) AS throughput_upm_avg,
   AVG(scrap_pct) AS scrap_pct_avg,
   AVG(quality_score) AS quality_score_avg,
-  AVG(gas_price_aud_gj) AS gas_price_avg,
-  AVG(elec_price_aud_mwh) AS elec_price_avg,
+  AVG(gas_price_eur_gj) AS gas_price_avg,
+  AVG(elec_price_eur_mwh) AS elec_price_avg,
   -- rough cost proxy: gas flow isn't modeled in this view; proxy cost = throughput * price multipliers
-  (AVG(throughput_upm) * 0.02) * AVG(gas_price_aud_gj) AS gas_cost_proxy_aud_per_min,
-  (AVG(throughput_upm) * 0.001) * AVG(elec_price_aud_mwh) AS elec_cost_proxy_aud_per_min
+  (AVG(throughput_upm) * 0.02) * AVG(gas_price_eur_gj) AS gas_cost_proxy_eur_per_min,
+  (AVG(throughput_upm) * 0.001) * AVG(elec_price_eur_mwh) AS elec_cost_proxy_eur_per_min
 FROM x
 GROUP BY dt;
 
