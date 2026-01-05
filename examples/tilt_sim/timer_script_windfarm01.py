@@ -303,3 +303,8 @@ def handleTimerEvent():
         log.error("Timer script failed", e)
 
 
+# Ignition Gateway Timer Scripts execute top-level code each tick.
+# Many projects do NOT automatically invoke handleTimerEvent(), so we call it explicitly.
+handleTimerEvent()
+
+
