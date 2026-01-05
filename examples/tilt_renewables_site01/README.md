@@ -12,7 +12,30 @@ This demo uses **Memory tags** + **Gateway Timer Scripts** (Jython) so it works 
 
 ## Flow (pictorial)
 
-![End-to-end flow (Tilt Renewables)](flow_tilt.svg)
+```text
+Ignition Gateway (tags + timer scripts)
+  [tilt]      plant telemetry (wind + solar + BESS + met mast)
+  [grid]      POI + dispatch + market
+  [cmms]      maintenance / work orders
+  [forecast]  next-hour forecast
+        |
+        v
+Zerobus Connector (explicit tag paths)
+        |
+        v
+Databricks Lakehouse
+  Bronze: ignition_demo.scada_data.tag_events
+        |
+        v
+  Silver: mapping + normalized views (signal registry, 1m rollups, latest)
+        |
+        v
+  Gold: KPIs (fleet/site performance, constraints, maintenance impact, forecast accuracy)
+        |
+        +--> Dashboards (AI/BI)
+        |
+        +--> Genie (Q&A on Gold + drilldown to Silver)
+```
 
 ## What’s included
 

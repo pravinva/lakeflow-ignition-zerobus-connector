@@ -15,7 +15,30 @@ The point of the demo is to show:
 
 ### Flow (pictorial)
 
-![End-to-end flow (Saint-Gobain)](flow_sg.svg)
+```text
+Ignition Gateway (tags + timer scripts)
+  [sg]          plant telemetry (furnace + conveyor + cutting + KPIs)
+  [sg_grid]     dispatch / constraints + energy context
+  [sg_cmms]     maintenance / work orders
+  [sg_forecast] next-hour throughput + scrap forecast
+        |
+        v
+Zerobus Connector (explicit tag paths)
+        |
+        v
+Databricks Lakehouse
+  Bronze: ignition_demo.scada_data.tag_events
+        |
+        v
+  Silver: ignition_demo.saint_ot (mapping + normalized views)
+        |
+        v
+  Gold: ignition_demo.saint_ot (KPIs, rollups, forecast accuracy)
+        |
+        +--> Dashboards (AI/BI)
+        |
+        +--> Genie (Q&A on Gold + drilldown to Silver)
+```
 
 ### Provider names (recommended)
 
