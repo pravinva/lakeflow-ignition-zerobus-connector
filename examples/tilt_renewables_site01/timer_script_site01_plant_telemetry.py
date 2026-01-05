@@ -140,32 +140,53 @@ def handleTimerEvent():
         state["accumMs"] = 0
 
         # --- external drivers from other sources ---
-        grid_paths = [
-            GRID + "/Dispatch/Curtailment_pct",
-            GRID + "/Dispatch/TargetExport_kW",
-            GRID + "/Market/RRP_AUD_per_MWh",
-            GRID + "/Dispatch/FCAS_Enabled"
-        ]
-        grid_vals = system.tag.readBlocking(grid_paths)
-        curtail_pct = float(grid_vals[0].value or 0.0)
-        target_export_kw = float(grid_vals[1].value or 0.0)
-        rrp = float(grid_vals[2].value or 80.0)
-        fcas_enabled = bool(grid_vals[3].value or False)
+        # IMPORTANT: This script should still run even if [grid] and/or [cmms] providers are not set up yet.
+        # If reads fail (missing provider/tags), fall back to safe defaults and keep producing telemetry.
+
+        # Defaults (no curtailment, modest price, no FCAS)
+        curtail_pct = 0.0
+        target_export_kw = 0.0
+        rrp = 80.0
+        fcas_enabled = False
+
+        try:
+            grid_paths = [
+                GRID + "/Dispatch/Curtailment_pct",
+                GRID + "/Dispatch/TargetExport_kW",
+                GRID + "/Market/RRP_AUD_per_MWh",
+                GRID + "/Dispatch/FCAS_Enabled"
+            ]
+            grid_vals = system.tag.readBlocking(grid_paths)
+            curtail_pct = float(grid_vals[0].value or 0.0)
+            target_export_kw = float(grid_vals[1].value or 0.0)
+            rrp = float(grid_vals[2].value or 80.0)
+            fcas_enabled = bool(grid_vals[3].value or False)
+        except Exception:
+            # Keep defaults; don't spam logs every tick.
+            pass
+
         curtail_frac = clamp(curtail_pct / 100.0, 0.0, 1.0)
 
         # Maintenance forced outages (simulate operator-driven downtime)
-        cmms_paths = [
-            CMMS + "/Assets/Windfarm01/T01/ForcedOutage",
-            CMMS + "/Assets/Windfarm01/T02/ForcedOutage",
-            CMMS + "/Assets/Windfarm01/T03/ForcedOutage",
-            CMMS + "/Assets/SolarFarm01/I01/ForcedOutage",
-            CMMS + "/Assets/SolarFarm01/I02/ForcedOutage",
-            CMMS + "/Assets/BESS01/ForcedOutage",
-        ]
-        cmms_vals = system.tag.readBlocking(cmms_paths)
-        forced_t = [bool(cmms_vals[i].value or False) for i in range(3)]
-        forced_i = [bool(cmms_vals[3].value or False), bool(cmms_vals[4].value or False)]
-        forced_bess = bool(cmms_vals[5].value or False)
+        forced_t = [False, False, False]
+        forced_i = [False, False]
+        forced_bess = False
+        try:
+            cmms_paths = [
+                CMMS + "/Assets/Windfarm01/T01/ForcedOutage",
+                CMMS + "/Assets/Windfarm01/T02/ForcedOutage",
+                CMMS + "/Assets/Windfarm01/T03/ForcedOutage",
+                CMMS + "/Assets/SolarFarm01/I01/ForcedOutage",
+                CMMS + "/Assets/SolarFarm01/I02/ForcedOutage",
+                CMMS + "/Assets/BESS01/ForcedOutage",
+            ]
+            cmms_vals = system.tag.readBlocking(cmms_paths)
+            forced_t = [bool(cmms_vals[i].value or False) for i in range(3)]
+            forced_i = [bool(cmms_vals[3].value or False), bool(cmms_vals[4].value or False)]
+            forced_bess = bool(cmms_vals[5].value or False)
+        except Exception:
+            # Keep defaults
+            pass
 
         # --- met mast: wind + irradiance ---
         hour = system.date.getHour24(now)
