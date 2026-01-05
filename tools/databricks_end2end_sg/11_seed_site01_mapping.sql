@@ -39,8 +39,8 @@ USING (
   -- Grid/dispatch ([sg_grid])
   UNION ALL SELECT '[sg_grid]SG/Site01/Dispatch/TargetRate_units_per_min', 'sg_site01', 'target_throughput', 'units/min', 1.0, 0.0, 'grid', true
   UNION ALL SELECT '[sg_grid]SG/Site01/Dispatch/Curtailment_pct', 'sg_site01', 'curtailment', '%', 1.0, 0.0, 'grid', true
-  UNION ALL SELECT '[sg_grid]SG/Site01/Energy/GasPrice_AUD_per_GJ', 'sg_site01', 'gas_price', 'AUD/GJ', 1.0, 0.0, 'grid', true
-  UNION ALL SELECT '[sg_grid]SG/Site01/Energy/ElectricityPrice_AUD_per_MWh', 'sg_site01', 'elec_price', 'AUD/MWh', 1.0, 0.0, 'grid', true
+  UNION ALL SELECT '[sg_grid]SG/Site01/Energy/GasPrice_EUR_per_GJ', 'sg_site01', 'gas_price', 'EUR/GJ', 1.0, 0.0, 'grid', true
+  UNION ALL SELECT '[sg_grid]SG/Site01/Energy/ElectricityPrice_EUR_per_MWh', 'sg_site01', 'elec_price', 'EUR/MWh', 1.0, 0.0, 'grid', true
 
   -- CMMS ([sg_cmms])
   UNION ALL SELECT '[sg_cmms]SG/Site01/WorkOrders/ActiveCount', 'sg_site01', 'active_work_orders', 'count', 1.0, 0.0, 'cmms', true

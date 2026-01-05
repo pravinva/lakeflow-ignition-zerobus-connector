@@ -88,8 +88,8 @@ try:
             gv = system.tag.readBlocking([
                 GRID + "/Dispatch/TargetRate_units_per_min",
                 GRID + "/Dispatch/Curtailment_pct",
-                GRID + "/Energy/GasPrice_AUD_per_GJ",
-                GRID + "/Energy/ElectricityPrice_AUD_per_MWh"
+                GRID + "/Energy/GasPrice_EUR_per_GJ",
+                GRID + "/Energy/ElectricityPrice_EUR_per_MWh"
             ])
             target_rate = float(gv[0].value or target_rate)
             curtail_pct = float(gv[1].value or curtail_pct)

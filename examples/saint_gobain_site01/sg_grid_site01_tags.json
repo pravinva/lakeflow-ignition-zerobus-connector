@@ -29,8 +29,8 @@
           "name": "Energy",
           "tagType": "Folder",
           "tags": [
-            { "name": "GasPrice_AUD_per_GJ", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": 14.0 },
-            { "name": "ElectricityPrice_AUD_per_MWh", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": 120.0 }
+            { "name": "GasPrice_EUR_per_GJ", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": 9.0 },
+            { "name": "ElectricityPrice_EUR_per_MWh", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Float4", "value": 110.0 }
           ]
         },
         {

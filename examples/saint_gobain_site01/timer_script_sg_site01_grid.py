@@ -99,8 +99,8 @@ try:
         (DISPATCH + "/TargetRate_units_per_min", target),
         (DISPATCH + "/Curtailment_pct", curtail_pct),
         (DISPATCH + "/ConstraintActive", bool(constraint)),
-        (ENERGY + "/GasPrice_AUD_per_GJ", gas_price),
-        (ENERGY + "/ElectricityPrice_AUD_per_MWh", elec_price),
+        (ENERGY + "/GasPrice_EUR_per_GJ", gas_price),
+        (ENERGY + "/ElectricityPrice_EUR_per_MWh", elec_price),
         (EVENTS + "/EnergySpikeActive", bool(spike)),
         (EVENTS + "/LastEvent", last_event),
     ]
