@@ -72,6 +72,10 @@ temp/
 .tooling/
 scripts/__pycache__/
 
+# Stray folders from other repos (Lakeflow community connector work) — keep out of this repo.
+sources/
+tools/notebook_based_deployment/
+
 # Maven (if used)
 target/
 pom.xml.tag
