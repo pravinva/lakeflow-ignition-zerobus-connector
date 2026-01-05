@@ -15,35 +15,7 @@ The point of the demo is to show:
 
 ### Flow (pictorial)
 
-```mermaid
-flowchart LR
-  subgraph Ignition[Ignition Gateway]
-    SG["sg: plant telemetry\nfurnace, conveyor, cutting, KPIs"]
-    GRID["sg_grid: dispatch + energy context"]
-    CMMS["sg_cmms: maintenance/work orders"]
-    FC["sg_forecast: next-hour forecasts"]
-  end
-
-  ZB["Zerobus Connector\n(explicit tag paths)"]
-
-  subgraph DBX[Databricks Lakehouse]
-    B["Bronze\nignition_demo.scada_data.tag_events"]
-    MAP["Silver mapping\nsaint_ot.silver_signal_mapping"]
-    S1["Silver views\nsaint_ot.silver_* / normalized"]
-    G1["Gold views\nsaint_ot.gold_* KPIs"]
-  end
-
-  SG --> ZB
-  GRID --> ZB
-  CMMS --> ZB
-  FC --> ZB
-  ZB --> B
-  B --> MAP --> S1 --> G1
-
-  G1 --> DASH[Dashboards]
-  G1 --> GEN[Genie Q&A]
-  S1 --> GEN
-```
+![End-to-end flow (Saint-Gobain)](flow_sg.svg)
 
 ### Provider names (recommended)
 

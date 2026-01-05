@@ -12,35 +12,7 @@ This demo uses **Memory tags** + **Gateway Timer Scripts** (Jython) so it works 
 
 ## Flow (pictorial)
 
-```mermaid
-flowchart LR
-  subgraph Ignition[Ignition Gateway]
-    TILT["tilt: plant telemetry\nwind + solar + BESS + met mast"]
-    GRID["grid: POI + dispatch + market"]
-    CMMS["cmms: maintenance/work orders"]
-    FC["forecast: next-hour forecast"]
-  end
-
-  ZB["Zerobus Connector\n(explicit tag paths)"]
-
-  subgraph DBX[Databricks Lakehouse]
-    B["Bronze\nignition_demo.scada_data.tag_events"]
-    MAP["Silver mapping\nscada_silver.silver_signal_mapping"]
-    S1["Silver views\nscada_silver.silver_* / normalized"]
-    G1["Gold views\nscada_gold.gold_* KPIs"]
-  end
-
-  TILT --> ZB
-  GRID --> ZB
-  CMMS --> ZB
-  FC --> ZB
-  ZB --> B
-  B --> MAP --> S1 --> G1
-
-  G1 --> DASH[Dashboards]
-  G1 --> GEN[Genie Q&A]
-  S1 --> GEN
-```
+![End-to-end flow (Tilt Renewables)](flow_tilt.svg)
 
 ## What’s included
 
