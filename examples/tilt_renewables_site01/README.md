@@ -10,6 +10,38 @@ This example is a richer, **multi-asset** Tilt Renewables demo (not just wind). 
 
 This demo uses **Memory tags** + **Gateway Timer Scripts** (Jython) so it works without external hardware.
 
+## Flow (pictorial)
+
+```mermaid
+flowchart LR
+  subgraph Ignition[Ignition Gateway]
+    TILT[[tilt: plant telemetry<br/>wind + solar + BESS + met mast]]
+    GRID[[grid: POI + dispatch + market]]
+    CMMS[[cmms: maintenance/work orders]]
+    FC[[forecast: next-hour forecast]]
+  end
+
+  ZB[Zerobus Connector<br/>(explicit tag paths)]
+
+  subgraph DBX[Databricks Lakehouse]
+    B[(Bronze<br/>ignition_demo.scada_data.tag_events)]
+    MAP[(Silver mapping<br/>scada_silver.silver_signal_mapping)]
+    S1[(Silver views<br/>scada_silver.silver_* / normalized)]
+    G1[(Gold views<br/>scada_gold.gold_* KPIs)]
+  end
+
+  TILT --> ZB
+  GRID --> ZB
+  CMMS --> ZB
+  FC --> ZB
+  ZB --> B
+  B --> MAP --> S1 --> G1
+
+  G1 --> DASH[Dashboards]
+  G1 --> GEN[Genie Q&A]
+  S1 --> GEN
+```
+
 ## What’s included
 
 This demo uses **four “sources”** (four tag providers) to make the business story realistic:
@@ -32,6 +64,34 @@ Gateway Timer Scripts (create 4 timers at 1s or 2s):
 - **`timer_script_site01_grid_market.py`**
 - **`timer_script_site01_maintenance_events.py`**
 - **`timer_script_site01_weather_forecast.py`**
+
+Each provider has `Diagnostics/*` tags:
+
+- `TickCount` increments when the script runs
+- `LastRun/LastStatus/LastError` are quick “self-debug” signals
+
+## Demo tag model (Tilt Renewables multi-asset)
+
+`[tilt]Tilt/Site01/...`
+
+- `Windfarm01` (turbines, site wind, availability)
+- `SolarFarm01` (inverters, irradiance coupling)
+- `BESS01` (SOC, charge/discharge, limits)
+- `MetMast01` (wind speed, direction, irradiance)
+
+`[grid]Tilt/Site01/...`
+
+- `Substation01/POI/*` (export power, frequency)
+- `Dispatch/*` (target and curtailment)
+- `Market/*` (price + events)
+
+`[cmms]Tilt/Site01/...`
+
+- `WorkOrders/*` + forced outage flags/reasons
+
+`[forecast]Tilt/Site01/...`
+
+- next-hour forecasts for wind/solar/net
 
 ## 1) Create the tag providers
 
@@ -109,4 +169,37 @@ See:
 
 - `tools/databricks_end2end_tilt/README.md`
 
+Recommended run order in Databricks:
+
+- `tools/databricks_end2end_tilt/10_silver_scaffolding.sql`
+- `tools/databricks_end2end_tilt/11_seed_site01_mapping.sql`
+- `tools/databricks_end2end_tilt/20_silver_views.sql`
+- `tools/databricks_end2end_tilt/30_gold_views.sql`
+- `tools/databricks_end2end_tilt/40_dashboard_queries.sql`
+- `tools/databricks_end2end_tilt/50_genie_room_seed.md`
+
+### Dashboards (suggested)
+
+- **Fleet overview**: wind/solar/BESS/POI power, curtailment, price
+- **Constraint story**: dispatch target vs actual vs curtailment, “why did we under-deliver?”
+- **BESS ops**: SOC, net power, charge/discharge cycles, limits/alarms
+- **Maintenance impact**: forced outages + work orders vs lost production proxy
+- **Forecast vs actual**: next-hour forecast accuracy and confidence
+
+### Genie room (suggested tables + questions)
+
+Use `tools/databricks_end2end_tilt/50_genie_room_seed.md`.
+
+Suggested sources to add:
+
+- Gold KPI views (from `tools/databricks_end2end_tilt/30_gold_views.sql`)
+- `...silver_signals_1m` / `...silver_signals_latest` (drilldown)
+
+Example questions:
+
+- “What’s driving curtailment right now and how much energy are we spilling?”
+- “Show POI export vs wind + solar + BESS net power in the last 6 hours.”
+- “Which turbine is underperforming relative to wind speed?”
+- “How often did BESS hit charge/discharge limits today?”
+- “How accurate is the next-hour net power forecast?”
 

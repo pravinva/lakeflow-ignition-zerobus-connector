@@ -13,6 +13,38 @@ The point of the demo is to show:
 - **Data engineering outcomes**: raw tag events → normalized signals → KPIs
 - **Analytics outcomes**: dashboards + Genie questions that map to plant outcomes
 
+### Flow (pictorial)
+
+```mermaid
+flowchart LR
+  subgraph Ignition[Ignition Gateway]
+    SG[[sg: plant telemetry<br/>furnace, conveyor, cutting, KPIs]]
+    GRID[[sg_grid: dispatch + energy context]]
+    CMMS[[sg_cmms: maintenance/work orders]]
+    FC[[sg_forecast: next-hour forecasts]]
+  end
+
+  ZB[Zerobus Connector<br/>(explicit tag paths)]
+
+  subgraph DBX[Databricks Lakehouse]
+    B[(Bronze<br/>ignition_demo.scada_data.tag_events)]
+    MAP[(Silver mapping<br/>saint_ot.silver_signal_mapping)]
+    S1[(Silver views<br/>saint_ot.silver_* / normalized)]
+    G1[(Gold views<br/>saint_ot.gold_* KPIs)]
+  end
+
+  SG --> ZB
+  GRID --> ZB
+  CMMS --> ZB
+  FC --> ZB
+  ZB --> B
+  B --> MAP --> S1 --> G1
+
+  G1 --> DASH[Dashboards]
+  G1 --> GEN[Genie Q&A]
+  S1 --> GEN
+```
+
 ### Provider names (recommended)
 
 Use **separate providers per customer** so you can share a single Bronze table and still keep mapping clean:
