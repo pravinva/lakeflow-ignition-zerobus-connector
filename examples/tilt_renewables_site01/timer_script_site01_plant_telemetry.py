@@ -31,6 +31,25 @@ def handleTimerEvent():
 
     log = system.util.getLogger("tilt_site01.plant")
 
+    # Optional self-debug tags (create these in Tag Browser or re-import updated JSON).
+    DIAG = TILT + "/Diagnostics"
+
+    def _try_write_diag(status, err_msg):
+        try:
+            ts = system.date.format(system.date.now(), "yyyy-MM-dd HH:mm:ss")
+            system.tag.writeBlocking(
+                [DIAG + "/LastRun", DIAG + "/LastStatus", DIAG + "/LastError"],
+                [ts, status, err_msg or ""]
+            )
+            try:
+                cur = system.tag.readBlocking([DIAG + "/TickCount"])[0].value
+                cur = int(cur or 0)
+                system.tag.writeBlocking([DIAG + "/TickCount"], [cur + 1])
+            except Exception:
+                pass
+        except Exception:
+            pass
+
     def clamp(x, lo, hi):
         return lo if x < lo else hi if x > hi else x
 
@@ -440,10 +459,13 @@ def handleTimerEvent():
         bad = [(paths[i], str(results[i])) for i in range(len(results)) if str(results[i]) != "Good"]
         if bad:
             log.warn("Plant telemetry write failures (first 10): %r" % bad[:10])
+            _try_write_diag("WARN", "Write failures: %s" % str(bad[:1]))
         else:
             log.info("Plant telemetry tick ok (wrote %d tags). NetPlant_kW≈%.1f, curtail=%.1f%%, price=%.1f" % (len(paths), plant_net_kw, curtail_pct, rrp))
+            _try_write_diag("OK", "")
 
     except Exception as e:
         log.error("Plant telemetry timer failed", e)
+        _try_write_diag("ERROR", str(e))
 
 

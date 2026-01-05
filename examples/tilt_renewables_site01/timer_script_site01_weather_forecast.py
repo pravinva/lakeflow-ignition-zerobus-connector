@@ -22,6 +22,25 @@ def handleTimerEvent():
 
     log = system.util.getLogger("tilt_site01.forecast")
 
+    # Optional self-debug tags (create these in Tag Browser or re-import updated JSON).
+    DIAG = "[forecast]Tilt/Site01/Diagnostics"
+
+    def _try_write_diag(status, err_msg):
+        try:
+            ts = system.date.format(system.date.now(), "yyyy-MM-dd HH:mm:ss")
+            system.tag.writeBlocking(
+                [DIAG + "/LastRun", DIAG + "/LastStatus", DIAG + "/LastError"],
+                [ts, status, err_msg or ""]
+            )
+            try:
+                cur = system.tag.readBlocking([DIAG + "/TickCount"])[0].value
+                cur = int(cur or 0)
+                system.tag.writeBlocking([DIAG + "/TickCount"], [cur + 1])
+            except Exception:
+                pass
+        except Exception:
+            pass
+
     def clamp(x, lo, hi):
         return lo if x < lo else hi if x > hi else x
 
@@ -82,8 +101,10 @@ def handleTimerEvent():
         ]
         system.tag.writeBlocking([p for (p, _) in writes], [x for (_, x) in writes])
         log.info("Forecast updated: net=%.1f kW, conf=%.0f%%, expCurt=%.1f%%" % (net_f, conf, expected_curtail))
+        _try_write_diag("OK", "")
 
     except Exception as e:
         log.error("Forecast timer failed", e)
+        _try_write_diag("ERROR", str(e))
 
 

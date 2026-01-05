@@ -33,6 +33,25 @@ def handleTimerEvent():
 
     log = system.util.getLogger("tilt_site01.cmms")
 
+    # Optional self-debug tags (create these in Tag Browser or re-import updated JSON).
+    DIAG = CMMS + "/Diagnostics"
+
+    def _try_write_diag(status, err_msg):
+        try:
+            ts = system.date.format(system.date.now(), "yyyy-MM-dd HH:mm:ss")
+            system.tag.writeBlocking(
+                [DIAG + "/LastRun", DIAG + "/LastStatus", DIAG + "/LastError"],
+                [ts, status, err_msg or ""]
+            )
+            try:
+                cur = system.tag.readBlocking([DIAG + "/TickCount"])[0].value
+                cur = int(cur or 0)
+                system.tag.writeBlocking([DIAG + "/TickCount"], [cur + 1])
+            except Exception:
+                pass
+        except Exception:
+            pass
+
     try:
         g = system.util.getGlobals()
         now = system.date.now()
@@ -150,8 +169,10 @@ def handleTimerEvent():
             log.info("CMMS tick: %s, activeWO=%d, high=%d, techs=%d, weatherHold=%r" % (last_event, active_count, high_count, techs, weather_hold))
         else:
             log.info("CMMS tick ok: activeWO=%d, high=%d, techs=%d, weatherHold=%r" % (active_count, high_count, techs, weather_hold))
+        _try_write_diag("OK", "")
 
     except Exception as e:
         log.error("CMMS timer failed", e)
+        _try_write_diag("ERROR", str(e))
 
 

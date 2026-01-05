@@ -7,6 +7,16 @@
       "tagType": "Folder",
       "tags": [
         {
+          "name": "Diagnostics",
+          "tagType": "Folder",
+          "tags": [
+            { "name": "TickCount", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "Int4", "value": 0 },
+            { "name": "LastRun", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "String", "value": "" },
+            { "name": "LastStatus", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "String", "value": "" },
+            { "name": "LastError", "tagType": "AtomicTag", "valueSource": "memory", "dataType": "String", "value": "" }
+          ]
+        },
+        {
           "name": "Forecast",
           "tagType": "Folder",
           "tags": [

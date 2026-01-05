@@ -26,6 +26,27 @@ def handleTimerEvent():
 
     log = system.util.getLogger("tilt_site01.grid")
 
+    # Optional self-debug tags (create these in Tag Browser or re-import updated JSON).
+    DIAG = GRID + "/Diagnostics"
+
+    def _try_write_diag(status, err_msg):
+        try:
+            # Only writes if tags exist; ignore failures so simulation still runs.
+            ts = system.date.format(system.date.now(), "yyyy-MM-dd HH:mm:ss")
+            system.tag.writeBlocking(
+                [DIAG + "/LastRun", DIAG + "/LastStatus", DIAG + "/LastError"],
+                [ts, status, err_msg or ""]
+            )
+            # TickCount increments best-effort
+            try:
+                cur = system.tag.readBlocking([DIAG + "/TickCount"])[0].value
+                cur = int(cur or 0)
+                system.tag.writeBlocking([DIAG + "/TickCount"], [cur + 1])
+            except Exception:
+                pass
+        except Exception:
+            pass
+
     def clamp(x, lo, hi):
         return lo if x < lo else hi if x > hi else x
 
@@ -181,10 +202,13 @@ def handleTimerEvent():
         bad = [(paths[i], str(results[i])) for i in range(len(results)) if str(results[i]) != "Good"]
         if bad:
             log.warn("Grid/market write failures (first 10): %r" % bad[:10])
+            _try_write_diag("WARN", "Write failures: %s" % str(bad[:1]))
         else:
             log.info("Grid tick ok. POI export=%.1f kW (target=%.1f, curtail=%.1f%%), price=%.1f" % (export_kw, target_export_kw, curtail_pct, rrp))
+            _try_write_diag("OK", "")
 
     except Exception as e:
         log.error("Grid/market timer failed", e)
+        _try_write_diag("ERROR", str(e))
 
 
