@@ -25,32 +25,6 @@ GROUP BY ts_1m;
 
 -- 1) Site KPIs (5-minute)
 CREATE OR REPLACE VIEW ignition_demo.tilt_ot.gold_site_kpis_5m AS
-WITH x AS (
-  SELECT
-    date_trunc('minute', ts_1m) AS ts_1m,
-    * EXCEPT (ts_1m)
-  FROM ignition_demo.tilt_ot._site01_1m
-),
-agg AS (
-  SELECT
-    date_trunc('minute', ts_1m) - INTERVAL (minute(ts_1m) % 5) MINUTE AS ts_5m,
-    AVG(poi_export_kw) AS export_kw_avg,
-    AVG(dispatch_target_kw) AS target_kw_avg,
-    AVG(poi_export_kw - dispatch_target_kw) AS tracking_error_kw_avg,
-    AVG(curtailment_pct) AS curtailment_pct_avg,
-    MAX(constraint_active) AS constraint_active_any,
-    AVG(rrp_aud_mwh) AS rrp_avg,
-    AVG(wind_kw) AS wind_kw_avg,
-    AVG(solar_kw) AS solar_kw_avg,
-    AVG(bess_kw) AS bess_kw_avg,
-    AVG(bess_soc_pct) AS bess_soc_pct_avg,
-    AVG(active_work_orders) AS active_work_orders_avg,
-    AVG(high_priority_work_orders) AS high_priority_work_orders_avg,
-    AVG(net_forecast_h01_kw) AS net_forecast_h01_kw_avg,
-    AVG(forecast_confidence_h01_pct) AS forecast_confidence_h01_pct_avg
-  FROM x
-  GROUP BY date_trunc('minute', ts_1m) - INTERVAL (minute(ts_1m) % 5) MINUTE
-)
 SELECT
   ts_5m,
   export_kw_avg,
@@ -67,7 +41,27 @@ SELECT
   high_priority_work_orders_avg,
   net_forecast_h01_kw_avg,
   forecast_confidence_h01_pct_avg
-FROM agg;
+FROM (
+  SELECT
+    -- 5-minute bucket start (Databricks-compatible)
+    to_timestamp(from_unixtime(floor(unix_timestamp(ts_1m) / 300) * 300)) AS ts_5m,
+    AVG(poi_export_kw) AS export_kw_avg,
+    AVG(dispatch_target_kw) AS target_kw_avg,
+    AVG(poi_export_kw - dispatch_target_kw) AS tracking_error_kw_avg,
+    AVG(curtailment_pct) AS curtailment_pct_avg,
+    MAX(constraint_active) AS constraint_active_any,
+    AVG(rrp_aud_mwh) AS rrp_avg,
+    AVG(wind_kw) AS wind_kw_avg,
+    AVG(solar_kw) AS solar_kw_avg,
+    AVG(bess_kw) AS bess_kw_avg,
+    AVG(bess_soc_pct) AS bess_soc_pct_avg,
+    AVG(active_work_orders) AS active_work_orders_avg,
+    AVG(high_priority_work_orders) AS high_priority_work_orders_avg,
+    AVG(net_forecast_h01_kw) AS net_forecast_h01_kw_avg,
+    AVG(forecast_confidence_h01_pct) AS forecast_confidence_h01_pct_avg
+  FROM ignition_demo.tilt_ot._site01_1m
+  GROUP BY to_timestamp(from_unixtime(floor(unix_timestamp(ts_1m) / 300) * 300))
+) agg;
 
 -- 2) Daily KPIs (energy + curtailment + revenue proxy)
 CREATE OR REPLACE VIEW ignition_demo.tilt_ot.gold_site_kpis_daily AS
@@ -114,14 +108,14 @@ WITH x AS (
 ),
 agg AS (
   SELECT
-    date_trunc('minute', ts_1m) - INTERVAL (minute(ts_1m) % 5) MINUTE AS ts_5m,
+    to_timestamp(from_unixtime(floor(unix_timestamp(ts_1m) / 300) * 300)) AS ts_5m,
     AVG(poi_export_kw) AS export_kw_avg,
     AVG(dispatch_target_kw) AS target_kw_avg,
     AVG(poi_export_kw - dispatch_target_kw) AS error_kw_avg,
     AVG(ABS(poi_export_kw - dispatch_target_kw)) AS mae_kw,
     AVG(CASE WHEN ABS(poi_export_kw - dispatch_target_kw) <= 250.0 THEN 1 ELSE 0 END) AS pct_intervals_within_250kw
   FROM x
-  GROUP BY date_trunc('minute', ts_1m) - INTERVAL (minute(ts_1m) % 5) MINUTE
+  GROUP BY to_timestamp(from_unixtime(floor(unix_timestamp(ts_1m) / 300) * 300))
 )
 SELECT
   ts_5m,
