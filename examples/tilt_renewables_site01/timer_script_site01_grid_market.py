@@ -51,6 +51,9 @@ def handleTimerEvent():
         return lo if x < lo else hi if x > hi else x
 
     try:
+        # Heartbeat: if you don't see TickCount/LastRun moving, the timer isn't executing (or changes weren't applied).
+        _try_write_diag("START", "")
+
         g = system.util.getGlobals()
         now = system.date.now()
         state = g.get("tilt_site01_grid_state")
