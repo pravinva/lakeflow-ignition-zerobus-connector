@@ -88,6 +88,90 @@ Each provider has `Diagnostics/*` tags:
 
 - next-hour forecasts for wind/solar/net
 
+## What do “grid”, “cmms”, and “forecast” mean for a renewable site?
+
+Real renewable operators don’t just look at raw SCADA watts. Day-to-day decisions depend on:
+
+- **`tilt` (plant telemetry / SCADA)**: turbine/inverter/BESS/meteorological signals coming from OT systems.
+- **`grid` (grid connection + dispatch + market context)**: what the grid/market is asking for and what the point-of-interconnection is actually doing (POI meter, curtailment, price, frequency events).
+- **`cmms` (maintenance / work management)**: work order backlog and “forced outage” flags that directly explain underperformance.
+- **`forecast` (near-term prediction)**: next-hour expected wind/solar/net production (what operations will plan against).
+
+The demo uses four providers to mimic “multiple source systems” while still landing everything into a **single Bronze table**.
+
+## Key tags (what they mean)
+
+### `tilt` (plant telemetry / SCADA)
+
+Config / knobs:
+
+- **`[tilt]Tilt/Site01/Config/SimEnabled`**: kill-switch for the simulator.
+- **`[tilt]Tilt/Site01/Config/UpdateEveryMs`**: throttle update cadence (default 1000ms).
+- **Wind/solar/BESS sizing knobs** (used by the simulation): `RatedPower_T0*_kW`, `SolarACCapacity_kW`, `BESS_EnergyCapacity_kWh`, `BESS_MaxCharge_kW`, `BESS_MaxDischarge_kW`.
+
+Met mast (weather that drives production):
+
+- **`MetMast01/WindSpeed_mps`**, **`WindDir_deg`**: primary driver for turbine power.
+- **`MetMast01/Irradiance_Wm2`**: primary driver for solar power.
+- `AmbientTemp_C`, `Humidity_pct`, `Pressure_hPa`: extra context for dashboards/Genie.
+
+Wind farm:
+
+- **`Windfarm01/Site/Power_Total_kW`**: total wind power.
+- **`Windfarm01/Site/Availability_pct`**: availability proxy.
+- **`Windfarm01/Site/Curtailment_pct`**: plant-side curtailment proxy (used for explaining reduced output).
+- Per turbine (T01/T02/T03): `Electrical/Power_kW`, `ReactivePower_kVAr`, `PowerFactor`, plus status/fault fields.
+
+Solar farm:
+
+- Per inverter: `AC/Power_kW`, `AC/Frequency_Hz`, and `Availability` / `Status`.
+- `SolarFarm01/Plant/Power_Total_kW`: total solar power.
+
+BESS:
+
+- **`SoC/StateOfCharge_pct`**, `StateOfHealth_pct`
+- **`Power/NetPower_kW`** (positive = discharge, negative = charge), and split charge/discharge powers
+- `Energy/Throughput_MWh`, `Energy/Cycles`: useful “battery story” metrics.
+
+### `grid` (POI meter + dispatch + market context)
+
+POI meter (what the grid actually sees):
+
+- **`Substation01/POI/ExportPower_kW`**, `ImportPower_kW`, `NetPower_kW`
+- **`Frequency_Hz`**, `Voltage_kV`, `BreakerClosed`: grid event/connection context
+
+Dispatch / constraints (what operations is asked to do):
+
+- **`Dispatch/TargetExport_kW`**: requested export target.
+- **`Dispatch/Curtailment_pct`**: curtailment level applied due to constraints.
+- **`Dispatch/ConstraintActive`**: boolean “we are constrained right now”.
+- **`Dispatch/FCAS_Enabled`**: optional ancillary services flag (for “grid services” story).
+
+Market / events (why constraints happen):
+
+- **`Market/RRP_AUD_per_MWh`**: spot price (demo uses AUD as Tilt is AU/NZ context).
+- **`Market/PriceSpikeActive`**, `Events/FrequencyEventActive`, `Events/VoltageSagActive`, `Events/LastEvent`: event narrative hooks for dashboards/Genie.
+
+### `cmms` (maintenance / work management)
+
+These tags are the “why did we underperform?” layer:
+
+- Work orders: **`WorkOrders/ActiveCount`**, **`HighPriorityCount`**, `LastWorkOrderId`, `LastWorkOrderSummary`
+- Asset condition (wind turbines, inverters, BESS):
+  - **`Assets/.../ForcedOutage`**: boolean “forced out”
+  - **`Assets/.../OutageReason`**: text reason
+  - **`Assets/.../HealthScore`**: 60–99 health proxy
+- Ops flags: `Operations/TechniciansOnSite`, `Operations/WeatherHold` (useful for explaining downtime).
+
+### `forecast` (next-hour expected production)
+
+These tags model the “what do we expect in the next hour?” data feed:
+
+- **`Forecast/H01/AsOfTime`**
+- **`Forecast/H01/WindPower_kW`**, `SolarPower_kW`, `BESSPower_kW`, **`NetPower_kW`**
+- **`Forecast/H01/ExpectedCurtailment_pct`**
+- **`Forecast/H01/Confidence_pct`**
+
 ## 1) Create the tag providers
 
 In the Gateway UI:
