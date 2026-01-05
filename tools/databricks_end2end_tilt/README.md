@@ -6,14 +6,10 @@ on top of the Ignition Zerobus connector.
 ## Assumptions
 
 - Bronze ingest table exists and is Zerobus-enabled.
-  - Repo helper: `onboarding/databricks/01_create_tables.py`
-  - Default names in that notebook:
-    - Catalog: `ignition_demo`
-    - Schema: `tilt_ot`
-    - Bronze table: `ot_events_bronze`
+  - In your environment, use:
+    - Bronze source: `ignition_demo.scada_data.tag_events`
 
-If your module is configured to write to a different table (e.g. `ignition_demo.scada_data.tag_events`), update the
-SQL variables at the top of each file accordingly.
+This pack builds Silver/Gold in `ignition_demo.tilt_ot` on top of that Bronze table.
 
 ## Run order
 

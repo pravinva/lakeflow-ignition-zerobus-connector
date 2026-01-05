@@ -3,11 +3,12 @@
 -- (Databricks SQL doesn't support variables everywhere; keep it simple.)
 
 CREATE CATALOG IF NOT EXISTS ignition_demo;
+CREATE SCHEMA IF NOT EXISTS ignition_demo.scada_data;
 CREATE SCHEMA IF NOT EXISTS ignition_demo.tilt_ot;
 
 -- Required input (Bronze)
--- If your Bronze table is named differently, change references in downstream files:
--- ignition_demo.tilt_ot.ot_events_bronze
+-- In this environment, Bronze source is:
+-- ignition_demo.scada_data.tag_events
 
 CREATE TABLE IF NOT EXISTS ignition_demo.tilt_ot.silver_asset_registry (
   asset_id STRING,
@@ -52,7 +53,7 @@ SELECT
   b.quality,
   b.quality_code,
   b.tag_path
-FROM ignition_demo.tilt_ot.ot_events_bronze b
+FROM ignition_demo.scada_data.tag_events b
 LEFT JOIN ignition_demo.tilt_ot.silver_signal_mapping m
   ON b.tag_path = m.tag_path AND m.active = true;
 
