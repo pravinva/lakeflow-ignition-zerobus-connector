@@ -174,8 +174,11 @@ This is used for the “proactive operations” story: **do we expect problems i
 ### What to ingest (Zerobus “Explicit Tag Paths”)
 
 You can ingest *folders* if you want, but for demos it’s easiest to use explicit paths so you control scope.
+Selection modes for direct subscriptions:
 
-**Important (Ignition 8.1 / direct subscriptions):** the Zerobus config page shows Folder/Pattern modes, but **direct subscriptions currently support Explicit only**. Folder/Pattern are not implemented yet, so use **Explicit Tag Paths**.
+- **Explicit**: subscribe to exactly the tag paths you list.
+- **Folder**: browse a folder and subscribe to **all Atomic Tags** under it (optionally include subfolders).
+- **Pattern**: browse providers and subscribe to Atomic Tags whose **full tag path** matches a **Java regex**.
 
 Minimum “business story” paths:
 

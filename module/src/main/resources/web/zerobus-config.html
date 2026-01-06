@@ -575,13 +575,10 @@
                             <div class="form-group">
                                 <label for="tagSelectionMode">Selection Mode</label>
                                 <select class="form-control" id="tagSelectionMode" name="tagSelectionMode" onchange="updateTagSelectionUI()">
-                                    <option value="explicit">Explicit - Specify exact tag paths (supported)</option>
-                                    <option value="folder" disabled>Folder - Select all tags in a folder (not implemented)</option>
-                                    <option value="pattern" disabled>Pattern - Use regex pattern (not implemented)</option>
+                                    <option value="explicit">Explicit - Specify exact tag paths</option>
+                                    <option value="folder">Folder - Select all atomic tags in a folder</option>
+                                    <option value="pattern">Pattern - Use regex over full tag path</option>
                                 </select>
-                                <small class="form-help">
-                                    Note: Direct subscriptions currently support <b>Explicit</b> only. Folder/Pattern are shown for roadmap visibility but are not implemented yet.
-                                </small>
                             </div>
                             <div class="form-group">
                                 <div class="checkbox-group">
@@ -886,9 +883,8 @@
                 : true;
             const mode = document.getElementById('tagSelectionMode').value;
             document.getElementById('explicitTagsSection').style.display = (directEnabled && mode === 'explicit') ? 'block' : 'none';
-            // Folder/pattern selection modes are intentionally not implemented yet; keep their UI hidden.
-            document.getElementById('folderPathSection').style.display = 'none';
-            document.getElementById('patternSection').style.display = 'none';
+            document.getElementById('folderPathSection').style.display = (directEnabled && mode === 'folder') ? 'block' : 'none';
+            document.getElementById('patternSection').style.display = (directEnabled && mode === 'pattern') ? 'block' : 'none';
 
             // Disable mode selection if direct subscriptions are disabled
             document.getElementById('tagSelectionMode').disabled = !directEnabled;

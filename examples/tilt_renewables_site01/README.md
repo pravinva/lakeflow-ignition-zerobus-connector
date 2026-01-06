@@ -222,9 +222,13 @@ Designer → **Scripting → Gateway Events → Timer**
 
 ## 4) Ingest (Zerobus module)
 
-The module’s **direct subscriptions** currently support `tagSelectionMode = explicit` only.
+For Ignition 8.1, the recommended ingest path is **direct subscriptions** (no Event Stream scripts required).
 
-> The Zerobus config page shows Folder/Pattern modes, but those are not implemented yet for direct subscriptions in Ignition 8.1. Use **Explicit Tag Paths**.
+Tag selection modes supported for direct subscriptions:
+
+- **Explicit**: subscribe to exactly the tag paths you list.
+- **Folder**: browse a folder and subscribe to **all Atomic Tags** under it (optionally include subfolders).
+- **Pattern**: browse providers and subscribe to Atomic Tags whose **full tag path** matches a **Java regex**.
 
 Start with a small, high-signal list:
 
