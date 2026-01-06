@@ -224,6 +224,8 @@ Designer → **Scripting → Gateway Events → Timer**
 
 The module’s **direct subscriptions** currently support `tagSelectionMode = explicit` only.
 
+> The Zerobus config page shows Folder/Pattern modes, but those are not implemented yet for direct subscriptions in Ignition 8.1. Use **Explicit Tag Paths**.
+
 Start with a small, high-signal list:
 
 - `[tilt]Tilt/Site01/MetMast01/WindSpeed_mps`

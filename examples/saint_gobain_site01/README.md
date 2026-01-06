@@ -175,6 +175,8 @@ This is used for the “proactive operations” story: **do we expect problems i
 
 You can ingest *folders* if you want, but for demos it’s easiest to use explicit paths so you control scope.
 
+**Important (Ignition 8.1 / direct subscriptions):** the Zerobus config page shows Folder/Pattern modes, but **direct subscriptions currently support Explicit only**. Folder/Pattern are not implemented yet, so use **Explicit Tag Paths**.
+
 Minimum “business story” paths:
 
 - Plant (`sg`)
