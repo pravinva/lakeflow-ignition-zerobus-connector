@@ -79,8 +79,13 @@ The timer script reads these values (cached, refreshed every ~5s) so you can tun
 
 ### 5) Ingest to Databricks with Zerobus (optional)
 
-The module’s current **direct subscriptions** implementation supports **`tagSelectionMode = explicit` only**.
-That means you must list the specific tag paths you want to ingest (folder/pattern selection is not applied at runtime yet).
+For Ignition 8.1/8.3, the recommended ingest path is **direct subscriptions** (no Event Stream scripts required).
+
+Tag selection modes supported for direct subscriptions:
+
+- **Explicit**: subscribe to exactly the tag paths you list
+- **Folder**: subscribe to all Atomic Tags under one folder root (optionally include subfolders)
+- **Pattern**: Java regex over full tag path (useful to subscribe multiple providers / a whole site)
 
 Add a few example paths in the Zerobus config UI:
 

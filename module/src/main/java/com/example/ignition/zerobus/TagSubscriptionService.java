@@ -493,15 +493,6 @@ public class TagSubscriptionService {
             Date ts = (qv != null && qv.getTimestamp() != null) ? qv.getTimestamp() : new Date();
             String quality = (qv != null && qv.getQuality() != null) ? qv.getQuality().toString() : "UNKNOWN";
 
-            // optional filtering: onlyOnChange + numeric deadband
-            if (config.isOnlyOnChange()) {
-                Object last = lastSentValueByTag.get(tagPathStr);
-                if (!hasMeaningfulChange(last, value)) {
-                    return;
-                }
-                lastSentValueByTag.put(tagPathStr, value);
-            }
-
             acceptTagEvent(new TagEvent(tagPathStr, value, quality, ts), "direct");
         }
     }
@@ -597,9 +588,26 @@ public class TagSubscriptionService {
             return false;
         }
 
+        // Optional filtering: onlyOnChange + numeric deadband.
+        // Apply consistently for BOTH direct subscriptions and HTTP ingest.
+        if (config.isOnlyOnChange()) {
+            String tagPathStr = te.getTagPath() != null ? te.getTagPath() : "";
+            Object last = lastSentValueByTag.get(tagPathStr);
+            if (!hasMeaningfulChange(last, te.getValue())) {
+                if (config.isDebugLogging()) {
+                    logger.debug("Skipped tag event (onlyOnChange) ({}) -> {}", source, tagPathStr);
+                }
+                return true; // not an error; just filtered out
+            }
+        }
+
         OTEvent evt = mapper.map(te);
         boolean ok = buffer.offer(evt);
         if (ok) {
+            if (config.isOnlyOnChange()) {
+                String tagPathStr = te.getTagPath() != null ? te.getTagPath() : "";
+                lastSentValueByTag.put(tagPathStr, te.getValue());
+            }
             totalEventsReceived.incrementAndGet();
             if (config.isDebugLogging()) {
                 logger.debug("Accepted tag event ({}) -> {}", source, te.getTagPath());
