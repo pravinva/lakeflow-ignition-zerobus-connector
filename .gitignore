@@ -108,3 +108,6 @@ onboarding/ignition/**/backup_ignition81/
 
 # Local generated/backup config files (do not commit)
 module/src/main/resources/zerobus.properties*
+
+# Video talk tracks are local artifacts (do not commit)
+**/VIDEO_TALK_TRACK.md
