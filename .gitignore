@@ -120,3 +120,7 @@ tools/module-signer/
 docker-out/
 # Local generated/backup config files (do not commit)
 module/src/main/resources/zerobus.properties*
+
+# Local-only demo artifacts (do not commit)
+AGL_Tomago_Demo_Talk_Track.pdf
+tools/tmp_agl_logo.svg
