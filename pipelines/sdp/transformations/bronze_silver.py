@@ -1,0 +1,204 @@
+"""Bronze to Silver transformations for the Zerobus connector pipeline.
+
+Streams zerobus_events (Zerobus landing table) and exposes:
+- raw_throughput: bronze copy of zerobus_events with lightweight added columns, deduped via AUTO CDC Type 1.
+- aggregated_tags: 1-minute windowed aggregations for downstream analytics.
+- parsed_tags, enriched_tags: MVs for asset context.
+
+zerobus_events has CDF enabled (delta.enableChangeDataFeed). raw_throughput is built with AUTO CDC Type 1:
+same key (event_time, tag_path, source_system) keeps latest by event_time; no history.
+raw_tags is a view over zerobus_events for backward compat; CDF source is the table zerobus_events.
+
+Zerobus_events schema (from Zerobus connector):
+  event_time          BIGINT   - epoch microseconds
+  ingestion_timestamp BIGINT   - epoch microseconds
+  source_system       STRING
+  tag_provider        STRING
+  tag_path            STRING   - e.g. [agl_bess]AGL/.../SoC_pct
+  numeric_value       DOUBLE
+  string_value        STRING
+  boolean_value       BOOLEAN
+  quality             STRING
+  quality_code        INT
+"""
+
+from pyspark import pipelines as dp
+from pyspark.sql import functions as F
+
+from agl_analytics.config import site_table, table
+
+# CDF metadata to exclude from the CDC target. We keep _commit_timestamp so E2E latency
+# (tag time → Delta commit) can be computed; _change_type and _commit_version are not needed in the table.
+_CDF_EXCEPT_COLUMNS = ["_change_type", "_commit_version"]
+
+
+@dp.view(name="raw_tags_cdf")
+def raw_tags_cdf():
+    """Source view: zerobus_events change data feed with lightweight added columns only (no groupBy, no drops)."""
+    return (
+        spark.readStream.option("readChangeFeed", "true").table(table("zerobus_events"))  # noqa: F821
+        .withColumn(
+            "event_timestamp",
+            F.to_timestamp(F.col("event_time") / 1_000_000),
+        )
+    )
+
+
+dp.create_streaming_table(
+    name="raw_throughput",
+    comment="Deduplicated Bronze copy of zerobus_events with added event_timestamp; AUTO CDC Type 1 dedup by (event_time, tag_path, source_system).",
+    cluster_by=["event_time", "tag_path"],
+)
+dp.create_auto_cdc_flow(
+    target="raw_throughput",
+    source="raw_tags_cdf",
+    keys=["event_time", "tag_path", "source_system"],
+    sequence_by=F.col("event_time"),
+    except_column_list=_CDF_EXCEPT_COLUMNS,
+    stored_as_scd_type=1,
+)
+
+
+@dp.table(
+    name="aggregated_tags",
+    comment="1-minute aggregated tag values from zerobus_events stream",
+)
+@dp.expect("valid_window", "window_start IS NOT NULL AND window_end IS NOT NULL")
+@dp.expect("has_tag_name", "tag_name IS NOT NULL AND length(trim(tag_name)) > 0")
+@dp.expect("valid_sample_count", "sample_count > 0")
+def aggregated_tags():
+    """Streaming table: 1-minute tumbling window aggregation of raw tags.
+
+    Reads from bronze raw_throughput (same pipeline) and computes per tag_path:
+    avg_value, min_value, max_value, stddev_value, sample_count.
+    """
+    return (
+        spark.readStream.table("raw_throughput")  # noqa: F821
+        .withColumn(
+            "tag_value",
+            F.coalesce(
+                F.col("numeric_value"),
+                F.when(F.col("boolean_value"), F.lit(1.0)).otherwise(F.lit(0.0)),
+            ),
+        )
+        .withWatermark("event_timestamp", "1 minute")
+        .groupBy(
+            F.window("event_timestamp", "1 minute").alias("window"),
+            "tag_path",
+            "source_system",
+            "tag_provider",
+        )
+        .agg(
+            F.avg("tag_value").alias("avg_value"),
+            F.min("tag_value").alias("min_value"),
+            F.max("tag_value").alias("max_value"),
+            F.stddev("tag_value").alias("stddev_value"),
+            F.count("*").alias("sample_count"),
+        )
+        .select(
+            F.col("window.start").alias("window_start"),
+            F.col("window.end").alias("window_end"),
+            F.col("tag_path").alias("tag_name"),
+            "source_system",
+            "tag_provider",
+            "avg_value",
+            "min_value",
+            "max_value",
+            "stddev_value",
+            "sample_count",
+        )
+    )
+
+
+@dp.materialized_view(
+    name="parsed_tags",
+    comment="Pre-parsed raw tags with asset_id and tag_name extracted from tag_path",
+)
+@dp.expect("valid_event_timestamp", "event_timestamp IS NOT NULL")
+@dp.expect("has_asset_id", "asset_id IS NOT NULL AND length(trim(asset_id)) > 0")
+def parsed_tags():
+    """MV: parses tag_path from raw_throughput (sourced from zerobus_events) into app-ready columns.
+
+    Eliminates the need for the app to run a CTE on every query.
+    Tag path: [provider]AGL/Australia/{State}/{Site}/Site01/{Asset}/{Subsystem}/{Signal}
+    Extracts: asset_id = lower(site_asset), tag_name = lower(subsystem/signal).
+    """
+    strip_provider = r"^\[.*?\]"
+    raw = spark.read.table("raw_throughput")  # noqa: F821
+
+    parts = F.split(F.regexp_replace("tag_path", strip_provider, ""), "/")
+
+    return (
+        raw.withColumn("_p", parts)
+        .filter(F.size("_p") >= 6)
+        .select(
+            F.to_timestamp(F.col("event_time") / 1000000).alias("event_timestamp"),
+            F.to_timestamp(F.col("ingestion_timestamp") / 1000000).alias("ingest_timestamp"),
+            F.col("_commit_timestamp").alias("delta_commit_timestamp"),
+            F.lower(F.concat_ws("_", F.col("_p")[3], F.col("_p")[5])).alias("asset_id"),
+            F.when(F.col("tag_provider") == "agl_bess", "battery_bess")
+            .when(F.col("tag_provider") == "agl_grid", "grid_infrastructure")
+            .when(F.col("tag_provider") == "agl_market", "market_data")
+            .when(F.col("tag_provider") == "agl_cmms", "maintenance")
+            .otherwise(F.col("tag_provider"))
+            .alias("asset_type"),
+            F.lower(
+                F.array_join(F.slice("_p", 7, F.size("_p") - 6), "/")
+            ).alias("tag_name"),
+            F.coalesce(
+                F.col("numeric_value"),
+                F.when(F.col("boolean_value"), F.lit(1.0))
+                .when(~F.col("boolean_value"), F.lit(0.0)),
+            ).alias("tag_value"),
+            F.col("string_value").alias("tag_value_str"),
+            F.col("quality_code").alias("quality"),
+            "source_system",
+            F.coalesce(F.col("sdt_compressed"), F.lit(False)).alias("sdt_compressed"),
+            F.coalesce(F.col("compression_ratio"), F.lit(0.0)).alias("compression_ratio"),
+            F.coalesce(F.col("sdt_enabled"), F.lit(False)).alias("sdt_enabled"),
+        )
+    )
+
+
+@dp.materialized_view(
+    name="enriched_tags",
+    comment="Aggregated tags enriched with asset_id and signal_name from signal mappings",
+)
+@dp.expect("valid_window_start", "window_start IS NOT NULL")
+@dp.expect("valid_sample_count", "sample_count >= 0")
+def enriched_tags():
+    """Materialized view: joins aggregated_tags with all site signal mappings.
+
+    Unions the signal_mapping tables from agl_ot, saint_ot, and tilt_ot to
+    resolve tag_path -> asset_id, signal_name, unit, source_domain.
+    """
+    agg = spark.read.table(table("aggregated_tags"))  # noqa: F821
+
+    # Union all active signal mappings across sites (same catalog, site schemas)
+    mappings = (
+        spark.read.table(site_table("agl_ot", "silver_signal_mapping"))  # noqa: F821
+        .unionByName(spark.read.table(site_table("saint_ot", "silver_signal_mapping")))  # noqa: F821
+        .unionByName(spark.read.table(site_table("tilt_ot", "silver_signal_mapping")))  # noqa: F821
+        .filter(F.col("active") == True)  # noqa: E712
+        .select("tag_path", "asset_id", "signal_name", "unit", "source_domain")
+    )
+
+    return (
+        agg.join(mappings, agg.tag_name == mappings.tag_path, "left")
+        .select(
+            "window_start",
+            "window_end",
+            "tag_name",
+            "source_system",
+            "tag_provider",
+            F.coalesce(mappings.asset_id, F.lit("unknown")).alias("asset_id"),
+            F.coalesce(mappings.signal_name, agg.tag_name).alias("signal_name"),
+            "unit",
+            "source_domain",
+            "avg_value",
+            "min_value",
+            "max_value",
+            "stddev_value",
+            "sample_count",
+        )
+    )

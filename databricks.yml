@@ -1,0 +1,62 @@
+# Databricks Asset Bundle: Zerobus Ignition AGL demo app
+# Pipeline is created/updated via SDK (onboarding/databricks/deploy_pipeline_sdk.py) pointing at a Git folder.
+# This bundle deploys only the app.
+#
+# Example: databricks bundle deploy -t production
+
+bundle:
+  name: zerobus-ignition-agl
+
+variables:
+  catalog:
+    description: Unity Catalog for OT/asset tables
+    default: "agl_demo"
+  schema:
+    description: Schema for OT tables (e.g. raw_tags, asset framework)
+    default: "ot"
+  warehouse_id:
+    description: SQL warehouse ID for the app (lookup by name or set per target)
+    lookup:
+      warehouse: "Serverless Starter Warehouse"
+
+targets:
+  production:
+    default: true
+    mode: production
+    workspace:
+      profile: daveok
+      root_path: /Workspace/Users/david.okeeffe@databricks.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: "agl_demo"
+      schema: "ot"
+
+resources:
+  apps:
+    zerobus_ignition_agl:
+      name: zerobus-ignition-agl
+      description: "Zerobus Ignition AGL – OT tag streaming and asset framework demo"
+      source_code_path: https://github.com/dgokeeffe/lakeflow-ignition-zerobus-connector.git
+      config:
+        command:
+          - uvicorn
+          - backend.main:app
+          - --host
+          - "0.0.0.0"
+          - --port
+          - "$DATABRICKS_APP_PORT"
+        env:
+          - name: DATABRICKS_WAREHOUSE_ID
+            value_from: sql-warehouse
+          - name: APP_TARGET_CATALOG
+            value: ${var.catalog}
+          - name: APP_TARGET_SCHEMA
+            value: ${var.schema}
+          - name: USE_PARSED_TAGS
+            value: "true"
+          - name: STATIC_DIR
+            value: "./static"
+      resources:
+        - name: sql-warehouse
+          sql_warehouse:
+            id: ${var.warehouse_id}
+            permission: CAN_USE
