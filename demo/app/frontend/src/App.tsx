@@ -10,6 +10,7 @@ import Performance from './pages/Performance';
 import Architecture from './pages/Architecture';
 import AssetHierarchy from './pages/AssetHierarchy';
 import AssetTemplates from './pages/AssetTemplates';
+import DataGeneration from './pages/DataGeneration';
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="/compression" element={<Compression />} />
           <Route path="/performance" element={<Performance />} />
           <Route path="/architecture" element={<Architecture />} />
+          <Route path="/data-generation" element={<DataGeneration />} />
           <Route path="/asset-framework/hierarchy" element={<AssetHierarchy />} />
           <Route path="/asset-framework/templates" element={<AssetTemplates />} />
         </Routes>

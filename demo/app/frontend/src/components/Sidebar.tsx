@@ -9,6 +9,7 @@ const mainLinks = [
   { to: '/compression', label: 'Compression' },
   { to: '/performance', label: 'Performance' },
   { to: '/architecture', label: 'Architecture' },
+  { to: '/data-generation', label: 'Data Generation' },
 ];
 
 const assetFrameworkLinks = [
