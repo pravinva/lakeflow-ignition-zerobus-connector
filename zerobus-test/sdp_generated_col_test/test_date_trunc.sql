@@ -14,5 +14,5 @@ AS SELECT
   DATE(FROM_UNIXTIME(event_time / 1000000))                      AS event_day,
   DATE_TRUNC('HOUR', FROM_UNIXTIME(event_time / 1000000))        AS event_hour,
   DATE_TRUNC('MINUTE', FROM_UNIXTIME(event_time / 1000000))      AS event_minute
-FROM STREAM(agl_demo.ot.zerobus_events)
+FROM STREAM(agl_demo.ot.raw_tags)
 LIMIT 100;

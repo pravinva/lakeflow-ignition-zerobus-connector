@@ -1,8 +1,8 @@
 """
-Zerobus Ingest SDK - Test JSON write to zerobus_events.
+Zerobus Ingest SDK - Test JSON write to raw_tags.
 
 Sends 3 JSON records matching the full 18-column OTEvent schema to
-agl_demo.ot.zerobus_events. This isolates whether the 1521 error is
+agl_demo.ot.raw_tags. This isolates whether the 1521 error is
 caused by the table (constraints / CDF / clustering) or by protobuf
 stream registration.
 
@@ -22,7 +22,7 @@ from zerobus.sdk.shared import RecordType, StreamConfigurationOptions, TableProp
 # --- Configuration -----------------------------------------------------------
 SERVER_ENDPOINT = os.environ.get("ZEROBUS_ENDPOINT", "7405607216190670.zerobus.eastus2.azuredatabricks.net")
 WORKSPACE_URL = os.environ.get("DATABRICKS_HOST", "https://adb-7405607216190670.10.azuredatabricks.net")
-TABLE_NAME = os.environ.get("ZEROBUS_TARGET_TABLE", "agl_demo.ot.zerobus_events")
+TABLE_NAME = os.environ.get("ZEROBUS_TARGET_TABLE", "agl_demo.ot.raw_tags")
 CLIENT_ID = os.environ.get("DATABRICKS_CLIENT_ID", "")
 CLIENT_SECRET = os.environ.get("DATABRICKS_CLIENT_SECRET", "")
 # -----------------------------------------------------------------------------
@@ -31,7 +31,7 @@ NUM_RECORDS = 3
 
 
 def make_record(i: int) -> dict:
-    """Build a JSON record matching the zerobus_events 18-column schema exactly."""
+    """Build a JSON record matching the raw_tags 18-column schema exactly."""
     now_micros = int(time.time() * 1_000_000)
     return {
         "event_id": str(uuid.uuid4()),

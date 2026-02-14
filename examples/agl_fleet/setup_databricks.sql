@@ -8,8 +8,7 @@
 -- Creates:
 --   __CATALOG__              catalog (managed location below)
 --   __CATALOG__.__SCHEMA__   schema
---   __CATALOG__.__SCHEMA__.zerobus_events  (Bronze - Zerobus writes here)
---   __CATALOG__.__SCHEMA__.raw_tags  (view over zerobus_events for backward compat)
+--   __CATALOG__.__SCHEMA__.raw_tags  (Bronze - Zerobus writes here)
 --   Asset Framework + SDP site schemas (agl_ot, saint_ot, tilt_ot) in same catalog.
 --
 -- Placeholders __CATALOG__ and __SCHEMA__ are replaced by run_setup_sql.py from env
@@ -22,11 +21,12 @@ CREATE SCHEMA IF NOT EXISTS __CATALOG__.__SCHEMA__
   COMMENT 'OT data from Ignition via Zerobus connector';
 
 -- 1. Bronze: Zerobus landing table - schema matches OTEvent protobuf exactly.
---    Renamed to zerobus_events to avoid possible Zerobus internal conflicts with "raw_tags".
 --    Zerobus may auto-create this table, but pre-creating ensures column comments and correct types.
 --    Compression: DBR 16+ uses ZSTD by default for new managed tables; we do not set it explicitly.
---    Primary key + liquid clustering improve dedup/merge and time-range + tag-path queries.
-CREATE TABLE IF NOT EXISTS __CATALOG__.__SCHEMA__.zerobus_events (
+--    Primary key improves dedup/merge queries.
+--    Drop leftover view from prior zerobus_events era (raw_tags was a compat view; now it's the table).
+DROP VIEW IF EXISTS __CATALOG__.__SCHEMA__.raw_tags;
+CREATE TABLE IF NOT EXISTS __CATALOG__.__SCHEMA__.raw_tags (
   event_id              STRING      NOT NULL  COMMENT 'UUID per event',
   event_time            BIGINT      NOT NULL  COMMENT 'Source timestamp (micros since epoch)',
   tag_path              STRING      NOT NULL  COMMENT 'Full Ignition tag path e.g. [agl_bess]AGL/Australia/NSW/Tomago/Site01/BESS01/Telemetry/SoC_pct',
@@ -45,33 +45,22 @@ CREATE TABLE IF NOT EXISTS __CATALOG__.__SCHEMA__.zerobus_events (
   compression_ratio    DOUBLE                COMMENT 'Running ratio at emission; 0 when SDT off',
   sdt_enabled           BOOLEAN               COMMENT 'Gateway config: SDT was on when this event was sent',
   batch_bytes_sent      BIGINT                COMMENT 'Size in bytes of the batch this event was sent in (demo observability)',
-  CONSTRAINT zerobus_events_pk PRIMARY KEY (event_id)
+  CONSTRAINT raw_tags_pk PRIMARY KEY (event_id)
 )
 -- NOTE: Do NOT use CLUSTER BY here. Zerobus Ingest rejects stream creation (INTERNAL/1521)
--- on tables with liquid clustering enabled. Add clustering after initial load if needed:
---   ALTER TABLE __CATALOG__.__SCHEMA__.zerobus_events CLUSTER BY (event_time, tag_path);
+-- on tables with liquid clustering enabled. Add clustering on downstream silver/gold tables instead.
 TBLPROPERTIES ('delta.enableChangeDataFeed' = 'true')
 COMMENT 'Bronze layer: raw OT tag events from Ignition via Zerobus (matches OTEvent protobuf)';
 
--- 1a. View for backward compat: app and pipeline SQL can keep referencing raw_tags.
---     Drop view or table if present (raw_tags may be view from prior run or table from pre-zerobus_events).
-DROP VIEW IF EXISTS __CATALOG__.__SCHEMA__.raw_tags;
-DROP TABLE IF EXISTS __CATALOG__.__SCHEMA__.raw_tags;
-CREATE OR REPLACE VIEW __CATALOG__.__SCHEMA__.raw_tags AS SELECT * FROM __CATALOG__.__SCHEMA__.zerobus_events;
+-- 1b. Enable CDF on raw_tags if table already existed (idempotent).
+ALTER TABLE __CATALOG__.__SCHEMA__.raw_tags SET TBLPROPERTIES (delta.enableChangeDataFeed = 'true');
 
--- 1b. Enable CDF on zerobus_events if table already existed (idempotent).
-ALTER TABLE __CATALOG__.__SCHEMA__.zerobus_events SET TBLPROPERTIES (delta.enableChangeDataFeed = 'true');
-
--- 1c. For existing zerobus_events created without PK (run once).
--- ALTER TABLE __CATALOG__.__SCHEMA__.zerobus_events ADD CONSTRAINT zerobus_events_pk PRIMARY KEY (event_id);
+-- 1c. For existing raw_tags created without PK (run once).
+-- ALTER TABLE __CATALOG__.__SCHEMA__.raw_tags ADD CONSTRAINT raw_tags_pk PRIMARY KEY (event_id);
 --
 -- WARNING: Do NOT enable liquid clustering while Zerobus is writing to this table.
 -- Zerobus Ingest rejects stream creation (INTERNAL/1521) on CLUSTER BY tables.
--- If you need clustering for query performance, add it after pausing Zerobus ingest:
---   ALTER TABLE __CATALOG__.__SCHEMA__.zerobus_events CLUSTER BY (event_time, tag_path);
---   OPTIMIZE __CATALOG__.__SCHEMA__.zerobus_events FULL;
--- Then remove it before resuming:
---   ALTER TABLE __CATALOG__.__SCHEMA__.zerobus_events CLUSTER BY NONE;
+-- See onboarding/ZEROBUS_CLUSTER_BY_BUG.md for full compatibility matrix.
 
 -- 2. Asset Framework tables
 --    See pipelines/sql/setup_asset_framework.sql for full DDL + seed data.
@@ -188,8 +177,7 @@ CREATE TABLE IF NOT EXISTS __CATALOG__.tilt_ot.silver_signal_mapping (
 --    Set SP_APPLICATION_ID env or replace __SP_APPLICATION_ID__ in this file.
 GRANT USE CATALOG ON CATALOG __CATALOG__ TO `__SP_APPLICATION_ID__`;
 GRANT USE SCHEMA ON SCHEMA __CATALOG__.__SCHEMA__ TO `__SP_APPLICATION_ID__`;
-GRANT MODIFY, SELECT ON TABLE __CATALOG__.__SCHEMA__.zerobus_events TO `__SP_APPLICATION_ID__`;
-GRANT SELECT ON VIEW __CATALOG__.__SCHEMA__.raw_tags TO `__SP_APPLICATION_ID__`;
+GRANT MODIFY, SELECT ON TABLE __CATALOG__.__SCHEMA__.raw_tags TO `__SP_APPLICATION_ID__`;
 GRANT MODIFY, SELECT ON TABLE __CATALOG__.__SCHEMA__.asset_templates TO `__SP_APPLICATION_ID__`;
 GRANT MODIFY, SELECT ON TABLE __CATALOG__.__SCHEMA__.template_attributes TO `__SP_APPLICATION_ID__`;
 GRANT MODIFY, SELECT ON TABLE __CATALOG__.__SCHEMA__.asset_hierarchy TO `__SP_APPLICATION_ID__`;

@@ -11,7 +11,7 @@ Phase 1 (constraint isolation):
   v2_pk          -- add PRIMARY KEY (event_id)
   v3_cluster     -- add CLUSTER BY (event_time, tag_path)
   v4_cdf         -- add CDF (delta.enableChangeDataFeed)
-  v5_all         -- all constraints (same as production zerobus_events)
+  v5_all         -- all constraints (same as production raw_tags)
 
 Phase 2 (partitioning + generated columns):
   v6_partition      -- PARTITIONED BY (tag_provider) on existing column

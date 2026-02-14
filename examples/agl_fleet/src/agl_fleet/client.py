@@ -122,7 +122,7 @@ def setup_gateway(
     zerobus_endpoint: str,
     oauth_client_id: str,
     oauth_client_secret: str,
-    target_table: str = f"{os.environ.get('CATALOG', 'agl_demo')}.{os.environ.get('SCHEMA', 'ot')}.zerobus_events",
+    target_table: str = f"{os.environ.get('CATALOG', 'agl_demo')}.{os.environ.get('SCHEMA', 'ot')}.raw_tags",
     enable_direct_subscriptions: bool = False,
     include_optimized_defaults: bool = True,
 ) -> dict:

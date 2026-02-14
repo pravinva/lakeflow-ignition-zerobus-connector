@@ -1,15 +1,14 @@
 """Bronze to Silver transformations for the Zerobus connector pipeline.
 
-Streams zerobus_events (Zerobus landing table) and exposes:
-- raw_throughput: bronze copy of zerobus_events with lightweight added columns, deduped via AUTO CDC Type 1.
+Streams raw_tags (Zerobus landing table) and exposes:
+- raw_throughput: bronze copy of raw_tags with lightweight added columns, deduped via AUTO CDC Type 1.
 - aggregated_tags: 1-minute windowed aggregations for downstream analytics.
 - parsed_tags, enriched_tags: MVs for asset context.
 
-zerobus_events has CDF enabled (delta.enableChangeDataFeed). raw_throughput is built with AUTO CDC Type 1:
+raw_tags has CDF enabled (delta.enableChangeDataFeed). raw_throughput is built with AUTO CDC Type 1:
 same key (event_time, tag_path, source_system) keeps latest by event_time; no history.
-raw_tags is a view over zerobus_events for backward compat; CDF source is the table zerobus_events.
 
-Zerobus_events schema (from Zerobus connector):
+raw_tags schema (from Zerobus connector):
   event_time          BIGINT   - epoch microseconds
   ingestion_timestamp BIGINT   - epoch microseconds
   source_system       STRING
@@ -34,9 +33,9 @@ _CDF_EXCEPT_COLUMNS = ["_change_type", "_commit_version"]
 
 @dp.view(name="raw_tags_cdf")
 def raw_tags_cdf():
-    """Source view: zerobus_events change data feed with lightweight added columns only (no groupBy, no drops)."""
+    """Source view: raw_tags change data feed with lightweight added columns only (no groupBy, no drops)."""
     return (
-        spark.readStream.option("readChangeFeed", "true").table(table("zerobus_events"))  # noqa: F821
+        spark.readStream.option("readChangeFeed", "true").table(table("raw_tags"))  # noqa: F821
         .withColumn(
             "event_timestamp",
             F.to_timestamp(F.col("event_time") / 1_000_000),
@@ -46,7 +45,7 @@ def raw_tags_cdf():
 
 dp.create_streaming_table(
     name="raw_throughput",
-    comment="Deduplicated Bronze copy of zerobus_events with added event_timestamp; AUTO CDC Type 1 dedup by (event_time, tag_path, source_system).",
+    comment="Deduplicated Bronze copy of raw_tags with added event_timestamp; AUTO CDC Type 1 dedup by (event_time, tag_path, source_system).",
     cluster_by=["event_time", "tag_path"],
 )
 dp.create_auto_cdc_flow(
@@ -61,7 +60,7 @@ dp.create_auto_cdc_flow(
 
 @dp.table(
     name="aggregated_tags",
-    comment="1-minute aggregated tag values from zerobus_events stream",
+    comment="1-minute aggregated tag values from raw_tags stream",
     cluster_by=["window_start", "tag_name"],
 )
 @dp.expect("valid_window", "window_start IS NOT NULL AND window_end IS NOT NULL")
@@ -119,7 +118,7 @@ def aggregated_tags():
 @dp.expect("valid_event_timestamp", "event_timestamp IS NOT NULL")
 @dp.expect("has_asset_id", "asset_id IS NOT NULL AND length(trim(asset_id)) > 0")
 def parsed_tags():
-    """MV: parses tag_path from raw_throughput (sourced from zerobus_events) into app-ready columns.
+    """MV: parses tag_path from raw_throughput (sourced from raw_tags) into app-ready columns.
 
     Eliminates the need for the app to run a CTE on every query.
     Tag path: [provider]AGL/Australia/{State}/{Site}/Site01/{Asset}/{Subsystem}/{Signal}

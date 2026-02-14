@@ -1,10 +1,10 @@
 # OTEvent protobuf ↔ Delta table schema alignment
 
-The Zerobus connector sends `OTEvent` protobuf messages. The target Delta table (`zerobus_events`) **must** match the proto in column names, order, and types for Zerobus to accept the stream. Mismatch can cause INTERNAL/1521.
+The Zerobus connector sends `OTEvent` protobuf messages. The target Delta table (`raw_tags`) **must** match the proto in column names, order, and types for Zerobus to accept the stream. Mismatch can cause INTERNAL/1521.
 
 ## Field-by-field alignment
 
-| Proto (ot_event.proto) | Delta (zerobus_events) | Notes |
+| Proto (ot_event.proto) | Delta (raw_tags) | Notes |
 |------------------------|------------------------|-------|
 | event_id string        | event_id STRING        | PK    |
 | event_time int64       | event_time BIGINT      | **Microseconds** since Unix epoch (Java sends micros) |
@@ -67,7 +67,7 @@ This means the common OT/IoT pattern of partitioning by a computed date column d
 
 ```sql
 -- This WILL NOT work with Zerobus:
-CREATE TABLE zerobus_events (
+CREATE TABLE raw_tags (
   event_time BIGINT,
   event_day  DATE GENERATED ALWAYS AS (CAST(FROM_UNIXTIME(event_time / 1000000) AS DATE)),
   ...
@@ -89,7 +89,7 @@ CREATE TABLE zerobus_events (
 
 ### Should you partition the Zerobus landing table?
 
-**Probably not.** The `zerobus_events` table is a bronze landing zone optimized for write throughput. Delta data skipping on `event_time BIGINT` already provides file pruning for time-range queries without partitioning. The silver/gold tables downstream (written by Spark, not Zerobus) can freely use `CLUSTER BY` for read performance.
+**Probably not.** The `raw_tags` table is a bronze landing zone optimized for write throughput. Delta data skipping on `event_time BIGINT` already provides file pruning for time-range queries without partitioning. The silver/gold tables downstream (written by Spark, not Zerobus) can freely use `CLUSTER BY` for read performance.
 
 Adding partitioning to the landing table requires changing the protobuf, Java mapper, and every deployment — significant churn for marginal benefit. Liquid clustering support for Zerobus is also likely coming, which would be the right solution.
 

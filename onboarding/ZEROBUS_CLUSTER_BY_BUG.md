@@ -29,7 +29,7 @@ This is NOT caused by:
 Remove liquid clustering from the target table:
 
 ```sql
-ALTER TABLE catalog.schema.zerobus_events CLUSTER BY NONE;
+ALTER TABLE catalog.schema.raw_tags CLUSTER BY NONE;
 ```
 
 Stream creation succeeds immediately after this (no gateway restart needed; the retry loop picks it up).
@@ -163,7 +163,7 @@ Extended the isolation test to determine if traditional partitioning and generat
 
 ## Recommendation: keep the landing table flat (no partitioning)
 
-**Don't partition `zerobus_events`.** Use liquid clustering on downstream tables instead.
+**Don't partition `raw_tags`.** Use liquid clustering on downstream tables instead.
 
 ### Why not partition the Zerobus landing table?
 
@@ -175,12 +175,12 @@ Extended the isolation test to determine if traditional partitioning and generat
 
 4. **Liquid clustering support is likely coming.** The 1521 limitation is clearly a gap in the current Zerobus implementation, not a fundamental design decision. The Zerobus team is actively developing the product; liquid clustering support is a reasonable expectation. Adding partitioning now means a migration away from it later.
 
-5. **The SDP pipeline already solves this.** `zerobus_events` is the bronze landing zone — raw, append-only, optimized for write throughput. Silver and gold tables are written by Spark (not Zerobus), so they **can** use `CLUSTER BY (event_time, tag_path)`. The architecture is already "flat landing table → clustered downstream tables."
+5. **The SDP pipeline already solves this.** `raw_tags` is the bronze landing zone — raw, append-only, optimized for write throughput. Silver and gold tables are written by Spark (not Zerobus), so they **can** use `CLUSTER BY (event_time, tag_path)`. The architecture is already "flat landing table → clustered downstream tables."
 
 ### Recommended architecture
 
 ```
-Ignition → Zerobus → zerobus_events (bronze, flat, no clustering)
+Ignition → Zerobus → raw_tags (bronze, flat, no clustering)
                           │
                           ▼  (SDP streaming pipeline)
                       silver_tags (CLUSTER BY event_time, tag_path)
@@ -189,7 +189,7 @@ Ignition → Zerobus → zerobus_events (bronze, flat, no clustering)
                       gold_metrics (CLUSTER BY event_time, site_id)
 ```
 
-- **Bronze (`zerobus_events`)**: No partitioning, no clustering. Zerobus writes here at full throughput. Delta data skipping on `event_time` handles time-range queries adequately.
+- **Bronze (`raw_tags`)**: No partitioning, no clustering. Zerobus writes here at full throughput. Delta data skipping on `event_time` handles time-range queries adequately.
 - **Silver/Gold**: Written by Spark via the SDP pipeline. Free to use `CLUSTER BY`, `GENERATED ALWAYS AS`, or any Delta feature. This is where query performance optimizations belong.
 
 ## SDP pipeline: GENERATED ALWAYS AS vs date_trunc (2026-02-14)
@@ -198,7 +198,7 @@ Tested whether SDP (Spark Declarative Pipelines / DLT) can use `GENERATED ALWAYS
 
 ### Test setup
 
-Deployed a throwaway pipeline (`[test] sdp-generated-col-test`) with 3 SQL files reading from `agl_demo.ot.zerobus_events`:
+Deployed a throwaway pipeline (`[test] sdp-generated-col-test`) with 3 SQL files reading from `agl_demo.ot.raw_tags`:
 
 | Test | SQL | Result |
 |------|-----|--------|
@@ -235,7 +235,7 @@ AS SELECT
   *,
   DATE(FROM_UNIXTIME(event_time / 1000000))                 AS event_day,
   DATE_TRUNC('HOUR', FROM_UNIXTIME(event_time / 1000000))   AS event_hour
-FROM STREAM(agl_demo.ot.zerobus_events);
+FROM STREAM(agl_demo.ot.raw_tags);
 ```
 
 Test script: `zerobus-test/sdp_generated_col_test/run_test_pipeline.py`

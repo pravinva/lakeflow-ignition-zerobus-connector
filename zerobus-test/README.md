@@ -78,4 +78,4 @@ Uses `SP_PROFILE_NAME` (default `agl-demo`). Requires the table to exist (run `m
 
 ## Relation to Ignition and Error 1521
 
-This test uses **JSON** records and a **separate** table (`zerobus_test`). The Ignition module sends **OTEvent protobuf** to `zerobus_events`. A passing test confirms SDK + endpoint + OAuth work for that table; it does **not** prove the `zerobus_events` table or OTEvent schema. For **Stream creation failed: INTERNAL / 1521** on the gateway, see the repo root [CLAUDE.md](../CLAUDE.md) section "Double-check before configure (stream creation / Error 1521)" and [module/SCHEMA_ALIGNMENT.md](../module/SCHEMA_ALIGNMENT.md).
+This test uses **JSON** records and a **separate** table (`zerobus_test`). The Ignition module sends **OTEvent protobuf** to `raw_tags`. A passing test confirms SDK + endpoint + OAuth work for that table; it does **not** prove the `raw_tags` table or OTEvent schema. For **Stream creation failed: INTERNAL / 1521** on the gateway, see the repo root [CLAUDE.md](../CLAUDE.md) section "Double-check before configure (stream creation / Error 1521)" and [module/SCHEMA_ALIGNMENT.md](../module/SCHEMA_ALIGNMENT.md).

@@ -129,9 +129,9 @@ def parse_args() -> argparse.Namespace:
         "--target-table",
         default=os.environ.get(
             "ZEROBUS_TARGET_TABLE",
-            f"{os.environ.get('CATALOG', 'agl_demo')}.{os.environ.get('SCHEMA', 'ot')}.zerobus_events",
+            f"{os.environ.get('CATALOG', 'agl_demo')}.{os.environ.get('SCHEMA', 'ot')}.raw_tags",
         ),
-        help="Target Delta table (default: ${CATALOG}.${SCHEMA}.zerobus_events or agl_demo.ot.zerobus_events)",
+        help="Target Delta table (default: ${CATALOG}.${SCHEMA}.raw_tags or agl_demo.ot.raw_tags)",
     )
 
     return parser.parse_args()

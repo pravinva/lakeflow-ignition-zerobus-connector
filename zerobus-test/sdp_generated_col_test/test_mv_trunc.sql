@@ -11,5 +11,5 @@ AS SELECT
   AVG(numeric_value)                          AS avg_value,
   MIN(numeric_value)                          AS min_value,
   MAX(numeric_value)                          AS max_value
-FROM agl_demo.ot.zerobus_events
+FROM agl_demo.ot.raw_tags
 GROUP BY 1, 2, 3;

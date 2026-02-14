@@ -32,7 +32,7 @@ make links-83           # Step 7:  Print all URLs for easy navigation
 | Step | Make target | What happens |
 |------|-------------|-------------|
 | 1 | `db-create-sp` | Create SP at account level, generate OAuth client secret, assign to workspace, write `[agl-demo]` profile to `~/.databrickscfg`, run UC grants |
-| 2 | `db-setup-sql` | Create catalog, schema, `zerobus_events` table (+ `raw_tags` view), asset framework tables, UC volume, SP grants |
+| 2 | `db-setup-sql` | Create catalog, schema, `raw_tags` table, asset framework tables, UC volume, SP grants |
 | | `db-wheel` | Build + upload `agl_analytics` wheel to UC volume |
 | | `db-pipeline` | Create/update the SDP ETL pipeline via SDK (Git-backed) |
 | | `db-app-deploy` | Deploy the Databricks App from GitHub via SDK |
@@ -242,7 +242,7 @@ All under `/system/zerobus`: `GET /health`, `GET /diagnostics`, `POST /config`, 
 | Zerobus Endpoint | `7405607216190670.zerobus.eastus2.azuredatabricks.net` |
 | Service Principal ID | `66c066ad-d5a9-496f-8da5-6d7bc2f5d954` |
 | SP Display Name | `ignition-zerobus-agl` |
-| Target Table | `${var.catalog}.${var.schema}.zerobus_events` (e.g. agl_demo.ot.zerobus_events); `raw_tags` is a view for compat |
+| Target Table | `${var.catalog}.${var.schema}.raw_tags` (e.g. agl_demo.ot.raw_tags) |
 | Databricks CLI Profile | `agl-demo` (in `~/.databrickscfg`, OAuth M2M) |
 | SQL Warehouse | `e65d34bf5b095b0f` (Serverless Starter Warehouse) |
 
@@ -260,7 +260,7 @@ Extract the workspace ID from the URL: `adb-7405607216190670` → `7405607216190
 
 When Zerobus shows **Initialized: false, Connected: false** and **Stream creation failed (INTERNAL / 1521)**, verify:
 
-**Quick check:** `curl -s http://localhost:7088/system/zerobus/config` — ensure `targetTable` is `catalog.schema.zerobus_events` (the Delta **table**), not `raw_tags` (the view). If it shows `raw_tags`, re-run `make configure-83` so the gateway gets `zerobus_events`.
+**Quick check:** `curl -s http://localhost:7088/system/zerobus/config` — ensure `targetTable` is `catalog.schema.raw_tags`.
 
 1. **No CLUSTER BY (liquid clustering)** — Zerobus Ingest **does not support** tables with `CLUSTER BY`. Stream creation fails immediately with 1521. Fix: `ALTER TABLE ... CLUSTER BY NONE`. The DDL in `setup_databricks.sql` no longer uses CLUSTER BY. See `module/SCHEMA_ALIGNMENT.md` for the full isolation test results.
 2. **Workspace ID match** — `workspaceUrl` and `zerobusEndpoint` must be the **same workspace**.
@@ -268,7 +268,7 @@ When Zerobus shows **Initialized: false, Connected: false** and **Stream creatio
    - `zerobusEndpoint` comes from Makefile `ZEROBUS_ENDPOINT` (e.g. `7405607216190670.zerobus.eastus2.azuredatabricks.net`).
    - Extract IDs: URL `adb-7405607216190670` → `7405607216190670`; endpoint first segment → `7405607216190670`. They must match.
    - `make configure-83` now validates this and fails with a clear error if they differ.
-3. **Target table** — Must exist and be writable: `agl_demo.ot.zerobus_events` (or your `CATALOG.SCHEMA.zerobus_events`). After `db-clean`, run `make db-setup-sql` so the table and SP grants exist before configuring the gateway.
+3. **Target table** — Must exist and be writable: `agl_demo.ot.raw_tags` (or your `CATALOG.SCHEMA.raw_tags`). After `db-clean`, run `make db-setup-sql` so the table and SP grants exist before configuring the gateway.
 4. **Schema match** — The Delta table schema (column names, order, types) must match the OTEvent protobuf exactly for Zerobus to accept the stream; mismatch can cause INTERNAL/1521. See `module/SCHEMA_ALIGNMENT.md`. Timestamps are **microseconds** (BIGINT) in both proto and table; Java mapper sends micros.
 5. **SP credentials** — Gateway uses `oauthClientId` / `oauthClientSecret` from the **[agl-demo]** profile. Ensure `client_id` and `client_secret` are set and the SP has UC grants on the table.
 
@@ -283,9 +283,9 @@ When Zerobus shows **Initialized: false, Connected: false** and **Stream creatio
 
 1. **"Failed to get Zerobus token"** — Does NOT always mean bad credentials. Check that `workspaceUrl` and `zerobusEndpoint` point to the **same workspace ID**. A previous config pointed endpoint to workspace `984752964297111` (az-field-east) while the SP only had access to `7405607216190670` (daveok).
 
-2. **SP needs UC grants** — The service principal needs `USE CATALOG`, `USE SCHEMA`, `MODIFY`, and `SELECT` on `zerobus_events`. Run the GRANTs in `examples/agl_fleet/setup_databricks.sql`.
+2. **SP needs UC grants** — The service principal needs `USE CATALOG`, `USE SCHEMA`, `MODIFY`, and `SELECT` on `raw_tags`. Run the GRANTs in `examples/agl_fleet/setup_databricks.sql`.
 
-3. **Schema is `ot`, not `bronze`** — Target table is `${var.catalog}.${var.schema}.zerobus_events` (default ot). `raw_tags` is a view over `zerobus_events` for backward compat. The `bronze` schema does not exist.
+3. **Schema is `ot`, not `bronze`** — Target table is `${var.catalog}.${var.schema}.raw_tags` (default ot). The `bronze` schema does not exist.
 
 4. **Docker build requires `IGNITION_HOME=/usr/local/bin/ignition`** — The default in the Dockerfile is `/usr/local/ignition` which doesn't exist in the 8.3 image. Always pass `--build-arg IGNITION_HOME=/usr/local/bin/ignition`.
 
@@ -328,7 +328,7 @@ curl -s -X POST http://localhost:7088/system/zerobus/config \
     "zerobusEndpoint": "7405607216190670.zerobus.eastus2.azuredatabricks.net",
     "oauthClientId": "66c066ad-d5a9-496f-8da5-6d7bc2f5d954",
     "oauthClientSecret": "<your-oauth-client-secret>",
-    "targetTable": "${var.catalog}.${var.schema}.zerobus_events",
+    "targetTable": "${var.catalog}.${var.schema}.raw_tags",
     "enableDirectSubscriptions": false,
     "batchSize": 1000,
     "batchFlushIntervalMs": 500,

@@ -11,5 +11,5 @@ AS SELECT
   event_id,
   event_time,
   tag_path
-FROM STREAM(agl_demo.ot.zerobus_events)
+FROM STREAM(agl_demo.ot.raw_tags)
 LIMIT 100;

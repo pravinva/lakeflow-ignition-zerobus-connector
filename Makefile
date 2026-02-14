@@ -210,7 +210,7 @@ restore-81: ## Restore 8.1 gateway from restore/restore.gwbk
 .PHONY: configure-83
 configure-83: ## Push Databricks/Zerobus config to 8.3 gateway
 	@echo "▸ Configuring Zerobus on 8.3 gateway (port $(PORT_83))..."
-	@echo "  workspace from profile [$(SP_PROFILE_NAME)]; endpoint=$(ZEROBUS_ENDPOINT); table=$(CATALOG).$(SCHEMA).zerobus_events"
+	@echo "  workspace from profile [$(SP_PROFILE_NAME)]; endpoint=$(ZEROBUS_ENDPOINT); table=$(CATALOG).$(SCHEMA).raw_tags"
 	cd examples/agl_fleet && \
 		CATALOG=$(CATALOG) SCHEMA=$(SCHEMA) \
 		uv run --extra setup agl-sim --setup-only \
@@ -222,7 +222,7 @@ configure-83: ## Push Databricks/Zerobus config to 8.3 gateway
 .PHONY: configure-81
 configure-81: ## Push Databricks/Zerobus config to 8.1 gateway
 	@echo "▸ Configuring Zerobus on 8.1 gateway (port $(PORT_81))..."
-	@echo "  workspace from profile [$(SP_PROFILE_NAME)]; endpoint=$(ZEROBUS_ENDPOINT); table=$(CATALOG).$(SCHEMA).zerobus_events"
+	@echo "  workspace from profile [$(SP_PROFILE_NAME)]; endpoint=$(ZEROBUS_ENDPOINT); table=$(CATALOG).$(SCHEMA).raw_tags"
 	cd examples/agl_fleet && \
 		CATALOG=$(CATALOG) SCHEMA=$(SCHEMA) \
 		uv run --extra setup agl-sim --setup-only \
@@ -552,7 +552,7 @@ all-83: build-83 up-83 ## Build + start 8.3 (still need setup wizard + configure
 all-81: build-81 up-81 ## Build + start 8.1 (still need configure)
 
 .PHONY: db-all
-db-all: db-create-sp db-setup-sql db-wheel db-pipeline db-app-deploy ## Full Databricks setup (SP + SQL + wheel + pipeline + app)
+db-all: db-create-sp db-setup-sql db-wheel db-repo-sync db-pipeline db-app-deploy ## Full Databricks setup (SP + SQL + wheel + repo sync + pipeline + app)
 
 .PHONY: bootstrap-83
 bootstrap-83: db-all build-83 up-83 ## Everything from scratch (steps 1-4, then manual 4b-7)

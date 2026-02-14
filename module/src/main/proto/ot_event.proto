@@ -9,7 +9,7 @@ option java_multiple_files = true;
 /**
  * OTEvent - Operational Technology event message for Zerobus Ingest.
  *
- * This protobuf schema MUST match the Delta table (catalog.schema.zerobus_events) exactly:
+ * This protobuf schema MUST match the Delta table (catalog.schema.raw_tags) exactly:
  * column names, types, and order. See module/SCHEMA_ALIGNMENT.md.
  */
 message OTEvent {
