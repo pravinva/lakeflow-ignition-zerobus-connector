@@ -48,7 +48,7 @@ export default function ScalingCalculator() {
           <button
             key={p.label}
             onClick={() => applyPreset(p)}
-            className="px-3 py-1 text-xs rounded border border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-brand-blue transition-colors"
+            className="px-3 py-1 text-xs rounded border border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-databricks-primary transition-colors"
           >
             {p.label}
           </button>
@@ -69,7 +69,7 @@ export default function ScalingCalculator() {
             step={10_000}
             value={totalTags}
             onChange={(e) => setTotalTags(Number(e.target.value))}
-            className="w-full accent-brand-blue"
+            className="w-full accent-databricks-primary"
           />
         </div>
 
@@ -85,7 +85,7 @@ export default function ScalingCalculator() {
             step={1}
             value={scanRate}
             onChange={(e) => setScanRate(Number(e.target.value))}
-            className="w-full accent-brand-blue"
+            className="w-full accent-databricks-primary"
           />
         </div>
 
@@ -101,7 +101,7 @@ export default function ScalingCalculator() {
             step={1}
             value={compression}
             onChange={(e) => setCompression(Number(e.target.value))}
-            className="w-full accent-brand-blue"
+            className="w-full accent-databricks-primary"
           />
         </div>
       </div>
@@ -110,7 +110,7 @@ export default function ScalingCalculator() {
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-gray-950 rounded-lg p-3">
           <p className="text-xs text-gray-400 mb-1">Effective throughput / stream</p>
-          <p className="text-xl font-bold text-brand-blue">
+          <p className="text-xl font-bold text-databricks-primary">
             {fmtK(effectivePerStream)} rows/s
           </p>
         </div>

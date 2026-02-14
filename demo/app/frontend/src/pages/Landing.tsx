@@ -147,9 +147,9 @@ const keyMessages = [
 
 const colorMap: Record<string, { border: string; number: string; cta: string }> = {
   blue: {
-    border: 'border-blue-900 hover:border-blue-700',
-    number: 'text-blue-500',
-    cta: 'text-blue-400',
+    border: 'border-databricks-teal hover:border-databricks-primary',
+    number: 'text-databricks-primary',
+    cta: 'text-databricks-primary',
   },
   green: {
     border: 'border-green-900 hover:border-green-700',
@@ -173,18 +173,23 @@ export default function Landing() {
     <div className="max-w-4xl mx-auto">
       {/* Hero */}
       <section className="mb-12">
-        <p className="text-sm font-semibold text-brand-green tracking-wider uppercase mb-2">
+        <div className="flex items-center gap-4 mb-4">
+          <img src="/logos/AGL_Energy_logo.svg" alt="AGL Energy" className="h-10 w-auto object-contain" />
+          <img src="/logos/databricks-full.svg" alt="Databricks" className="h-8 w-auto object-contain" />
+        </div>
+        <p className="text-sm font-semibold text-databricks-primary tracking-wider uppercase mb-2">
           Lakeflow Ignition Zerobus Connector
         </p>
         <h1 className="text-4xl font-bold text-gray-50 leading-tight mb-4">
           From SCADA to Lakehouse
           <br />
-          <span className="text-brand-blue">in one module</span>
+          <span className="text-databricks-primary">in one module</span>
         </h1>
         <p className="text-lg text-gray-400 leading-relaxed max-w-2xl">
           Stream OT tag data from Ignition directly into Databricks Delta tables.
           No Kafka. No batch ETL. No proprietary lock-in. Then run anomaly
-          detection and revenue-at-risk analytics on the same live data.
+          detection and revenue-at-risk analytics on the same live data. Built for{' '}
+          <span className="text-agl-blue font-medium">AGL</span> fleet and NEM visibility.
         </p>
       </section>
 
@@ -344,7 +349,7 @@ export default function Landing() {
 
       {/* Closing */}
       <section className="mb-8">
-        <div className="bg-gray-900 border border-blue-900 rounded-lg p-6 text-center">
+        <div className="bg-gray-900 border border-databricks-teal rounded-lg p-6 text-center">
           <h2 className="text-xl font-semibold text-gray-100 mb-2">
             Ready to walk through it?
           </h2>
@@ -353,12 +358,22 @@ export default function Landing() {
           </p>
           <Link
             to="/dashboard"
-            className="inline-block px-6 py-2 bg-brand-blue text-white text-sm font-semibold rounded hover:bg-blue-600 transition-colors"
+            className="inline-block px-6 py-2 bg-databricks-primary text-white text-sm font-semibold rounded hover:bg-databricks-primary/90 transition-colors"
           >
             Start the demo
           </Link>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="pt-8 pb-4 border-t border-gray-800 flex items-center justify-center gap-2 text-sm text-gray-500">
+        <img src="/logos/AGL_Energy_logo.svg" alt="" className="h-5 w-auto object-contain" aria-hidden />
+        <span className="text-agl-blue font-medium">AGL OT Lakehouse</span>
+        <span>·</span>
+        <span>Powered by</span>
+        <img src="/logos/databricks-full.svg" alt="" className="h-4 w-auto object-contain" aria-hidden />
+        <span className="text-databricks-primary font-medium">Databricks</span>
+      </footer>
     </div>
   );
 }

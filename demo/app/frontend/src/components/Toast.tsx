@@ -16,7 +16,7 @@ export default function Toast({ message, onClose, autoCloseMs = 5000, type = 'er
   const colorMap = {
     error: 'bg-brand-red/20 border-brand-red text-brand-red',
     success: 'bg-brand-green/20 border-brand-green text-brand-green',
-    info: 'bg-brand-blue/20 border-brand-blue text-brand-blue',
+    info: 'bg-databricks-primary/20 border-databricks-primary text-databricks-primary',
   };
 
   return (

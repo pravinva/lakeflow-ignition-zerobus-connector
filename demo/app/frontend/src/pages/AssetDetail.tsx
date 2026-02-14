@@ -161,7 +161,7 @@ export default function AssetDetail() {
               onClick={() => setRange(r)}
               className={`px-3 py-1 rounded text-sm ${
                 range === r
-                  ? 'bg-brand-blue text-white'
+                  ? 'bg-databricks-primary text-white'
                   : 'bg-gray-800 text-gray-400 hover:text-gray-200'
               }`}
             >

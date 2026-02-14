@@ -25,7 +25,7 @@ describe('BigNumberCard', () => {
       <BigNumberCard label="Tags" value="50" />,
     );
 
-    const valueEl = container.querySelector('.text-brand-blue');
+    const valueEl = container.querySelector('.text-databricks-primary');
     expect(valueEl).toBeInTheDocument();
   });
 

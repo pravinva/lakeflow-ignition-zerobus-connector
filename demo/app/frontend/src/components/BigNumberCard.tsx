@@ -9,7 +9,7 @@ export default function BigNumberCard({
   label,
   value,
   subtitle,
-  colorClass = 'text-brand-blue',
+  colorClass = 'text-databricks-primary',
 }: BigNumberCardProps) {
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">

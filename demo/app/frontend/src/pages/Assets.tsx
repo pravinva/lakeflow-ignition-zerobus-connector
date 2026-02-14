@@ -33,7 +33,7 @@ export default function Assets() {
               onClick={() => setFilter(f)}
               className={`px-3 py-1.5 rounded text-sm ${
                 filter === f
-                  ? 'bg-brand-blue text-white'
+                  ? 'bg-databricks-primary text-white'
                   : 'bg-gray-800 text-gray-400 hover:text-gray-200'
               }`}
             >

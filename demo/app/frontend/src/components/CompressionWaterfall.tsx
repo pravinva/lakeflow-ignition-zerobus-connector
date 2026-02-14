@@ -110,7 +110,7 @@ export default function CompressionWaterfall({ layers }: CompressionWaterfallPro
       {/* Compression callout */}
       <div className="mt-4 p-3 bg-gray-800 border border-gray-700 rounded text-sm text-gray-300">
         Other platforms apply Swinging Door compression at the archive. We apply the{' '}
-        <strong className="text-brand-blue">same algorithm</strong> at the Zerobus connector
+        <strong className="text-databricks-primary">same algorithm</strong> at the Zerobus connector
         - plus Delta columnar encoding on top. Same compression, open format, fewer moving
         parts.
       </div>

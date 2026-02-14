@@ -58,7 +58,7 @@ export default function ComparisonTable() {
             <tr className="border-b border-gray-700">
               <th className="text-left py-2 px-3 text-gray-400 font-medium">Dimension</th>
               <th className="text-left py-2 px-3 text-red-400 font-medium">Other platforms</th>
-              <th className="text-left py-2 px-3 text-green-400 font-medium">Databricks + Zerobus</th>
+              <th className="text-left py-2 px-3 text-databricks-primary font-medium">Databricks + Zerobus</th>
             </tr>
           </thead>
           <tbody>

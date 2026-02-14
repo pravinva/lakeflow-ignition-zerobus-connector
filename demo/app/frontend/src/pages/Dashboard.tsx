@@ -55,14 +55,14 @@ export default function Dashboard() {
             <button
               type="button"
               onClick={() => setMetricsSource('raw_tags')}
-              className={`px-3 py-1.5 text-sm font-medium ${metricsSource === 'raw_tags' ? 'bg-brand-blue text-white' : 'bg-gray-800 text-gray-400 hover:text-gray-200'}`}
+              className={`px-3 py-1.5 text-sm font-medium ${metricsSource === 'raw_tags' ? 'bg-databricks-primary text-white' : 'bg-gray-800 text-gray-400 hover:text-gray-200'}`}
             >
               raw_tags
             </button>
             <button
               type="button"
               onClick={() => setMetricsSource('raw_throughput')}
-              className={`px-3 py-1.5 text-sm font-medium ${metricsSource === 'raw_throughput' ? 'bg-brand-blue text-white' : 'bg-gray-800 text-gray-400 hover:text-gray-200'}`}
+              className={`px-3 py-1.5 text-sm font-medium ${metricsSource === 'raw_throughput' ? 'bg-databricks-primary text-white' : 'bg-gray-800 text-gray-400 hover:text-gray-200'}`}
             >
               raw_throughput
             </button>
@@ -157,7 +157,7 @@ export default function Dashboard() {
           colorClass={
             latestLatency
               ? latencyColor(latestLatency.avg_latency_ms)
-              : 'text-brand-blue'
+              : 'text-databricks-primary'
           }
         />
       </div>

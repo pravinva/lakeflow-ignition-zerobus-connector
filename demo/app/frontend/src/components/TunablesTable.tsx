@@ -51,7 +51,7 @@ export default function TunablesTable() {
             {rows.map((r) => (
               <tr key={r.parameter} className="border-b border-gray-800">
                 <td className="py-2 px-3 text-gray-300 font-medium">{r.parameter}</td>
-                <td className="py-2 px-3 text-brand-blue font-mono">{r.defaultVal}</td>
+                <td className="py-2 px-3 text-databricks-primary font-mono">{r.defaultVal}</td>
                 <td className="py-2 px-3 text-gray-400">{r.range}</td>
                 <td className="py-2 px-3 text-gray-400">{r.purpose}</td>
               </tr>

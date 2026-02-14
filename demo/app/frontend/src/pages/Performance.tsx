@@ -73,7 +73,7 @@ export default function Performance() {
               : '-'
           }
           subtitle="Spec: 15,000/sec"
-          colorClass={latest ? 'text-brand-green' : 'text-brand-blue'}
+          colorClass={latest ? 'text-brand-green' : 'text-databricks-primary'}
         />
         <BigNumberCard
           label="Compression"
@@ -93,7 +93,7 @@ export default function Performance() {
             Number(latest.sdt_compression_ratio) >= 4 &&
             Number(latest.sdt_compression_ratio) <= 10
               ? 'text-brand-green'
-              : 'text-brand-blue'
+              : 'text-databricks-primary'
           }
         />
         <BigNumberCard
@@ -107,7 +107,7 @@ export default function Performance() {
           colorClass={
             latestLatency
               ? latencyColor(latestLatency.avg_latency_ms)
-              : 'text-brand-blue'
+              : 'text-databricks-primary'
           }
         />
         <BigNumberCard
@@ -120,7 +120,7 @@ export default function Performance() {
           colorClass={
             latestLatency
               ? latencyColor(latestLatency.p99_latency_ms)
-              : 'text-brand-blue'
+              : 'text-databricks-primary'
           }
         />
       </div>

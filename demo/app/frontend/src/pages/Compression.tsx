@@ -1,9 +1,14 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { usePolling } from '../hooks/usePolling';
 import { api } from '../services/api';
+import type { SdtConfigEntry } from '../services/api';
 import CompressionWaterfall from '../components/CompressionWaterfall';
 import type { CompressionLayer } from '../components/CompressionWaterfall';
 import SdtTuningPanel from '../components/SdtTuningPanel';
+
+/** Default SDT tuning values when config is not yet loaded or table is missing. */
+const DEFAULT_COMP_DEV_PERCENT = 1.0;
+const DEFAULT_COMP_MAX_SECONDS = 600;
 
 export default function Compression() {
   const comparisonFetcher = useCallback(
@@ -20,9 +25,32 @@ export default function Compression() {
     intervalMs: 10000,
   });
 
+  const [sdtConfig, setSdtConfig] = useState<SdtConfigEntry[] | null>(null);
+  const [sdtConfigError, setSdtConfigError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api
+      .getSdtConfig()
+      .then((r) => {
+        const data = r?.data;
+        setSdtConfig(Array.isArray(data) ? data : []);
+        setSdtConfigError(null);
+      })
+      .catch((err) => {
+        setSdtConfig(null);
+        setSdtConfigError(
+          err?.message ?? 'SDT config unavailable. Ensure sdt_config table exists and the app has MODIFY, SELECT.',
+        );
+      });
+  }, []);
+
   const handleApply = useCallback(
     async (config: { comp_dev_percent: number; comp_max_seconds: number }) => {
       await api.updateSdtConfig({ tag_pattern: '*', ...config });
+      const r = await api.getSdtConfig();
+      const data = r?.data;
+      setSdtConfig(Array.isArray(data) ? data : []);
+      setSdtConfigError(null);
     },
     [],
   );
@@ -39,6 +67,13 @@ export default function Compression() {
     if (n >= 1e3) return `${(n / 1e3).toFixed(2)} KB`;
     return `${Math.round(n)} B`;
   };
+
+  const defaultRow =
+    sdtConfig?.find((r) => r.tag_pattern === '*') ?? sdtConfig?.[0];
+  const compDevPercent =
+    defaultRow?.comp_dev_percent != null ? defaultRow.comp_dev_percent : DEFAULT_COMP_DEV_PERCENT;
+  const compMaxSeconds =
+    defaultRow?.comp_max_seconds != null ? defaultRow.comp_max_seconds : DEFAULT_COMP_MAX_SECONDS;
 
   return (
     <div>
@@ -59,9 +94,14 @@ export default function Compression() {
 
       {/* SDT tuning panel */}
       <div>
+        {sdtConfigError && (
+          <p className="text-sm text-amber-500 mb-2" role="alert">
+            {sdtConfigError}
+          </p>
+        )}
         <SdtTuningPanel
-          compDevPercent={1.0}
-          compMaxSeconds={600}
+          compDevPercent={compDevPercent}
+          compMaxSeconds={compMaxSeconds}
           onApply={handleApply}
         />
       </div>

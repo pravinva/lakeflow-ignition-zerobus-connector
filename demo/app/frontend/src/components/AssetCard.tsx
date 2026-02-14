@@ -25,7 +25,7 @@ export default function AssetCard({ asset }: AssetCardProps) {
     <button
       onClick={() => navigate(`/assets/${asset.asset_id}`)}
       className="bg-gray-900 border border-gray-800 rounded-lg p-4 text-left
-                 hover:border-brand-blue/50 transition-colors w-full"
+                 hover:border-databricks-primary/50 transition-colors w-full"
     >
       <div className="flex items-center gap-2 mb-2">
         <span className="text-xl">{typeIcon(asset.asset_type)}</span>

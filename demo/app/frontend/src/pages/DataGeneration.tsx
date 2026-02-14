@@ -321,7 +321,7 @@ export default function DataGeneration() {
               key={s.step}
               className="bg-gray-900 border border-gray-800 rounded-lg p-4 flex items-start gap-4"
             >
-              <span className="text-xl font-bold text-brand-blue opacity-50 select-none w-8 flex-shrink-0 text-center">
+              <span className="text-xl font-bold text-databricks-primary opacity-50 select-none w-8 flex-shrink-0 text-center">
                 {s.step}
               </span>
               <div>

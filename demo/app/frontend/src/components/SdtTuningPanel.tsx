@@ -92,7 +92,7 @@ export default function SdtTuningPanel({
       {/* Apply button */}
       <button
         onClick={() => onApply({ comp_dev_percent: devPercent, comp_max_seconds: maxSeconds })}
-        className="mb-4 px-4 py-2 bg-brand-blue text-white rounded hover:bg-blue-600 text-sm font-medium"
+        className="mb-4 px-4 py-2 bg-databricks-primary text-white rounded hover:bg-databricks-primary/90 text-sm font-medium"
       >
         Apply
       </button>
