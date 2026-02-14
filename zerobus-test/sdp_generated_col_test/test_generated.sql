@@ -1,7 +1,5 @@
 -- Test A: Can SDP streaming tables use GENERATED ALWAYS AS?
--- Expected: likely fails -- SDP infers schema from SELECT, not from DDL column defs.
--- If it somehow works, this would mean the Delta writer feature 'generatedColumns'
--- is used, bumping the protocol to writer v4.
+-- Result: PASS (100 rows) -- SDP uses Spark's Delta writer which supports generated columns.
 
 CREATE OR REFRESH STREAMING TABLE test_generated (
   event_id              STRING,

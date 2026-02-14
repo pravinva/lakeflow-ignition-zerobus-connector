@@ -58,3 +58,39 @@ This was systematically isolated (2026-02-14) by testing 6 table variants:
 | All combined | **FAIL** (due to CLUSTER BY) |
 
 **Workaround:** Do not use `CLUSTER BY` on tables that Zerobus writes to. If you need clustering for query performance, pause Zerobus ingest, add clustering (`ALTER TABLE ... CLUSTER BY (event_time, tag_path)`), OPTIMIZE, then remove it (`ALTER TABLE ... CLUSTER BY NONE`) before resuming Zerobus.
+
+## Generated columns not supported (GENERATED ALWAYS AS causes 1015)
+
+**Zerobus Ingest does NOT support tables with generated columns.** Stream creation fails with `UNIMPLEMENTED: Feature 'generatedColumns' is not supported. Error Code: 1015` if the target table has any `GENERATED ALWAYS AS` column.
+
+This means the common OT/IoT pattern of partitioning by a computed date column does **not** work with Zerobus:
+
+```sql
+-- This WILL NOT work with Zerobus:
+CREATE TABLE zerobus_events (
+  event_time BIGINT,
+  event_day  DATE GENERATED ALWAYS AS (CAST(FROM_UNIXTIME(event_time / 1000000) AS DATE)),
+  ...
+) PARTITIONED BY (event_day)
+```
+
+## Traditional partitioning works (PARTITIONED BY)
+
+**Zerobus Ingest DOES support traditional Delta partitioning** (`PARTITIONED BY`) on regular (non-generated) columns. Tested and confirmed (2026-02-14):
+
+| Variant | Result |
+|---|---|
+| `PARTITIONED BY (tag_provider)` — existing STRING column | **PASS** |
+| `PARTITIONED BY (event_day)` — regular DATE column, writer provides epoch-days int | **PASS** |
+| `PARTITIONED BY (event_day)` — regular INT column, writer provides epoch-days int | **PASS** |
+| `PARTITIONED BY (event_day)` — DATE column, writer provides string "2026-02-14" | **FAIL (4044)** — Zerobus expects dates as epoch-days integers |
+
+**Key finding:** DATE columns work with Zerobus but the JSON value **must be an integer** (epoch days since 1970-01-01), not a string like `"2026-02-14"`. Sending a string causes Error 4044 "invalid digit found in string".
+
+### Should you partition the Zerobus landing table?
+
+**Probably not.** The `zerobus_events` table is a bronze landing zone optimized for write throughput. Delta data skipping on `event_time BIGINT` already provides file pruning for time-range queries without partitioning. The silver/gold tables downstream (written by Spark, not Zerobus) can freely use `CLUSTER BY` for read performance.
+
+Adding partitioning to the landing table requires changing the protobuf, Java mapper, and every deployment — significant churn for marginal benefit. Liquid clustering support for Zerobus is also likely coming, which would be the right solution.
+
+See `onboarding/ZEROBUS_CLUSTER_BY_BUG.md` for the full analysis and recommendation.

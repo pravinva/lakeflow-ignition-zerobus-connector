@@ -128,19 +128,117 @@ DROP TABLE IF EXISTS my_catalog.my_schema.zb_no_cluster;
 DROP TABLE IF EXISTS my_catalog.my_schema.zb_with_cluster;
 ```
 
-## Workaround for production
+## Phase 2: Partitioning and generated columns (2026-02-14)
 
-If you need clustering for read performance but also need Zerobus writes:
+Extended the isolation test to determine if traditional partitioning and generated columns can replace liquid clustering for time-based data layout.
 
-1. Keep `CLUSTER BY NONE` on the table while Zerobus is actively writing.
-2. Periodically (e.g. daily maintenance window):
-   - Pause Zerobus ingest (disable module or stop sending events).
-   - `ALTER TABLE ... CLUSTER BY (event_time, tag_path);`
-   - `OPTIMIZE catalog.schema.zerobus_events;`
-   - `ALTER TABLE ... CLUSTER BY NONE;`
-   - Resume Zerobus ingest.
+### Results
 
-Or use a separate downstream table with clustering that reads from the Zerobus landing table via a streaming pipeline.
+| Variant | Table features | Stream creation | Record ingest |
+|---------|---------------|----------------|--------------|
+| v6_partition | `PARTITIONED BY (tag_provider)` | **PASS** | **PASS** |
+| v7_generated | `event_day DATE GENERATED ALWAYS AS (...)` | **FAIL (1015)** | N/A |
+| v8_gen_partition | Generated + `PARTITIONED BY (event_day)` | **FAIL (1015)** | N/A |
+| v9_part_regular | `PARTITIONED BY (event_day DATE)` + string value | **PASS** | **FAIL (4044)** |
+| v9b_part_epoch | `PARTITIONED BY (event_day DATE)` + epoch-days int | **PASS** | **PASS** |
+| v9c_part_int | `PARTITIONED BY (event_day INT)` + epoch-days int | **PASS** | **PASS** |
+
+### Key findings
+
+1. **Traditional partitioning WORKS** -- `PARTITIONED BY` on regular columns is fully supported.
+2. **Generated columns DO NOT WORK** -- Zerobus explicitly rejects them: `Feature 'generatedColumns' is not supported. Error Code: 1015`. This is a clearer error than the 1521 for clustering.
+3. **DATE columns need epoch-days integers** -- Sending `"2026-02-14"` as a string causes Error 4044 "invalid digit found in string". Sending `20498` (epoch days) works.
+4. **INT partition columns work fine** -- An INT column with epoch-days is the simplest approach.
+
+### Unsupported Delta features summary
+
+| Delta Feature | Writer Version | Error | Supported? |
+|---|---|---|---|
+| Basic partitioning | 2 | -- | **Yes** |
+| NOT NULL constraints | 2 | -- | **Yes** |
+| Primary Key | 2 | -- | **Yes** |
+| Change Data Feed | 4 | -- | **Yes** |
+| Generated columns | 4 | 1015 (UNIMPLEMENTED) | **No** |
+| Liquid clustering | 7 | 1521 (INTERNAL) | **No** |
+
+## Recommendation: keep the landing table flat (no partitioning)
+
+**Don't partition `zerobus_events`.** Use liquid clustering on downstream tables instead.
+
+### Why not partition the Zerobus landing table?
+
+1. **Proto/mapper churn for marginal benefit.** Adding a partition column like `event_day` means changing `ot_event.proto`, the Java `OtEventMapper`, the Delta table DDL, and every deployment. That's a lot of moving parts for a bronze landing table that is rarely queried directly.
+
+2. **Delta data skipping already handles time-range queries.** `event_time BIGINT` automatically gets per-file min/max statistics. Queries with `WHERE event_time BETWEEN x AND y` skip irrelevant Parquet files without partitioning. For append-only time-series data this is surprisingly effective — the files are naturally time-ordered because events arrive chronologically.
+
+3. **Small-file anti-pattern.** OT data arrives continuously at sub-second intervals. Daily partitions with high-frequency tag changes produce many small files per partition, degrading read performance. You'd need scheduled `OPTIMIZE` jobs per partition to compact them — adding operational overhead.
+
+4. **Liquid clustering support is likely coming.** The 1521 limitation is clearly a gap in the current Zerobus implementation, not a fundamental design decision. The Zerobus team is actively developing the product; liquid clustering support is a reasonable expectation. Adding partitioning now means a migration away from it later.
+
+5. **The SDP pipeline already solves this.** `zerobus_events` is the bronze landing zone — raw, append-only, optimized for write throughput. Silver and gold tables are written by Spark (not Zerobus), so they **can** use `CLUSTER BY (event_time, tag_path)`. The architecture is already "flat landing table → clustered downstream tables."
+
+### Recommended architecture
+
+```
+Ignition → Zerobus → zerobus_events (bronze, flat, no clustering)
+                          │
+                          ▼  (SDP streaming pipeline)
+                      silver_tags (CLUSTER BY event_time, tag_path)
+                          │
+                          ▼
+                      gold_metrics (CLUSTER BY event_time, site_id)
+```
+
+- **Bronze (`zerobus_events`)**: No partitioning, no clustering. Zerobus writes here at full throughput. Delta data skipping on `event_time` handles time-range queries adequately.
+- **Silver/Gold**: Written by Spark via the SDP pipeline. Free to use `CLUSTER BY`, `GENERATED ALWAYS AS`, or any Delta feature. This is where query performance optimizations belong.
+
+## SDP pipeline: GENERATED ALWAYS AS vs date_trunc (2026-02-14)
+
+Tested whether SDP (Spark Declarative Pipelines / DLT) can use `GENERATED ALWAYS AS` and `date_trunc` on downstream tables that read from the Zerobus landing table.
+
+### Test setup
+
+Deployed a throwaway pipeline (`[test] sdp-generated-col-test`) with 3 SQL files reading from `agl_demo.ot.zerobus_events`:
+
+| Test | SQL | Result |
+|------|-----|--------|
+| A: `GENERATED ALWAYS AS` | Streaming table with explicit DDL column `event_day DATE GENERATED ALWAYS AS (...)` | **PASS** (100 rows) |
+| B: `date_trunc` in SELECT | Streaming table with `DATE(FROM_UNIXTIME(...))` and `DATE_TRUNC('HOUR', ...)` in SELECT, `CLUSTER BY (event_day)` | **PASS** (100 rows) |
+| C: MV with truncated time | Materialized view with `DATE(FROM_UNIXTIME(...))`, `CLUSTER BY (event_day)` | **PASS** (216 rows) |
+
+All three approaches work. The pipeline completed in 31 seconds.
+
+### Why does GENERATED ALWAYS AS work in SDP but not in Zerobus?
+
+The difference is **which writer** is creating the Delta files:
+
+| | Zerobus Ingest | SDP / Spark |
+|---|---|---|
+| **Writer** | Custom Zerobus gRPC server | Apache Spark Delta writer |
+| **Protocol support** | Limited: basic columns, NOT NULL, PK, CDF | Full: all Delta writer features |
+| **Generated columns** | **Not supported** (Error 1015) | **Supported** (writer v4) |
+| **Liquid clustering** | **Not supported** (Error 1521) | **Supported** (writer v7) |
+
+### Recommendation: use date_trunc in SELECT, not GENERATED ALWAYS AS
+
+Even though `GENERATED ALWAYS AS` works in SDP, **prefer `date_trunc` / `DATE()` in the SELECT**:
+
+1. **Explicit > implicit.** The transformation logic is visible in the pipeline SQL, not hidden in table metadata.
+2. **No protocol bump.** A regular column computed in the SELECT has no Delta protocol restrictions.
+3. **Already the established pattern.** The existing `bronze_silver.py` computes `event_timestamp` via `F.to_timestamp(...)`.
+4. **Composable.** Compute multiple time granularities in one SELECT:
+
+```sql
+CREATE OR REFRESH STREAMING TABLE silver_tags
+CLUSTER BY (event_day, tag_path)
+AS SELECT
+  *,
+  DATE(FROM_UNIXTIME(event_time / 1000000))                 AS event_day,
+  DATE_TRUNC('HOUR', FROM_UNIXTIME(event_time / 1000000))   AS event_hour
+FROM STREAM(agl_demo.ot.zerobus_events);
+```
+
+Test script: `zerobus-test/sdp_generated_col_test/run_test_pipeline.py`
 
 ## References
 

@@ -62,6 +62,7 @@ dp.create_auto_cdc_flow(
 @dp.table(
     name="aggregated_tags",
     comment="1-minute aggregated tag values from zerobus_events stream",
+    cluster_by=["window_start", "tag_name"],
 )
 @dp.expect("valid_window", "window_start IS NOT NULL AND window_end IS NOT NULL")
 @dp.expect("has_tag_name", "tag_name IS NOT NULL AND length(trim(tag_name)) > 0")
@@ -113,6 +114,7 @@ def aggregated_tags():
 @dp.materialized_view(
     name="parsed_tags",
     comment="Pre-parsed raw tags with asset_id and tag_name extracted from tag_path",
+    cluster_by=["event_timestamp", "asset_id"],
 )
 @dp.expect("valid_event_timestamp", "event_timestamp IS NOT NULL")
 @dp.expect("has_asset_id", "asset_id IS NOT NULL AND length(trim(asset_id)) > 0")
@@ -163,6 +165,7 @@ def parsed_tags():
 @dp.materialized_view(
     name="enriched_tags",
     comment="Aggregated tags enriched with asset_id and signal_name from signal mappings",
+    cluster_by=["window_start", "asset_id"],
 )
 @dp.expect("valid_window_start", "window_start IS NOT NULL")
 @dp.expect("valid_sample_count", "sample_count >= 0")

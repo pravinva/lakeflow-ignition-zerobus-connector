@@ -1,6 +1,5 @@
 -- Test C: Materialized view with time-truncated columns and clustering.
--- MVs are batch (not streaming) -- they read the full table each refresh.
--- This is the pattern for gold-layer time-bucketed aggregations.
+-- Result: PASS (216 rows) -- standard gold-layer time-bucketed aggregation pattern.
 
 CREATE OR REFRESH MATERIALIZED VIEW test_mv_daily
 CLUSTER BY (event_day, tag_path)

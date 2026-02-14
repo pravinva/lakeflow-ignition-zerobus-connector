@@ -187,7 +187,6 @@ def check_tables(w: WorkspaceClient) -> dict[str, str]:
 def cleanup(w: WorkspaceClient, pipeline_id: str):
     """Delete the test pipeline and tables."""
     print("\n--- Cleanup ---")
-    # Drop test tables
     wid = os.environ.get("WAREHOUSE_ID", "e65d34bf5b095b0f")
     for tbl in ["test_generated", "test_date_trunc", "test_mv_daily"]:
         fqn = f"{CATALOG}.{SCHEMA}.{tbl}"
@@ -209,14 +208,12 @@ def cleanup(w: WorkspaceClient, pipeline_id: str):
             except Exception:
                 pass
 
-    # Delete pipeline
     try:
         w.pipelines.delete(pipeline_id=pipeline_id)
         print(f"  Deleted pipeline {pipeline_id}")
     except Exception as e:
         print(f"  Failed to delete pipeline: {e}")
 
-    # Delete workspace folder
     try:
         w.workspace.delete(WORKSPACE_FOLDER, recursive=True)
         print(f"  Deleted workspace folder {WORKSPACE_FOLDER}")
@@ -228,21 +225,17 @@ def main() -> int:
     print("=== SDP Generated Column Test ===\n")
     w = WorkspaceClient(profile=PROFILE)
 
-    # 1. Upload SQL files
     print("1. Uploading SQL files...")
     file_paths = upload_sql_files(w)
 
-    # 2. Create/update pipeline
     print("\n2. Creating test pipeline...")
     pipeline_id = create_or_update_pipeline(w, file_paths)
     print(f"  Pipeline ID: {pipeline_id}")
 
-    # 3. Run pipeline
     print("\n3. Running pipeline (full refresh)...")
     result = run_pipeline(w, pipeline_id)
     print(f"  Final state: {result['state']} ({result['elapsed']}s)")
 
-    # 4. Get errors if failed
     if result["state"] != "COMPLETED":
         print("\n4. Pipeline errors:")
         errors = get_errors(w, pipeline_id)
@@ -251,13 +244,11 @@ def main() -> int:
     else:
         print("\n4. No errors (pipeline completed)")
 
-    # 5. Check which tables exist
     print("\n5. Checking output tables...")
     tables = check_tables(w)
     for tbl, status in tables.items():
         print(f"  {tbl}: {status}")
 
-    # 6. Summary
     print("\n" + "=" * 60)
     print("RESULTS SUMMARY")
     print("=" * 60)
@@ -265,9 +256,7 @@ def main() -> int:
         marker = "PASS" if status.startswith("PASS") else "FAIL"
         print(f"  {marker}  {tbl:<20s}  {status}")
 
-    # 7. Cleanup
     cleanup(w, pipeline_id)
-
     return 0
 
 
