@@ -27,7 +27,7 @@ export default function ArchitectureDiagram() {
   return (
     <div className="space-y-6">
       {/* Before diagram */}
-      <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
         <h3 className="text-sm font-semibold text-red-400 mb-3">
           Before (traditional stack)
         </h3>
@@ -35,8 +35,8 @@ export default function ArchitectureDiagram() {
           {beforeComponents.map((c, i) => (
             <span key={c.label} className="flex items-center">
               {i > 0 && <Arrow />}
-              <span className="inline-flex flex-col items-center bg-gray-800 border border-gray-700 rounded px-3 py-2 text-center min-w-[90px]">
-                <span className="text-sm font-medium text-gray-200">{c.label}</span>
+              <span className="inline-flex flex-col items-center bg-gray-100 border border-gray-200 rounded px-3 py-2 text-center min-w-[90px]">
+                <span className="text-sm font-medium text-gray-800">{c.label}</span>
                 <span className="text-xs text-gray-500">{c.sub}</span>
               </span>
             </span>
@@ -48,7 +48,7 @@ export default function ArchitectureDiagram() {
       </div>
 
       {/* After diagram */}
-      <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
         <h3 className="text-sm font-semibold text-brand-green mb-3">
           After (Lakehouse)
         </h3>
@@ -56,8 +56,8 @@ export default function ArchitectureDiagram() {
           {afterComponents.map((c, i) => (
             <span key={c.label} className="flex items-center">
               {i > 0 && <Arrow />}
-              <span className="inline-flex flex-col items-center bg-gray-800 border border-green-900 rounded px-3 py-2 text-center min-w-[90px]">
-                <span className="text-sm font-medium text-gray-200">{c.label}</span>
+              <span className="inline-flex flex-col items-center bg-gray-100 border border-green-900 rounded px-3 py-2 text-center min-w-[90px]">
+                <span className="text-sm font-medium text-gray-800">{c.label}</span>
                 <span className="text-xs text-gray-500">{c.sub}</span>
               </span>
             </span>

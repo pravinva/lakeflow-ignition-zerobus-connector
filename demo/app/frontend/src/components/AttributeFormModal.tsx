@@ -80,7 +80,7 @@ export default function AttributeFormModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
       <form
         onSubmit={handleSubmit}
-        className="bg-gray-900 border border-gray-700 rounded-lg p-6 w-full max-w-lg"
+        className="bg-white border border-gray-200 rounded-lg p-6 w-full max-w-lg"
       >
         <h3 className="text-lg font-semibold mb-4">
           {mode === 'create' ? 'Add attribute' : 'Edit attribute'}
@@ -88,7 +88,7 @@ export default function AttributeFormModal({
 
         <div className="space-y-3">
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Attribute ID</label>
+            <label className="block text-xs text-gray-600 mb-1">Attribute ID</label>
             <input
               type="text"
               value={attributeId}
@@ -96,28 +96,28 @@ export default function AttributeFormModal({
               disabled={mode === 'edit'}
               required
               placeholder="e.g. attr_wind_speed"
-              className="w-full px-3 py-2 text-sm bg-gray-800 border border-gray-700 rounded text-gray-200 disabled:opacity-50 focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 text-sm bg-gray-100 border border-gray-200 rounded text-gray-800 disabled:opacity-50 focus:outline-none focus:border-blue-500"
             />
           </div>
 
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Name</label>
+            <label className="block text-xs text-gray-600 mb-1">Name</label>
             <input
               type="text"
               value={attributeName}
               onChange={(e) => setAttributeName(e.target.value)}
               required
-              className="w-full px-3 py-2 text-sm bg-gray-800 border border-gray-700 rounded text-gray-200 focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 text-sm bg-gray-100 border border-gray-200 rounded text-gray-800 focus:outline-none focus:border-blue-500"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Data type</label>
+              <label className="block text-xs text-gray-600 mb-1">Data type</label>
               <select
                 value={dataType}
                 onChange={(e) => setDataType(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-gray-800 border border-gray-700 rounded text-gray-200 focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 text-sm bg-gray-100 border border-gray-200 rounded text-gray-800 focus:outline-none focus:border-blue-500"
               >
                 {DATA_TYPES.map((dt) => (
                   <option key={dt} value={dt}>{dt}</option>
@@ -126,45 +126,45 @@ export default function AttributeFormModal({
             </div>
 
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Unit</label>
+              <label className="block text-xs text-gray-600 mb-1">Unit</label>
               <input
                 type="text"
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
                 placeholder="e.g. MW, %, C"
-                className="w-full px-3 py-2 text-sm bg-gray-800 border border-gray-700 rounded text-gray-200 focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 text-sm bg-gray-100 border border-gray-200 rounded text-gray-800 focus:outline-none focus:border-blue-500"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Default value</label>
+              <label className="block text-xs text-gray-600 mb-1">Default value</label>
               <input
                 type="text"
                 value={defaultValue}
                 onChange={(e) => setDefaultValue(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-gray-800 border border-gray-700 rounded text-gray-200 focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 text-sm bg-gray-100 border border-gray-200 rounded text-gray-800 focus:outline-none focus:border-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Sort order</label>
+              <label className="block text-xs text-gray-600 mb-1">Sort order</label>
               <input
                 type="number"
                 value={sortOrder}
                 onChange={(e) => setSortOrder(parseInt(e.target.value) || 0)}
-                className="w-full px-3 py-2 text-sm bg-gray-800 border border-gray-700 rounded text-gray-200 focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 text-sm bg-gray-100 border border-gray-200 rounded text-gray-800 focus:outline-none focus:border-blue-500"
               />
             </div>
           </div>
 
-          <label className="flex items-center gap-2 text-sm text-gray-300">
+          <label className="flex items-center gap-2 text-sm text-gray-700">
             <input
               type="checkbox"
               checked={isRequired}
               onChange={(e) => setIsRequired(e.target.checked)}
-              className="rounded bg-gray-800 border-gray-700"
+              className="rounded bg-gray-100 border-gray-200"
             />
             Required attribute
           </label>
@@ -174,7 +174,7 @@ export default function AttributeFormModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm rounded bg-gray-800 text-gray-300 hover:bg-gray-700"
+            className="px-4 py-2 text-sm rounded bg-gray-100 text-gray-700 hover:bg-gray-700"
           >
             Cancel
           </button>

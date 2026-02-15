@@ -81,7 +81,7 @@ export default function Compression() {
 
       {/* Data volume summary */}
       {rawLayer != null && deltaLayer != null && (
-        <p className="text-sm text-gray-400 mb-4">
+        <p className="text-sm text-gray-600 mb-4">
           Last 30 min: {rawLayer.event_count.toLocaleString()} rows ingested → {formatBytes(rawLayer.size_bytes)}{' '}
           (est.) → {formatBytes(deltaLayer.size_bytes)} on disk (Delta Lake, ZSTD).
         </p>

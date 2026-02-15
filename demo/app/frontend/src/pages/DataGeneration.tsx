@@ -118,7 +118,7 @@ export default function DataGeneration() {
         <h1 className="text-3xl font-bold text-gray-50 leading-tight mb-4">
           How we generate realistic fleet data
         </h1>
-        <p className="text-lg text-gray-400 leading-relaxed max-w-2xl">
+        <p className="text-lg text-gray-600 leading-relaxed max-w-2xl">
           The AGL Fleet Simulator produces physically-grounded synthetic data for
           5 NEM sites with battery storage, grid interconnection, market prices, and
           maintenance events. Every signal follows a model — no random noise generators.
@@ -130,8 +130,8 @@ export default function DataGeneration() {
         <h2 className="text-sm font-semibold text-gray-500 tracking-wider uppercase mb-4">
           Simulation architecture
         </h2>
-        <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
-          <div className="font-mono text-sm text-gray-300 leading-relaxed whitespace-pre">
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <div className="font-mono text-sm text-gray-700 leading-relaxed whitespace-pre">
 {`┌─────────────────────────────────────────────────────────┐
 │                   AGL Fleet Simulator                    │
 │  (Python · runs locally · hits Ignition HTTP ingest)     │
@@ -158,23 +158,23 @@ export default function DataGeneration() {
         <h2 className="text-sm font-semibold text-gray-500 tracking-wider uppercase mb-4">
           Simulated sites
         </h2>
-        <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-800 text-left">
-                <th className="px-4 py-3 text-gray-400 font-medium">Site</th>
-                <th className="px-4 py-3 text-gray-400 font-medium">State</th>
-                <th className="px-4 py-3 text-gray-400 font-medium text-right">Capacity</th>
-                <th className="px-4 py-3 text-gray-400 font-medium text-right">BESS units</th>
+              <tr className="border-b border-gray-200 text-left">
+                <th className="px-4 py-3 text-gray-600 font-medium">Site</th>
+                <th className="px-4 py-3 text-gray-600 font-medium">State</th>
+                <th className="px-4 py-3 text-gray-600 font-medium text-right">Capacity</th>
+                <th className="px-4 py-3 text-gray-600 font-medium text-right">BESS units</th>
               </tr>
             </thead>
             <tbody>
               {sites.map((s) => (
-                <tr key={s.name} className="border-b border-gray-800/50">
-                  <td className="px-4 py-2 text-gray-200 font-medium">{s.name}</td>
-                  <td className="px-4 py-2 text-gray-400">{s.state}</td>
-                  <td className="px-4 py-2 text-gray-400 text-right">{s.capacity} MW</td>
-                  <td className="px-4 py-2 text-gray-400 text-right">4</td>
+                <tr key={s.name} className="border-b border-gray-200/50">
+                  <td className="px-4 py-2 text-gray-800 font-medium">{s.name}</td>
+                  <td className="px-4 py-2 text-gray-600">{s.state}</td>
+                  <td className="px-4 py-2 text-gray-600 text-right">{s.capacity} MW</td>
+                  <td className="px-4 py-2 text-gray-600 text-right">4</td>
                 </tr>
               ))}
             </tbody>
@@ -189,7 +189,7 @@ export default function DataGeneration() {
         </div>
         <p className="text-xs text-gray-500 mt-2">
           Sites map to real AGL Energy locations in the Australian NEM (National Electricity Market).
-          Tag paths follow Ignition conventions: <code className="text-gray-400">[agl_bess]AGL/Australia/NSW/Tomago/Site01/BESS01/Telemetry/SoC_pct</code>
+          Tag paths follow Ignition conventions: <code className="text-gray-600">[agl_bess]AGL/Australia/NSW/Tomago/Site01/BESS01/Telemetry/SoC_pct</code>
         </p>
       </section>
 
@@ -202,14 +202,14 @@ export default function DataGeneration() {
           {generators.map((gen) => (
             <div
               key={gen.provider}
-              className={`bg-gray-900 border ${gen.borderColor} rounded-lg p-5`}
+              className={`bg-white border ${gen.borderColor} rounded-lg p-5`}
             >
               <div className="flex items-center justify-between mb-3">
                 <h3 className={`text-lg font-semibold ${gen.color}`}>
                   {gen.name}
                 </h3>
                 <div className="flex items-center gap-3 text-xs text-gray-500">
-                  <span className="bg-gray-800 px-2 py-1 rounded">{gen.provider}</span>
+                  <span className="bg-gray-100 px-2 py-1 rounded">{gen.provider}</span>
                   <span>every {gen.interval}</span>
                   <span>{gen.tagCount}</span>
                 </div>
@@ -218,7 +218,7 @@ export default function DataGeneration() {
               <div className="space-y-2">
                 {gen.signals.map((sig) => (
                   <div key={sig.name} className="flex items-start gap-3 text-sm">
-                    <span className="text-gray-300 font-medium w-44 flex-shrink-0">
+                    <span className="text-gray-700 font-medium w-44 flex-shrink-0">
                       {sig.name}
                     </span>
                     <span className="text-gray-500">{sig.model}</span>
@@ -227,7 +227,7 @@ export default function DataGeneration() {
               </div>
 
               {gen.faultInjection && (
-                <div className="mt-4 pt-3 border-t border-gray-800">
+                <div className="mt-4 pt-3 border-t border-gray-200">
                   <div className="flex items-start gap-2 text-sm">
                     <span className="text-amber-400 font-medium flex-shrink-0">Fault injection</span>
                     <span className="text-gray-500">{gen.faultInjection}</span>
@@ -244,7 +244,7 @@ export default function DataGeneration() {
         <h2 className="text-sm font-semibold text-gray-500 tracking-wider uppercase mb-4">
           What makes it realistic
         </h2>
-        <p className="text-gray-400 mb-4 text-sm leading-relaxed">
+        <p className="text-gray-600 mb-4 text-sm leading-relaxed">
           Each generator maintains internal state and computes the next value from physical
           relationships — not random distributions. Temperatures couple thermally, SoC integrates
           power over time, market prices mean-revert with fat-tailed spikes, and grid dispatch
@@ -254,12 +254,12 @@ export default function DataGeneration() {
           {physicsDetails.map((p) => (
             <div
               key={p.title}
-              className="bg-gray-900 border border-gray-800 rounded-lg p-4"
+              className="bg-white border border-gray-200 rounded-lg p-4"
             >
               <h3 className="text-sm font-semibold text-brand-green mb-1">
                 {p.title}
               </h3>
-              <p className="text-sm text-gray-400 leading-relaxed">
+              <p className="text-sm text-gray-600 leading-relaxed">
                 {p.detail}
               </p>
             </div>
@@ -272,33 +272,33 @@ export default function DataGeneration() {
         <h2 className="text-sm font-semibold text-gray-500 tracking-wider uppercase mb-4">
           Simulator configuration
         </h2>
-        <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-800 text-left">
-                <th className="px-4 py-3 text-gray-400 font-medium">Flag</th>
-                <th className="px-4 py-3 text-gray-400 font-medium">Default</th>
-                <th className="px-4 py-3 text-gray-400 font-medium">Description</th>
+              <tr className="border-b border-gray-200 text-left">
+                <th className="px-4 py-3 text-gray-600 font-medium">Flag</th>
+                <th className="px-4 py-3 text-gray-600 font-medium">Default</th>
+                <th className="px-4 py-3 text-gray-600 font-medium">Description</th>
               </tr>
             </thead>
             <tbody>
               {configParams.map((p) => (
-                <tr key={p.flag} className="border-b border-gray-800/50">
-                  <td className="px-4 py-2 text-gray-200 font-mono text-xs">{p.flag}</td>
-                  <td className="px-4 py-2 text-gray-400">{p.default}</td>
+                <tr key={p.flag} className="border-b border-gray-200/50">
+                  <td className="px-4 py-2 text-gray-800 font-mono text-xs">{p.flag}</td>
+                  <td className="px-4 py-2 text-gray-600">{p.default}</td>
                   <td className="px-4 py-2 text-gray-500">{p.desc}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <div className="mt-3 bg-gray-900 border border-gray-800 rounded-lg p-4">
+        <div className="mt-3 bg-white border border-gray-200 rounded-lg p-4">
           <p className="text-xs text-gray-500 mb-2">Quick start:</p>
-          <code className="text-sm text-gray-300 font-mono">
+          <code className="text-sm text-gray-700 font-mono">
             make simulate-83
           </code>
           <p className="text-xs text-gray-500 mt-2">
-            Override: <code className="text-gray-400">SIM_SITES=5 SIM_UNITS=4 SIM_INTERVAL=500 make simulate-83</code>
+            Override: <code className="text-gray-600">SIM_SITES=5 SIM_UNITS=4 SIM_INTERVAL=500 make simulate-83</code>
           </p>
         </div>
       </section>
@@ -319,14 +319,14 @@ export default function DataGeneration() {
           ].map((s) => (
             <div
               key={s.step}
-              className="bg-gray-900 border border-gray-800 rounded-lg p-4 flex items-start gap-4"
+              className="bg-white border border-gray-200 rounded-lg p-4 flex items-start gap-4"
             >
               <span className="text-xl font-bold text-databricks-primary opacity-50 select-none w-8 flex-shrink-0 text-center">
                 {s.step}
               </span>
               <div>
-                <h3 className="text-sm font-semibold text-gray-200">{s.label}</h3>
-                <p className="text-sm text-gray-400">{s.detail}</p>
+                <h3 className="text-sm font-semibold text-gray-800">{s.label}</h3>
+                <p className="text-sm text-gray-600">{s.detail}</p>
               </div>
             </div>
           ))}

@@ -50,21 +50,21 @@ export default function CompressionWaterfall({ layers }: CompressionWaterfallPro
   const deltaLayer = layers.find((l) => l.layer_name === 'after_delta') ?? layers.find((l) => l.layer_name === 'combined');
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
-      <h3 className="text-sm font-semibold text-gray-300 mb-3">
+    <div className="bg-white border border-gray-200 rounded-lg p-4">
+      <h3 className="text-sm font-semibold text-gray-700 mb-3">
         Multi-layer compression breakdown
       </h3>
 
       {/* One-line summary: Incoming → On disk */}
       {rawLayer != null && deltaLayer != null && (
-        <p className="text-xs text-gray-400 mb-3">
+        <p className="text-xs text-gray-600 mb-3">
           Incoming: {rawLayer.event_count.toLocaleString()} rows, {formatBytes(rawLayer.size_bytes)} (est.) → On
           disk: {formatBytes(deltaLayer.size_bytes)} (ZSTD).
         </p>
       )}
 
       {/* Layer labels */}
-      <div className="flex gap-4 mb-4 text-xs text-gray-400">
+      <div className="flex gap-4 mb-4 text-xs text-gray-600">
         {layers.map((l, i) => (
           <span key={l.layer_name} className="flex items-center gap-1">
             <span
@@ -78,22 +78,22 @@ export default function CompressionWaterfall({ layers }: CompressionWaterfallPro
 
       <ResponsiveContainer width="100%" height={250}>
         <BarChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis dataKey="name" stroke="#9CA3AF" fontSize={12} />
           <YAxis stroke="#9CA3AF" fontSize={12} tickFormatter={(v: number) => formatBytes(v)} />
           <Tooltip
-            contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }}
-            labelStyle={{ color: '#D1D5DB' }}
+            contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e5e7eb' }}
+            labelStyle={{ color: '#374151' }}
             content={({ active, payload }) => {
               if (!active || !payload?.length) return null;
               const d = payload[0].payload;
               return (
-                <div className="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm">
-                  <div className="font-medium text-gray-200">{d.name}</div>
-                  <div className="text-gray-400">Rows: {d.event_count?.toLocaleString() ?? '—'}</div>
-                  <div className="text-gray-400">Size: {formatBytes(d.size_bytes ?? 0)}</div>
+                <div className="bg-gray-100 border border-gray-600 rounded px-3 py-2 text-sm">
+                  <div className="font-medium text-gray-800">{d.name}</div>
+                  <div className="text-gray-600">Rows: {d.event_count?.toLocaleString() ?? '—'}</div>
+                  <div className="text-gray-600">Size: {formatBytes(d.size_bytes ?? 0)}</div>
                   {d.ratio != null && d.ratio !== 1 && (
-                    <div className="text-gray-400">Ratio vs raw: {d.ratio.toFixed(2)}:1</div>
+                    <div className="text-gray-600">Ratio vs raw: {d.ratio.toFixed(2)}:1</div>
                   )}
                 </div>
               );
@@ -108,7 +108,7 @@ export default function CompressionWaterfall({ layers }: CompressionWaterfallPro
       </ResponsiveContainer>
 
       {/* Compression callout */}
-      <div className="mt-4 p-3 bg-gray-800 border border-gray-700 rounded text-sm text-gray-300">
+      <div className="mt-4 p-3 bg-gray-100 border border-gray-200 rounded text-sm text-gray-700">
         Other platforms apply Swinging Door compression at the archive. We apply the{' '}
         <strong className="text-databricks-primary">same algorithm</strong> at the Zerobus connector
         - plus Delta columnar encoding on top. Same compression, open format, fewer moving

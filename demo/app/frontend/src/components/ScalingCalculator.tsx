@@ -37,8 +37,8 @@ export default function ScalingCalculator() {
   }
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
-      <h3 className="text-sm font-semibold text-gray-300 mb-4">
+    <div className="bg-white border border-gray-200 rounded-lg p-4">
+      <h3 className="text-sm font-semibold text-gray-700 mb-4">
         Scaling calculator
       </h3>
 
@@ -48,7 +48,7 @@ export default function ScalingCalculator() {
           <button
             key={p.label}
             onClick={() => applyPreset(p)}
-            className="px-3 py-1 text-xs rounded border border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-databricks-primary transition-colors"
+            className="px-3 py-1 text-xs rounded border border-gray-200 text-gray-700 hover:bg-gray-100 hover:text-databricks-primary transition-colors"
           >
             {p.label}
           </button>
@@ -59,8 +59,8 @@ export default function ScalingCalculator() {
       <div className="space-y-4 mb-5">
         <div>
           <div className="flex justify-between text-sm mb-1">
-            <span className="text-gray-400">Total tags</span>
-            <span className="text-gray-200 font-medium">{fmtK(totalTags)}</span>
+            <span className="text-gray-600">Total tags</span>
+            <span className="text-gray-800 font-medium">{fmtK(totalTags)}</span>
           </div>
           <input
             type="range"
@@ -75,8 +75,8 @@ export default function ScalingCalculator() {
 
         <div>
           <div className="flex justify-between text-sm mb-1">
-            <span className="text-gray-400">Scan rate</span>
-            <span className="text-gray-200 font-medium">{scanRate}s</span>
+            <span className="text-gray-600">Scan rate</span>
+            <span className="text-gray-800 font-medium">{scanRate}s</span>
           </div>
           <input
             type="range"
@@ -91,8 +91,8 @@ export default function ScalingCalculator() {
 
         <div>
           <div className="flex justify-between text-sm mb-1">
-            <span className="text-gray-400">Compression ratio</span>
-            <span className="text-gray-200 font-medium">{compression}:1</span>
+            <span className="text-gray-600">Compression ratio</span>
+            <span className="text-gray-800 font-medium">{compression}:1</span>
           </div>
           <input
             type="range"
@@ -109,13 +109,13 @@ export default function ScalingCalculator() {
       {/* Results */}
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-gray-950 rounded-lg p-3">
-          <p className="text-xs text-gray-400 mb-1">Effective throughput / stream</p>
+          <p className="text-xs text-gray-600 mb-1">Effective throughput / stream</p>
           <p className="text-xl font-bold text-databricks-primary">
             {fmtK(effectivePerStream)} rows/s
           </p>
         </div>
         <div className="bg-gray-950 rounded-lg p-3">
-          <p className="text-xs text-gray-400 mb-1">Streams needed</p>
+          <p className="text-xs text-gray-600 mb-1">Streams needed</p>
           <p className="text-xl font-bold text-brand-green">
             {streamsNeeded}
           </p>

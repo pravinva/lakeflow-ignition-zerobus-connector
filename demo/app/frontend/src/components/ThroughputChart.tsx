@@ -53,9 +53,9 @@ export default function ThroughputChart({ data }: ThroughputChartProps) {
   const hasSdtCompression = chartData.some((d) => d.raw > d.postSdt);
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
+    <div className="bg-white border border-gray-200 rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-gray-300">
+        <h3 className="text-sm font-semibold text-gray-700">
           Throughput (events/sec)
         </h3>
         <span className="text-xs text-gray-500">
@@ -66,24 +66,24 @@ export default function ThroughputChart({ data }: ThroughputChartProps) {
       </div>
       <ResponsiveContainer width="100%" height={250}>
         <AreaChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis dataKey="time" stroke="#9CA3AF" fontSize={12} />
           <YAxis stroke="#9CA3AF" fontSize={12} />
           <Tooltip
             contentStyle={{
-              backgroundColor: '#1F2937',
-              border: '1px solid #374151',
+              backgroundColor: '#ffffff',
+              border: '1px solid #e5e7eb',
             }}
-            labelStyle={{ color: '#D1D5DB' }}
+            labelStyle={{ color: '#374151' }}
             content={({ active, payload, label }) => {
               if (!active || !payload?.length || !label) return null;
               const d = payload[0].payload as ChartDatum;
               return (
                 <div className="rounded px-3 py-2 min-w-[160px]">
-                  <div className="text-gray-300 font-medium border-b border-gray-600 pb-1 mb-2">
+                  <div className="text-gray-700 font-medium border-b border-gray-600 pb-1 mb-2">
                     {label}
                   </div>
-                  <div className="text-gray-400 text-sm space-y-0.5">
+                  <div className="text-gray-600 text-sm space-y-0.5">
                     {hasSdtCompression ? (
                       <>
                         <div>

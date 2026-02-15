@@ -204,7 +204,7 @@ export default function AssetTemplates() {
   };
 
   if (loading) {
-    return <div className="text-gray-400 p-4">Loading templates...</div>;
+    return <div className="text-gray-600 p-4">Loading templates...</div>;
   }
 
   if (error) {
@@ -217,33 +217,33 @@ export default function AssetTemplates() {
       <div>
         <button
           onClick={() => setDetail(null)}
-          className="text-sm text-gray-400 hover:text-gray-200 mb-4"
+          className="text-sm text-gray-600 hover:text-gray-800 mb-4"
         >
           &larr; Back to templates
         </button>
 
         {detailLoading ? (
-          <div className="text-gray-400">Loading...</div>
+          <div className="text-gray-600">Loading...</div>
         ) : (
           <div className="space-y-6">
             {/* Template header */}
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-xl font-semibold">{detail.template_name}</h2>
-                <p className="text-sm text-gray-400 mt-1">
-                  <span className="font-mono text-xs bg-gray-800 px-1.5 py-0.5 rounded">
+                <p className="text-sm text-gray-600 mt-1">
+                  <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">
                     {detail.template_id}
                   </span>
                   <span className="ml-3">{detail.base_asset_type.replace(/_/g, ' ')}</span>
                 </p>
                 {detail.description && (
-                  <p className="text-sm text-gray-400 mt-2">{detail.description}</p>
+                  <p className="text-sm text-gray-600 mt-2">{detail.description}</p>
                 )}
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={handleEditTemplate}
-                  className="px-3 py-1.5 text-sm rounded bg-gray-800 text-gray-300 hover:bg-gray-700"
+                  className="px-3 py-1.5 text-sm rounded bg-gray-100 text-gray-700 hover:bg-gray-700"
                 >
                   Edit
                 </button>
@@ -259,7 +259,7 @@ export default function AssetTemplates() {
             {/* Attributes table */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold text-gray-300">
+                <h3 className="text-sm font-semibold text-gray-700">
                   Attributes ({detail.attributes.length})
                 </h3>
                 <button
@@ -272,7 +272,7 @@ export default function AssetTemplates() {
               {detail.attributes.length > 0 ? (
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-xs text-gray-500 border-b border-gray-800">
+                    <tr className="text-xs text-gray-500 border-b border-gray-200">
                       <th className="text-left py-1 font-normal w-8">#</th>
                       <th className="text-left py-1 font-normal">Name</th>
                       <th className="text-left py-1 font-normal">Type</th>
@@ -284,15 +284,15 @@ export default function AssetTemplates() {
                   </thead>
                   <tbody>
                     {detail.attributes.map((attr) => (
-                      <tr key={attr.attribute_id} className="border-b border-gray-800/50">
+                      <tr key={attr.attribute_id} className="border-b border-gray-200/50">
                         <td className="py-1.5 text-gray-500 text-xs">{attr.sort_order}</td>
-                        <td className="py-1.5 text-gray-300">{attr.attribute_name}</td>
-                        <td className="py-1.5 text-gray-400 text-xs font-mono">{attr.data_type}</td>
-                        <td className="py-1.5 text-gray-400 text-xs">{attr.unit ?? '-'}</td>
-                        <td className="py-1.5 text-gray-400 text-xs font-mono">
+                        <td className="py-1.5 text-gray-700">{attr.attribute_name}</td>
+                        <td className="py-1.5 text-gray-600 text-xs font-mono">{attr.data_type}</td>
+                        <td className="py-1.5 text-gray-600 text-xs">{attr.unit ?? '-'}</td>
+                        <td className="py-1.5 text-gray-600 text-xs font-mono">
                           {attr.default_value ?? '-'}
                         </td>
-                        <td className="py-1.5 text-gray-400 text-xs">
+                        <td className="py-1.5 text-gray-600 text-xs">
                           {attr.is_required ? 'Yes' : 'No'}
                         </td>
                         <td className="py-1.5 text-right">
@@ -321,16 +321,16 @@ export default function AssetTemplates() {
             {/* Assets using template */}
             {detail.assets.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-gray-300 mb-2">
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">
                   Assets using this template ({detail.assets.length})
                 </h3>
                 <div className="space-y-1">
                   {detail.assets.map((a) => (
                     <div
                       key={a.asset_id}
-                      className="flex items-center gap-3 text-sm text-gray-400 py-1"
+                      className="flex items-center gap-3 text-sm text-gray-600 py-1"
                     >
-                      <span className="font-mono text-xs bg-gray-800 px-1.5 py-0.5 rounded">
+                      <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">
                         {a.asset_id}
                       </span>
                       <span>{a.asset_name}</span>

@@ -18,7 +18,7 @@ function formatDateTime(ts: string | null | undefined): string {
 }
 
 function healthColor(score: number | null | undefined): string {
-  if (score == null) return 'text-gray-400';
+  if (score == null) return 'text-gray-600';
   if (score >= 0.8) return 'text-brand-green';
   if (score >= 0.5) return 'text-brand-amber';
   return 'text-brand-red';
@@ -59,8 +59,8 @@ export default function Analytics() {
   return (
     <div>
       <h2 className="text-2xl font-semibold mb-2">Fleet health & revenue risk</h2>
-      <p className="text-gray-400 mb-6 max-w-2xl">
-        This pipeline answers: <strong className="text-gray-200">{VALUE_PROP}</strong>
+      <p className="text-gray-600 mb-6 max-w-2xl">
+        This pipeline answers: <strong className="text-gray-800">{VALUE_PROP}</strong>
       </p>
 
       {/* Summary cards */}
@@ -91,11 +91,11 @@ export default function Analytics() {
 
       {/* Health by asset */}
       <section className="mb-8">
-        <h3 className="text-lg font-semibold text-gray-300 mb-3">Health by asset</h3>
-        <div className="overflow-x-auto border border-gray-800 rounded-lg">
+        <h3 className="text-lg font-semibold text-gray-700 mb-3">Health by asset</h3>
+        <div className="overflow-x-auto border border-gray-200 rounded-lg">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-900 text-left text-gray-400">
+              <tr className="bg-white text-left text-gray-600">
                 <th className="px-4 py-3 font-medium">Asset</th>
                 <th className="px-4 py-3 font-medium">Health</th>
                 <th className="px-4 py-3 font-medium">Primary risk tag</th>
@@ -112,13 +112,13 @@ export default function Analytics() {
                 </tr>
               ) : (
                 (healthScores ?? []).map((row) => (
-                  <tr key={row.asset_id} className="border-t border-gray-800 hover:bg-gray-800/50">
-                    <td className="px-4 py-3 font-mono text-gray-300">{row.asset_id}</td>
+                  <tr key={row.asset_id} className="border-t border-gray-200 hover:bg-gray-100/50">
+                    <td className="px-4 py-3 font-mono text-gray-700">{row.asset_id}</td>
                     <td className={`px-4 py-3 font-semibold ${healthColor(row.health_score)}`}>
                       {formatNumber(row.health_score, 2)}
                     </td>
-                    <td className="px-4 py-3 text-gray-400">{row.primary_risk_tag ?? '-'}</td>
-                    <td className="px-4 py-3 text-gray-400 max-w-md truncate">
+                    <td className="px-4 py-3 text-gray-600">{row.primary_risk_tag ?? '-'}</td>
+                    <td className="px-4 py-3 text-gray-600 max-w-md truncate">
                       {row.risk_description ?? '-'}
                     </td>
                   </tr>
@@ -131,11 +131,11 @@ export default function Analytics() {
 
       {/* Revenue at risk by asset */}
       <section>
-        <h3 className="text-lg font-semibold text-gray-300 mb-3">Revenue at risk by asset</h3>
-        <div className="overflow-x-auto border border-gray-800 rounded-lg">
+        <h3 className="text-lg font-semibold text-gray-700 mb-3">Revenue at risk by asset</h3>
+        <div className="overflow-x-auto border border-gray-200 rounded-lg">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-900 text-left text-gray-400">
+              <tr className="bg-white text-left text-gray-600">
                 <th className="px-4 py-3 font-medium">Asset</th>
                 <th className="px-4 py-3 font-medium">Risk window</th>
                 <th className="px-4 py-3 font-medium">Forecast $/MWh</th>
@@ -158,28 +158,28 @@ export default function Analytics() {
                 (revenueRisk ?? []).map((row, i) => (
                   <tr
                     key={`${row.asset_id}-${row.risk_window_start}-${i}`}
-                    className="border-t border-gray-800 hover:bg-gray-800/50"
+                    className="border-t border-gray-200 hover:bg-gray-100/50"
                   >
-                    <td className="px-4 py-3 font-mono text-gray-300">{row.asset_id}</td>
-                    <td className="px-4 py-3 text-gray-400 whitespace-nowrap">
+                    <td className="px-4 py-3 font-mono text-gray-700">{row.asset_id}</td>
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                       {formatDateTime(row.risk_window_start)} → {formatDateTime(row.risk_window_end)}
                     </td>
-                    <td className="px-4 py-3 text-gray-300">
+                    <td className="px-4 py-3 text-gray-700">
                       {formatNumber(row.forecast_price_aud_mwh, 0)}
                     </td>
-                    <td className="px-4 py-3 text-gray-300">
+                    <td className="px-4 py-3 text-gray-700">
                       {formatNumber(row.asset_capacity_mw, 0)}
                     </td>
                     <td className={`px-4 py-3 font-semibold ${healthColor(row.health_score)}`}>
                       {row.health_score != null ? formatNumber(row.health_score, 2) : '-'}
                     </td>
-                    <td className="px-4 py-3 text-gray-300">
+                    <td className="px-4 py-3 text-gray-700">
                       {formatNumber(row.trip_probability, 2)}
                     </td>
                     <td className="px-4 py-3 font-semibold text-brand-amber">
                       ${formatNumber(row.revenue_at_risk_aud, 0)}
                     </td>
-                    <td className="px-4 py-3 text-gray-400 max-w-xs">{row.recommended_action}</td>
+                    <td className="px-4 py-3 text-gray-600 max-w-xs">{row.recommended_action}</td>
                   </tr>
                 ))
               )}

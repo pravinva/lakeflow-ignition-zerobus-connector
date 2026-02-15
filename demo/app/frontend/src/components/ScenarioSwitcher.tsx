@@ -28,7 +28,7 @@ export default function ScenarioSwitcher({ activeScenario, onScenarioChange }: S
           className={`px-3 py-1.5 rounded text-sm transition-colors ${
             s.id === activeScenario
               ? 'bg-databricks-primary text-white'
-              : 'bg-gray-800 text-gray-400 hover:text-gray-100 hover:bg-gray-700'
+              : 'bg-gray-100 text-gray-600 hover:text-gray-900 hover:bg-gray-700'
           }`}
         >
           {s.label}

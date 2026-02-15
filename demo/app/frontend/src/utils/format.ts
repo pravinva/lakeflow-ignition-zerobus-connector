@@ -18,7 +18,7 @@ export function qualityLabel(quality: number | string | null | undefined): strin
 
 export function latencyColor(ms: number | string | null | undefined): string {
   const v = typeof ms === 'string' ? parseFloat(ms) : ms;
-  if (v == null || isNaN(v)) return 'text-gray-400';
+  if (v == null || isNaN(v)) return 'text-gray-600';
   if (v < 5000) return 'text-brand-green';
   if (v < 10000) return 'text-brand-amber';
   return 'text-brand-red';

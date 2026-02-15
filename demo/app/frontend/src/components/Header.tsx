@@ -14,9 +14,9 @@ interface HeaderProps {
 
 export default function Header({ activeScenario, onScenarioChange }: HeaderProps) {
   return (
-    <header className="flex items-center justify-between mb-6 pb-4 border-b border-gray-800">
+    <header className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
       <div className="flex items-center gap-4">
-        <span className="text-sm text-gray-400">Active scenario:</span>
+        <span className="text-sm text-gray-600">Active scenario:</span>
         <span className="text-sm font-medium text-databricks-primary">
           {SCENARIO_LABELS[activeScenario] ?? activeScenario}
         </span>

@@ -46,11 +46,11 @@ export default function SdtTuningPanel({
   });
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
-      <h3 className="text-sm font-semibold text-gray-300 mb-3">SDT tuning</h3>
+    <div className="bg-white border border-gray-200 rounded-lg p-4">
+      <h3 className="text-sm font-semibold text-gray-700 mb-3">SDT tuning</h3>
 
       {/* CompDev tooltip/explanation */}
-      <div className="mb-4 p-2 bg-gray-800 border border-gray-700 rounded text-xs text-gray-400">
+      <div className="mb-4 p-2 bg-gray-100 border border-gray-200 rounded text-xs text-gray-600">
         <strong>CompDev = Compression Deviation.</strong> This is the maximum allowed deviation
         from a linear interpolation between archived points. Common CompDev parameter in historian platforms.
       </div>
@@ -58,7 +58,7 @@ export default function SdtTuningPanel({
       {/* Sliders */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
-          <label htmlFor="comp-dev-slider" className="block text-sm text-gray-400 mb-1">
+          <label htmlFor="comp-dev-slider" className="block text-sm text-gray-600 mb-1">
             CompDev % ({devPercent.toFixed(1)}%)
           </label>
           <input
@@ -73,7 +73,7 @@ export default function SdtTuningPanel({
           />
         </div>
         <div>
-          <label htmlFor="comp-max-slider" className="block text-sm text-gray-400 mb-1">
+          <label htmlFor="comp-max-slider" className="block text-sm text-gray-600 mb-1">
             CompMax ({maxSeconds}s)
           </label>
           <input
@@ -100,12 +100,12 @@ export default function SdtTuningPanel({
       {/* Mini trend chart */}
       <ResponsiveContainer width="100%" height={180}>
         <LineChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis dataKey="t" stroke="#9CA3AF" fontSize={12} />
           <YAxis stroke="#9CA3AF" fontSize={12} />
           <Tooltip
-            contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }}
-            labelStyle={{ color: '#D1D5DB' }}
+            contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e5e7eb' }}
+            labelStyle={{ color: '#374151' }}
           />
           <Legend />
           <Line

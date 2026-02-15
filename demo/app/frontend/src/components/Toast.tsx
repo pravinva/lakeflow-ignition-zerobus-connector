@@ -23,7 +23,7 @@ export default function Toast({ message, onClose, autoCloseMs = 5000, type = 'er
     <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg border ${colorMap[type]} max-w-md shadow-lg`}>
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm">{message}</p>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-200">
+        <button onClick={onClose} className="text-gray-600 hover:text-gray-800">
           &times;
         </button>
       </div>

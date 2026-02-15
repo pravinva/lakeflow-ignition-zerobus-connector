@@ -4,7 +4,7 @@ You have provided logos to use. This addendum updates the on-brand plan to **inc
 
 ## Where logo files are (React app)
 
-**Note:** The app uses the real Databricks and AGL logos. Place the official assets in `public/logos/` with the filenames below.
+**Note:** The app imports the real Databricks and AGL logos from `src/default/databricks-full.png` and `src/agl/AGL_Energy_logo.png` so they always render (no need to copy to `public/logos/`). For SVG, you can add files to `public/logos/` and switch the imports if preferred.
 
 For Vite to serve them at build and runtime, either:
 

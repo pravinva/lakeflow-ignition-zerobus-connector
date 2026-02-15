@@ -24,22 +24,22 @@ export default function AssetCard({ asset }: AssetCardProps) {
   return (
     <button
       onClick={() => navigate(`/assets/${asset.asset_id}`)}
-      className="bg-gray-900 border border-gray-800 rounded-lg p-4 text-left
+      className="bg-white border border-gray-200 rounded-lg p-4 text-left
                  hover:border-databricks-primary/50 transition-colors w-full"
     >
       <div className="flex items-center gap-2 mb-2">
         <span className="text-xl">{typeIcon(asset.asset_type)}</span>
-        <h3 className="font-semibold text-gray-100">{asset.asset_name}</h3>
+        <h3 className="font-semibold text-gray-900">{asset.asset_name}</h3>
       </div>
       <div className="space-y-1 text-sm">
-        <p className="text-gray-400">
+        <p className="text-gray-600">
           {asset.site_name} &middot; {asset.tag_count} tags
         </p>
         <p>
           Status: <span className={status.color}>{status.label}</span>
         </p>
         {asset.compression_ratio && (
-          <p className="text-gray-400">
+          <p className="text-gray-600">
             Compression: {formatNumber(asset.compression_ratio, 1)}:1
           </p>
         )}

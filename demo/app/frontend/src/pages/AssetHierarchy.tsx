@@ -118,7 +118,7 @@ export default function AssetHierarchy() {
   };
 
   if (loading) {
-    return <div className="text-gray-400 p-4">Loading hierarchy...</div>;
+    return <div className="text-gray-600 p-4">Loading hierarchy...</div>;
   }
 
   if (error) {
@@ -128,9 +128,9 @@ export default function AssetHierarchy() {
   return (
     <div className="flex h-[calc(100vh-3rem)] -m-6">
       {/* Left panel - tree */}
-      <div className="w-80 flex-shrink-0 border-r border-gray-800 flex flex-col">
-        <div className="flex items-center justify-between p-3 border-b border-gray-800">
-          <h2 className="text-sm font-semibold text-gray-300">Asset hierarchy</h2>
+      <div className="w-80 flex-shrink-0 border-r border-gray-200 flex flex-col">
+        <div className="flex items-center justify-between p-3 border-b border-gray-200">
+          <h2 className="text-sm font-semibold text-gray-700">Asset hierarchy</h2>
           <button
             onClick={handleCreateRoot}
             className="px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-500"

@@ -7,14 +7,14 @@ interface EventStreamProps {
 
 export default function EventStream({ events }: EventStreamProps) {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
-      <h3 className="text-sm font-semibold text-gray-300 mb-3">
+    <div className="bg-white border border-gray-200 rounded-lg p-4">
+      <h3 className="text-sm font-semibold text-gray-700 mb-3">
         Live event stream
       </h3>
       <div className="overflow-auto max-h-96">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-gray-400 border-b border-gray-800">
+            <tr className="text-gray-600 border-b border-gray-200">
               <th className="text-left py-2 px-2">Timestamp</th>
               <th className="text-left py-2 px-2">Asset</th>
               <th className="text-left py-2 px-2">Tag</th>
@@ -32,20 +32,20 @@ export default function EventStream({ events }: EventStreamProps) {
               return (
                 <tr
                   key={`${evt.event_timestamp}-${evt.asset_id}-${evt.tag_name}-${i}`}
-                  className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors"
+                  className="border-b border-gray-200/50 hover:bg-gray-100/30 transition-colors"
                 >
-                  <td className="py-1.5 px-2 text-gray-300">
+                  <td className="py-1.5 px-2 text-gray-700">
                     {formatTimestamp(evt.event_timestamp)}
                   </td>
-                  <td className="py-1.5 px-2 text-gray-300">{evt.asset_id}</td>
-                  <td className="py-1.5 px-2 text-gray-400">{evt.tag_name}</td>
-                  <td className="py-1.5 px-2 text-right text-gray-100">
+                  <td className="py-1.5 px-2 text-gray-700">{evt.asset_id}</td>
+                  <td className="py-1.5 px-2 text-gray-600">{evt.tag_name}</td>
+                  <td className="py-1.5 px-2 text-right text-gray-900">
                     {formatNumber(evt.tag_value)}
                   </td>
-                  <td className="py-1.5 px-2 text-gray-400">
+                  <td className="py-1.5 px-2 text-gray-600">
                     {qualityLabel(evt.quality)}
                   </td>
-                  <td className="py-1.5 px-2 text-right text-gray-400">
+                  <td className="py-1.5 px-2 text-right text-gray-600">
                     {formatNumber(latencyMs, 0)}ms
                   </td>
                   <td className="py-1.5 px-2 text-center">

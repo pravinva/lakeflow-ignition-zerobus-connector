@@ -34,23 +34,23 @@ type TimeRange = 5 | 15 | 60;
 
 function ChartSkeleton() {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 animate-pulse">
-      <div className="h-4 w-32 bg-gray-800 rounded mb-4" />
-      <div className="h-[200px] bg-gray-800/50 rounded" />
+    <div className="bg-white border border-gray-200 rounded-lg p-4 animate-pulse">
+      <div className="h-4 w-32 bg-gray-100 rounded mb-4" />
+      <div className="h-[200px] bg-gray-100/50 rounded" />
     </div>
   );
 }
 
 function TableSkeleton() {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 animate-pulse">
-      <div className="h-4 w-20 bg-gray-800 rounded mb-4" />
+    <div className="bg-white border border-gray-200 rounded-lg p-4 animate-pulse">
+      <div className="h-4 w-20 bg-gray-100 rounded mb-4" />
       {Array.from({ length: 6 }).map((_, i) => (
         <div key={i} className="flex gap-4 py-2">
-          <div className="h-3 w-40 bg-gray-800 rounded" />
-          <div className="h-3 w-16 bg-gray-800 rounded ml-auto" />
-          <div className="h-3 w-12 bg-gray-800 rounded" />
-          <div className="h-3 w-24 bg-gray-800 rounded" />
+          <div className="h-3 w-40 bg-gray-100 rounded" />
+          <div className="h-3 w-16 bg-gray-100 rounded ml-auto" />
+          <div className="h-3 w-12 bg-gray-100 rounded" />
+          <div className="h-3 w-24 bg-gray-100 rounded" />
         </div>
       ))}
     </div>
@@ -123,7 +123,7 @@ export default function AssetDetail() {
     );
   }, [allTags]);
 
-  if (!id) return <p className="text-gray-400">No asset selected.</p>;
+  if (!id) return <p className="text-gray-600">No asset selected.</p>;
 
   return (
     <div>
@@ -131,8 +131,8 @@ export default function AssetDetail() {
       <div className="mb-6">
         {assetLoading && !asset ? (
           <div className="animate-pulse">
-            <div className="h-7 w-64 bg-gray-800 rounded mb-2" />
-            <div className="h-4 w-48 bg-gray-800 rounded" />
+            <div className="h-7 w-64 bg-gray-100 rounded mb-2" />
+            <div className="h-4 w-48 bg-gray-100 rounded" />
           </div>
         ) : (
           <>
@@ -140,7 +140,7 @@ export default function AssetDetail() {
               {asset ? `${asset.asset_name} - ${asset.site_name}` : 'Asset detail'}
             </h2>
             {asset && (
-              <div className="flex gap-4 text-sm text-gray-400 mt-1">
+              <div className="flex gap-4 text-sm text-gray-600 mt-1">
                 <span>Type: {asset.asset_type}</span>
                 {asset.capacity_mw && (
                   <span>Capacity: {formatNumber(asset.capacity_mw, 1)} MW</span>
@@ -162,14 +162,14 @@ export default function AssetDetail() {
               className={`px-3 py-1 rounded text-sm ${
                 range === r
                   ? 'bg-databricks-primary text-white'
-                  : 'bg-gray-800 text-gray-400 hover:text-gray-200'
+                  : 'bg-gray-100 text-gray-600 hover:text-gray-800'
               }`}
             >
               {r === 60 ? '1 hour' : `${r} min`}
             </button>
           ))}
         </div>
-        <label className="flex items-center gap-2 text-sm text-gray-400">
+        <label className="flex items-center gap-2 text-sm text-gray-600">
           <input
             type="checkbox"
             checked={showRaw}
@@ -187,18 +187,18 @@ export default function AssetDetail() {
           : trendTags.map((tag, idx) => (
               <div
                 key={tag}
-                className="bg-gray-900 border border-gray-800 rounded-lg p-4"
+                className="bg-white border border-gray-200 rounded-lg p-4"
               >
-                <h4 className="text-sm text-gray-400 mb-2">{tag}</h4>
+                <h4 className="text-sm text-gray-600 mb-2">{tag}</h4>
                 <ResponsiveContainer width="100%" height={200}>
                   <LineChart data={chartDataByTag[tag] ?? []}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis dataKey="time" stroke="#9CA3AF" fontSize={11} />
                     <YAxis stroke="#9CA3AF" fontSize={11} />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: '#1F2937',
-                        border: '1px solid #374151',
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #e5e7eb',
                       }}
                     />
                     <Legend />
@@ -242,12 +242,12 @@ export default function AssetDetail() {
       {tagsLoading && !allTags ? (
         <TableSkeleton />
       ) : (
-        <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-gray-300 mb-3">All tags</h3>
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">All tags</h3>
           <div className="overflow-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-gray-400 border-b border-gray-800">
+                <tr className="text-gray-600 border-b border-gray-200">
                   <th className="text-left py-2 px-2">Tag name</th>
                   <th className="text-right py-2 px-2">Current value</th>
                   <th className="text-left py-2 px-2">Quality</th>
@@ -259,16 +259,16 @@ export default function AssetDetail() {
                 {tagTable.map((t) => (
                   <tr
                     key={t.tag_name}
-                    className="border-b border-gray-800/50 hover:bg-gray-800/30"
+                    className="border-b border-gray-200/50 hover:bg-gray-100/30"
                   >
-                    <td className="py-1.5 px-2 text-gray-300">{t.tag_name}</td>
-                    <td className="py-1.5 px-2 text-right text-gray-100">
+                    <td className="py-1.5 px-2 text-gray-700">{t.tag_name}</td>
+                    <td className="py-1.5 px-2 text-right text-gray-900">
                       {formatNumber(t.tag_value)}
                     </td>
-                    <td className="py-1.5 px-2 text-gray-400">
+                    <td className="py-1.5 px-2 text-gray-600">
                       {qualityLabel(t.quality)}
                     </td>
-                    <td className="py-1.5 px-2 text-gray-400">
+                    <td className="py-1.5 px-2 text-gray-600">
                       {formatTimestamp(t.event_timestamp)}
                     </td>
                     <td className="py-1.5 px-2 text-center">

@@ -50,19 +50,19 @@ export default function Dashboard() {
       <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
         <h2 className="text-2xl font-semibold">Dashboard</h2>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-400">Metrics source:</span>
-          <div className="flex rounded-lg border border-gray-600 overflow-hidden">
+          <span className="text-sm text-gray-600">Metrics source:</span>
+          <div className="flex rounded-lg border border-gray-200 overflow-hidden">
             <button
               type="button"
               onClick={() => setMetricsSource('raw_tags')}
-              className={`px-3 py-1.5 text-sm font-medium ${metricsSource === 'raw_tags' ? 'bg-databricks-primary text-white' : 'bg-gray-800 text-gray-400 hover:text-gray-200'}`}
+              className={`px-3 py-1.5 text-sm font-medium ${metricsSource === 'raw_tags' ? 'bg-databricks-primary text-white' : 'bg-white text-gray-600 hover:text-gray-900 border border-gray-200'}`}
             >
               raw_tags
             </button>
             <button
               type="button"
               onClick={() => setMetricsSource('raw_throughput')}
-              className={`px-3 py-1.5 text-sm font-medium ${metricsSource === 'raw_throughput' ? 'bg-databricks-primary text-white' : 'bg-gray-800 text-gray-400 hover:text-gray-200'}`}
+              className={`px-3 py-1.5 text-sm font-medium ${metricsSource === 'raw_throughput' ? 'bg-databricks-primary text-white' : 'bg-white text-gray-600 hover:text-gray-900 border border-gray-200'}`}
             >
               raw_throughput
             </button>

@@ -68,15 +68,15 @@ export default function AssetDetailPanel({
       <div className="flex items-start justify-between">
         <div>
           <h2 className="text-xl font-semibold">{asset.asset_name}</h2>
-          <p className="text-sm text-gray-400 mt-1">
-            <span className="font-mono text-xs bg-gray-800 px-1.5 py-0.5 rounded">{asset.asset_id}</span>
+          <p className="text-sm text-gray-600 mt-1">
+            <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">{asset.asset_id}</span>
           </p>
         </div>
         <div className="flex gap-2">
-          <button onClick={onEdit} className="px-3 py-1.5 text-sm rounded bg-gray-800 text-gray-300 hover:bg-gray-700">
+          <button onClick={onEdit} className="px-3 py-1.5 text-sm rounded bg-gray-100 text-gray-700 hover:bg-gray-700">
             Edit
           </button>
-          <button onClick={onAddChild} className="px-3 py-1.5 text-sm rounded bg-gray-800 text-gray-300 hover:bg-gray-700">
+          <button onClick={onAddChild} className="px-3 py-1.5 text-sm rounded bg-gray-100 text-gray-700 hover:bg-gray-700">
             Add child
           </button>
           <button onClick={onDelete} className="px-3 py-1.5 text-sm rounded bg-red-900/50 text-red-400 hover:bg-red-900/80">
@@ -108,7 +108,7 @@ export default function AssetDetailPanel({
       {asset.description && (
         <div>
           <span className="text-xs text-gray-500">Description</span>
-          <p className="text-sm text-gray-300">{asset.description}</p>
+          <p className="text-sm text-gray-700">{asset.description}</p>
         </div>
       )}
 
@@ -125,7 +125,7 @@ export default function AssetDetailPanel({
           <select
             value={selectedTemplateId}
             onChange={(e) => setSelectedTemplateId(e.target.value)}
-            className="flex-1 px-3 py-1.5 text-sm bg-gray-800 border border-gray-700 rounded text-gray-200"
+            className="flex-1 px-3 py-1.5 text-sm bg-gray-100 border border-gray-200 rounded text-gray-800"
           >
             <option value="">Select template</option>
             {templates.map((t) => (
@@ -143,7 +143,7 @@ export default function AssetDetailPanel({
           </button>
           <button
             onClick={() => { setApplyingTemplate(false); setSelectedTemplateId(''); }}
-            className="px-3 py-1.5 text-sm rounded bg-gray-800 text-gray-300 hover:bg-gray-700"
+            className="px-3 py-1.5 text-sm rounded bg-gray-100 text-gray-700 hover:bg-gray-700"
           >
             Cancel
           </button>
@@ -154,7 +154,7 @@ export default function AssetDetailPanel({
       {attributes.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-gray-300">Attributes</h3>
+            <h3 className="text-sm font-semibold text-gray-700">Attributes</h3>
             {!editingAttrs ? (
               <button
                 onClick={() => setEditingAttrs(true)}
@@ -172,7 +172,7 @@ export default function AssetDetailPanel({
                 </button>
                 <button
                   onClick={() => { setEditingAttrs(false); loadAttributes(); }}
-                  className="text-xs text-gray-400 hover:text-gray-300"
+                  className="text-xs text-gray-600 hover:text-gray-700"
                 >
                   Cancel
                 </button>
@@ -181,7 +181,7 @@ export default function AssetDetailPanel({
           </div>
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-xs text-gray-500 border-b border-gray-800">
+              <tr className="text-xs text-gray-500 border-b border-gray-200">
                 <th className="text-left py-1 font-normal">Attribute</th>
                 <th className="text-left py-1 font-normal">Value</th>
                 <th className="text-left py-1 font-normal">Unit</th>
@@ -190,8 +190,8 @@ export default function AssetDetailPanel({
             </thead>
             <tbody>
               {attributes.map((attr) => (
-                <tr key={attr.attribute_id} className="border-b border-gray-800/50">
-                  <td className="py-1.5 text-gray-300">
+                <tr key={attr.attribute_id} className="border-b border-gray-200/50">
+                  <td className="py-1.5 text-gray-700">
                     {attr.attribute_name}
                     {attr.is_required && <span className="text-red-400 ml-1">*</span>}
                   </td>
@@ -203,7 +203,7 @@ export default function AssetDetailPanel({
                         onChange={(e) =>
                           setAttrValues((prev) => ({ ...prev, [attr.attribute_id]: e.target.value }))
                         }
-                        className="w-full px-2 py-0.5 text-sm bg-gray-800 border border-gray-700 rounded text-gray-200"
+                        className="w-full px-2 py-0.5 text-sm bg-gray-100 border border-gray-200 rounded text-gray-800"
                       />
                     ) : (
                       <span className="font-mono text-xs">{attr.value ?? '-'}</span>

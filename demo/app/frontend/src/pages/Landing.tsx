@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import aglLogo from '../agl/AGL_Energy_logo.png';
+import databricksLogo from '../default/databricks-full.png';
 
 /* ------------------------------------------------------------------ */
 /*  Data: what's actually running in this demo                        */
@@ -147,20 +149,20 @@ const keyMessages = [
 
 const colorMap: Record<string, { border: string; number: string; cta: string }> = {
   blue: {
-    border: 'border-databricks-teal hover:border-databricks-primary',
+    border: 'border-gray-200 hover:border-databricks-primary',
     number: 'text-databricks-primary',
     cta: 'text-databricks-primary',
   },
   green: {
-    border: 'border-green-900 hover:border-green-700',
-    number: 'text-green-500',
-    cta: 'text-green-400',
+    border: 'border-gray-200 hover:border-green-600',
+    number: 'text-green-600',
+    cta: 'text-green-600',
   },
 };
 
 const layerColor: Record<string, string> = {
   Bronze: 'text-amber-400',
-  Silver: 'text-gray-300',
+  Silver: 'text-gray-700',
   Gold: 'text-yellow-400',
 };
 
@@ -174,18 +176,18 @@ export default function Landing() {
       {/* Hero */}
       <section className="mb-12">
         <div className="flex items-center gap-4 mb-4">
-          <img src="/logos/AGL_Energy_logo.svg" alt="AGL Energy" className="h-10 w-auto object-contain" />
-          <img src="/logos/databricks-full.svg" alt="Databricks" className="h-8 w-auto object-contain" />
+          <img src={aglLogo} alt="AGL Energy" className="h-10 w-auto object-contain" />
+          <img src={databricksLogo} alt="Databricks" className="h-8 w-auto object-contain" />
         </div>
         <p className="text-sm font-semibold text-databricks-primary tracking-wider uppercase mb-2">
           Lakeflow Ignition Zerobus Connector
         </p>
-        <h1 className="text-4xl font-bold text-gray-50 leading-tight mb-4">
+        <h1 className="text-4xl font-bold text-gray-900 leading-tight mb-4">
           From SCADA to Lakehouse
           <br />
           <span className="text-databricks-primary">in one module</span>
         </h1>
-        <p className="text-lg text-gray-400 leading-relaxed max-w-2xl">
+        <p className="text-lg text-gray-600 leading-relaxed max-w-2xl">
           Stream OT tag data from Ignition directly into Databricks Delta tables.
           No Kafka. No batch ETL. No proprietary lock-in. Then run anomaly
           detection and revenue-at-risk analytics on the same live data. Built for{' '}
@@ -200,14 +202,14 @@ export default function Landing() {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Sites */}
-          <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
-            <h3 className="text-sm font-semibold text-gray-300 mb-3">
+          <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">
               5 NEM sites &middot; 675 MW total
             </h3>
             <div className="space-y-2">
               {sites.map((s) => (
                 <div key={s.name} className="flex items-center justify-between text-sm">
-                  <span className="text-gray-300">{s.name}</span>
+                  <span className="text-gray-700">{s.name}</span>
                   <span className="text-gray-500">
                     {s.state} &middot; {s.capacity}
                   </span>
@@ -220,15 +222,15 @@ export default function Landing() {
           </div>
 
           {/* Data streams */}
-          <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
-            <h3 className="text-sm font-semibold text-gray-300 mb-3">
+          <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">
               4 data domains &middot; ~2,700 events/sec
             </h3>
             <div className="space-y-2">
               {dataStreams.map((d) => (
                 <div key={d.domain} className="text-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-300 font-medium">{d.domain}</span>
+                    <span className="text-gray-700 font-medium">{d.domain}</span>
                     <span className="text-xs text-gray-500">every {d.interval}</span>
                   </div>
                   <p className="text-xs text-gray-500">{d.tags}</p>
@@ -244,14 +246,14 @@ export default function Landing() {
         <h2 className="text-sm font-semibold text-gray-500 tracking-wider uppercase mb-4">
           The problem
         </h2>
-        <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
-          <p className="text-gray-300 leading-relaxed mb-4">
+        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+          <p className="text-gray-700 leading-relaxed mb-4">
             Today, getting OT data from the plant floor to analytics often requires 8+
             components: interfaces, buffer subsystems, archive servers,
             asset framework, vision, SQL access, and a separate BI platform. Each one is a
             failure point, a licence cost, and weeks of configuration per site.
           </p>
-          <p className="text-gray-300 leading-relaxed">
+          <p className="text-gray-700 leading-relaxed">
             Data ends up in a proprietary format that only proprietary SDKs can read. When
             the business asks "can we run ML on our battery telemetry?" the
             answer is "maybe, after a 6-month ETL project." Meanwhile, revenue
@@ -269,7 +271,7 @@ export default function Landing() {
           {pipelineSteps.map((step) => (
             <div
               key={step.table}
-              className="bg-gray-900 border border-gray-800 rounded-lg p-4 flex items-start gap-4"
+              className="bg-white border border-gray-200 rounded-lg p-4 flex items-start gap-4 shadow-sm"
             >
               <span
                 className={`text-xs font-bold uppercase tracking-wider mt-0.5 w-14 flex-shrink-0 ${layerColor[step.layer]}`}
@@ -277,10 +279,10 @@ export default function Landing() {
                 {step.layer}
               </span>
               <div>
-                <h3 className="text-sm font-semibold text-gray-200">
+                <h3 className="text-sm font-semibold text-gray-800">
                   {step.table}
                 </h3>
-                <p className="text-sm text-gray-400 leading-relaxed">
+                <p className="text-sm text-gray-600 leading-relaxed">
                   {step.description}
                 </p>
               </div>
@@ -301,17 +303,17 @@ export default function Landing() {
               <Link
                 key={stop.number}
                 to={stop.to}
-                className={`block bg-gray-900 border ${c.border} rounded-lg p-5 transition-colors`}
+                className={`block bg-white border ${c.border} rounded-lg p-5 transition-colors shadow-sm hover:shadow-md`}
               >
                 <div className="flex items-start gap-4">
                   <span className={`text-2xl font-bold ${c.number} opacity-60 select-none`}>
                     {stop.number}
                   </span>
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-100 mb-2">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
                       {stop.title}
                     </h3>
-                    <p className="text-sm text-gray-400 leading-relaxed mb-3">
+                    <p className="text-sm text-gray-600 leading-relaxed mb-3">
                       {stop.talk}
                     </p>
                     <span className={`text-sm font-medium ${c.cta}`}>
@@ -334,12 +336,12 @@ export default function Landing() {
           {keyMessages.map((msg) => (
             <div
               key={msg.heading}
-              className="bg-gray-900 border border-gray-800 rounded-lg p-4"
+              className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm"
             >
               <h3 className="text-sm font-semibold text-brand-green mb-1">
                 {msg.heading}
               </h3>
-              <p className="text-sm text-gray-400 leading-relaxed">
+              <p className="text-sm text-gray-600 leading-relaxed">
                 {msg.detail}
               </p>
             </div>
@@ -349,11 +351,11 @@ export default function Landing() {
 
       {/* Closing */}
       <section className="mb-8">
-        <div className="bg-gray-900 border border-databricks-teal rounded-lg p-6 text-center">
-          <h2 className="text-xl font-semibold text-gray-100 mb-2">
+        <div className="bg-white border border-databricks-teal rounded-lg p-6 text-center shadow-sm">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
             Ready to walk through it?
           </h2>
-          <p className="text-sm text-gray-400 mb-4">
+          <p className="text-sm text-gray-600 mb-4">
             Start with the live dashboard, then follow the stops above in order.
           </p>
           <Link
@@ -366,12 +368,12 @@ export default function Landing() {
       </section>
 
       {/* Footer */}
-      <footer className="pt-8 pb-4 border-t border-gray-800 flex items-center justify-center gap-2 text-sm text-gray-500">
-        <img src="/logos/AGL_Energy_logo.svg" alt="" className="h-5 w-auto object-contain" aria-hidden />
+      <footer className="pt-8 pb-4 border-t border-gray-200 flex items-center justify-center gap-2 text-sm text-gray-500">
+        <img src={aglLogo} alt="" className="h-5 w-auto object-contain" aria-hidden />
         <span className="text-agl-blue font-medium">AGL OT Lakehouse</span>
         <span>·</span>
         <span>Powered by</span>
-        <img src="/logos/databricks-full.svg" alt="" className="h-4 w-auto object-contain" aria-hidden />
+        <img src={databricksLogo} alt="" className="h-4 w-auto object-contain" aria-hidden />
         <span className="text-databricks-primary font-medium">Databricks</span>
       </footer>
     </div>

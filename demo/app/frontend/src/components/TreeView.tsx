@@ -83,8 +83,8 @@ function TreeNodeRow({
       <div
         className={`flex items-center gap-2 px-2 py-1.5 cursor-pointer text-sm rounded ${
           isSelected
-            ? 'bg-gray-800 border-l-2 border-blue-500 text-white'
-            : 'text-gray-300 hover:bg-gray-800/50 border-l-2 border-transparent'
+            ? 'bg-gray-100 border-l-2 border-blue-500 text-white'
+            : 'text-gray-700 hover:bg-gray-100/50 border-l-2 border-transparent'
         }`}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         onClick={() => onSelect(node.asset.asset_id)}
@@ -158,7 +158,7 @@ export default function TreeView({ assets, selectedId, onSelect }: TreeViewProps
           placeholder="Search assets..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full px-3 py-1.5 text-sm bg-gray-800 border border-gray-700 rounded text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+          className="w-full px-3 py-1.5 text-sm bg-gray-100 border border-gray-200 rounded text-gray-800 placeholder-gray-500 focus:outline-none focus:border-blue-500"
         />
       </div>
       <div className="flex-1 overflow-y-auto px-1">
