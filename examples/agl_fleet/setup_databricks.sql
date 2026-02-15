@@ -24,8 +24,9 @@ CREATE SCHEMA IF NOT EXISTS __CATALOG__.__SCHEMA__
 --    Zerobus may auto-create this table, but pre-creating ensures column comments and correct types.
 --    Compression: DBR 16+ uses ZSTD by default for new managed tables; we do not set it explicitly.
 --    Primary key improves dedup/merge queries.
---    Drop leftover view from prior zerobus_events era (raw_tags was a compat view; now it's the table).
+--    Drop leftover view or table so we can (re)create the table (raw_tags was a compat view; now it's the table).
 DROP VIEW IF EXISTS __CATALOG__.__SCHEMA__.raw_tags;
+DROP TABLE IF EXISTS __CATALOG__.__SCHEMA__.raw_tags;
 CREATE TABLE IF NOT EXISTS __CATALOG__.__SCHEMA__.raw_tags (
   event_id              STRING      NOT NULL  COMMENT 'UUID per event',
   event_time            BIGINT      NOT NULL  COMMENT 'Source timestamp (micros since epoch)',
@@ -123,6 +124,26 @@ CREATE TABLE IF NOT EXISTS __CATALOG__.__SCHEMA__.asset_attribute_values (
 )
 TBLPROPERTIES ('delta.feature.allowColumnDefaults' = 'supported');
 
+-- 2b. SDT configuration per tag pattern (used by app Compression page tuning panel)
+CREATE TABLE IF NOT EXISTS __CATALOG__.__SCHEMA__.sdt_config (
+  tag_pattern       STRING      NOT NULL COMMENT 'Glob pattern matching tag names (e.g. */temperature_c)',
+  comp_dev          DOUBLE               COMMENT 'Compression deviation (engineering units)',
+  comp_dev_percent  DOUBLE               COMMENT 'CompDev as % of tag span',
+  comp_max_seconds  INT                  COMMENT 'Max time before forcing an archive event',
+  comp_min_seconds  INT                  COMMENT 'Min time between archived events'
+)
+COMMENT 'Swinging Door Trending compression configuration per tag pattern';
+MERGE INTO __CATALOG__.__SCHEMA__.sdt_config AS target
+USING (
+  SELECT * FROM VALUES
+    ('*/temperature_c',  0.5,  NULL, 600, 0),
+    ('*/power_kw',       NULL, 1.0,  600, 0),
+    ('*/soc_pct',        0.5,  NULL, 600, 0)
+  AS defaults(tag_pattern, comp_dev, comp_dev_percent, comp_max_seconds, comp_min_seconds)
+) AS source
+ON target.tag_pattern = source.tag_pattern
+WHEN NOT MATCHED THEN INSERT *;
+
 -- 3. Volume for Python wheels (e.g. agl_analytics) – reference in jobs/apps as:
 --    /Volumes/__CATALOG__/__SCHEMA__/wheels/agl_analytics-0.1.0-py3-none-any.whl
 CREATE VOLUME IF NOT EXISTS __CATALOG__.__SCHEMA__.wheels
@@ -182,6 +203,7 @@ GRANT MODIFY, SELECT ON TABLE __CATALOG__.__SCHEMA__.asset_templates TO `__SP_AP
 GRANT MODIFY, SELECT ON TABLE __CATALOG__.__SCHEMA__.template_attributes TO `__SP_APPLICATION_ID__`;
 GRANT MODIFY, SELECT ON TABLE __CATALOG__.__SCHEMA__.asset_hierarchy TO `__SP_APPLICATION_ID__`;
 GRANT MODIFY, SELECT ON TABLE __CATALOG__.__SCHEMA__.asset_attribute_values TO `__SP_APPLICATION_ID__`;
+GRANT MODIFY, SELECT ON TABLE __CATALOG__.__SCHEMA__.sdt_config TO `__SP_APPLICATION_ID__`;
 GRANT READ VOLUME ON VOLUME __CATALOG__.__SCHEMA__.wheels TO `__SP_APPLICATION_ID__`;
 GRANT USE SCHEMA ON SCHEMA __CATALOG__.agl_ot TO `__SP_APPLICATION_ID__`;
 GRANT MODIFY, SELECT ON TABLE __CATALOG__.agl_ot.silver_asset_registry TO `__SP_APPLICATION_ID__`;
