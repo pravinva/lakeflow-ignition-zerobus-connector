@@ -117,7 +117,7 @@ def main() -> int:
             development=False,
             channel="PREVIEW",
             photon=True,
-            continuous=False,
+            continuous=True,
         )
         print(f"Updated. root_path={root_path}")
         return 0
@@ -134,7 +134,7 @@ def main() -> int:
             development=False,
             channel="PREVIEW",
             photon=True,
-            continuous=False,
+            continuous=True,
         )
         print(f"Created pipeline_id={created.pipeline_id} root_path={root_path}")
         return 0
