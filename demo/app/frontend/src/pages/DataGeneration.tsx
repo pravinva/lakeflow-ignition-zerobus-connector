@@ -115,7 +115,7 @@ export default function DataGeneration() {
         <p className="text-sm font-semibold text-brand-green tracking-wider uppercase mb-2">
           Behind the demo
         </p>
-        <h1 className="text-3xl font-bold text-gray-50 leading-tight mb-4">
+        <h1 className="font-heading text-3xl font-bold text-gray-900 leading-tight mb-4">
           How we generate realistic fleet data
         </h1>
         <p className="text-lg text-gray-600 leading-relaxed max-w-2xl">
@@ -130,7 +130,7 @@ export default function DataGeneration() {
         <h2 className="text-sm font-semibold text-gray-500 tracking-wider uppercase mb-4">
           Simulation architecture
         </h2>
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <div className="bg-surface-card border border-gray-200 rounded-card p-6 shadow-card">
           <div className="font-mono text-sm text-gray-700 leading-relaxed whitespace-pre">
 {`┌─────────────────────────────────────────────────────────┐
 │                   AGL Fleet Simulator                    │
@@ -158,7 +158,7 @@ export default function DataGeneration() {
         <h2 className="text-sm font-semibold text-gray-500 tracking-wider uppercase mb-4">
           Simulated sites
         </h2>
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div className="bg-surface-card border border-gray-200 rounded-card overflow-hidden shadow-card">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 text-left">
@@ -202,7 +202,7 @@ export default function DataGeneration() {
           {generators.map((gen) => (
             <div
               key={gen.provider}
-              className={`bg-white border ${gen.borderColor} rounded-lg p-5`}
+              className={`bg-surface-card border ${gen.borderColor} rounded-card p-5 shadow-card`}
             >
               <div className="flex items-center justify-between mb-3">
                 <h3 className={`text-lg font-semibold ${gen.color}`}>
@@ -254,7 +254,7 @@ export default function DataGeneration() {
           {physicsDetails.map((p) => (
             <div
               key={p.title}
-              className="bg-white border border-gray-200 rounded-lg p-4"
+              className="bg-surface-card border border-gray-200 rounded-card p-4 shadow-card"
             >
               <h3 className="text-sm font-semibold text-brand-green mb-1">
                 {p.title}
@@ -272,7 +272,7 @@ export default function DataGeneration() {
         <h2 className="text-sm font-semibold text-gray-500 tracking-wider uppercase mb-4">
           Simulator configuration
         </h2>
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div className="bg-surface-card border border-gray-200 rounded-card overflow-hidden shadow-card">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 text-left">
@@ -292,7 +292,7 @@ export default function DataGeneration() {
             </tbody>
           </table>
         </div>
-        <div className="mt-3 bg-white border border-gray-200 rounded-lg p-4">
+        <div className="mt-3 bg-surface-card border border-gray-200 rounded-card p-4 shadow-card">
           <p className="text-xs text-gray-500 mb-2">Quick start:</p>
           <code className="text-sm text-gray-700 font-mono">
             make simulate-83
@@ -319,7 +319,7 @@ export default function DataGeneration() {
           ].map((s) => (
             <div
               key={s.step}
-              className="bg-white border border-gray-200 rounded-lg p-4 flex items-start gap-4"
+              className="bg-surface-card border border-gray-200 rounded-card p-4 flex items-start gap-4 shadow-card"
             >
               <span className="text-xl font-bold text-databricks-primary opacity-50 select-none w-8 flex-shrink-0 text-center">
                 {s.step}

@@ -25,7 +25,7 @@ export default function Assets() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-semibold">Assets</h2>
+        <h2 className="font-heading text-2xl font-semibold text-gray-900">Assets</h2>
         <div className="flex gap-2">
           {(['all', 'wind_turbine', 'battery_bess'] as const).map((f) => (
             <button

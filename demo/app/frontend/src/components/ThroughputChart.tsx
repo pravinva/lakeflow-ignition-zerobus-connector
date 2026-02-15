@@ -52,10 +52,17 @@ export default function ThroughputChart({ data }: ThroughputChartProps) {
 
   const hasSdtCompression = chartData.some((d) => d.raw > d.postSdt);
 
+  const gridStroke = '#e5e7eb';
+  const axisStroke = '#9ca3af';
+  const tooltipBg = '#ffffff';
+  const tooltipBorder = '#e5e7eb';
+  const primaryColor = '#FF3621';
+  const secondaryColor = '#10B981';
+
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4">
+    <div className="bg-surface-card border border-gray-200 rounded-card p-4 shadow-card">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-gray-700">
+        <h3 className="text-sm font-heading font-semibold text-gray-700">
           Throughput (events/sec)
         </h3>
         <span className="text-xs text-gray-500">
@@ -66,13 +73,15 @@ export default function ThroughputChart({ data }: ThroughputChartProps) {
       </div>
       <ResponsiveContainer width="100%" height={250}>
         <AreaChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-          <XAxis dataKey="time" stroke="#9CA3AF" fontSize={12} />
-          <YAxis stroke="#9CA3AF" fontSize={12} />
+          <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+          <XAxis dataKey="time" stroke={axisStroke} fontSize={12} />
+          <YAxis stroke={axisStroke} fontSize={12} />
           <Tooltip
             contentStyle={{
-              backgroundColor: '#ffffff',
-              border: '1px solid #e5e7eb',
+              backgroundColor: tooltipBg,
+              border: `1px solid ${tooltipBorder}`,
+              borderRadius: '0.5rem',
+              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.06)',
             }}
             labelStyle={{ color: '#374151' }}
             content={({ active, payload, label }) => {
@@ -80,27 +89,27 @@ export default function ThroughputChart({ data }: ThroughputChartProps) {
               const d = payload[0].payload as ChartDatum;
               return (
                 <div className="rounded px-3 py-2 min-w-[160px]">
-                  <div className="text-gray-700 font-medium border-b border-gray-600 pb-1 mb-2">
+                  <div className="text-gray-700 font-medium border-b border-gray-200 pb-1 mb-2">
                     {label}
                   </div>
                   <div className="text-gray-600 text-sm space-y-0.5">
                     {hasSdtCompression ? (
                       <>
                         <div>
-                          Raw: <span className="text-white">{d.raw.toLocaleString()}</span> ({d.rawPerSec.toLocaleString(undefined, { maximumFractionDigits: 0 })}/sec)
+                          Raw: <span className="text-gray-900 font-semibold">{d.raw.toLocaleString()}</span> ({d.rawPerSec.toLocaleString(undefined, { maximumFractionDigits: 0 })}/sec)
                         </div>
                         <div>
-                          Post-SDT: <span className="text-white">{d.postSdt.toLocaleString()}</span> ({d.postSdtPerSec.toLocaleString(undefined, { maximumFractionDigits: 0 })}/sec)
+                          Post-SDT: <span className="text-gray-900 font-semibold">{d.postSdt.toLocaleString()}</span> ({d.postSdtPerSec.toLocaleString(undefined, { maximumFractionDigits: 0 })}/sec)
                         </div>
                       </>
                     ) : (
                       <div>
-                        Events: <span className="text-white">{d.postSdt.toLocaleString()}</span> ({d.postSdtPerSec.toLocaleString(undefined, { maximumFractionDigits: 0 })}/sec)
+                        Events: <span className="text-gray-900 font-semibold">{d.postSdt.toLocaleString()}</span> ({d.postSdtPerSec.toLocaleString(undefined, { maximumFractionDigits: 0 })}/sec)
                       </div>
                     )}
-                    <div className="pt-1 border-t border-gray-600 mt-1">
+                    <div className="pt-1 border-t border-gray-200 mt-1">
                       SDT:{' '}
-                      <span className="text-white font-medium">
+                      <span className="text-gray-900 font-medium">
                         {formatSdtRatio(d.sdtRatio)}
                       </span>
                     </div>
@@ -116,16 +125,16 @@ export default function ThroughputChart({ data }: ThroughputChartProps) {
                 type="monotone"
                 dataKey="rawPerSec"
                 name="Raw events/sec"
-                stroke="#3B82F6"
-                fill="#3B82F6"
+                stroke={primaryColor}
+                fill={primaryColor}
                 fillOpacity={0.15}
               />
               <Area
                 type="monotone"
                 dataKey="postSdtPerSec"
                 name="Post-SDT events/sec"
-                stroke="#10B981"
-                fill="#10B981"
+                stroke={secondaryColor}
+                fill={secondaryColor}
                 fillOpacity={0.3}
               />
             </>
@@ -134,8 +143,8 @@ export default function ThroughputChart({ data }: ThroughputChartProps) {
               type="monotone"
               dataKey="postSdtPerSec"
               name="Events/sec"
-              stroke="#10B981"
-              fill="#10B981"
+              stroke={secondaryColor}
+              fill={secondaryColor}
               fillOpacity={0.3}
             />
           )}

@@ -392,7 +392,7 @@ export default function AssetTemplates() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-semibold">Asset templates</h2>
+        <h2 className="font-heading text-2xl font-semibold text-gray-900">Asset templates</h2>
         <button
           onClick={handleCreateTemplate}
           className="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-500"

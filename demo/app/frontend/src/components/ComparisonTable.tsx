@@ -48,8 +48,8 @@ const rows = [
 
 export default function ComparisonTable() {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-      <h3 className="text-sm font-semibold text-gray-700 mb-3">
+    <div className="bg-surface-card border border-gray-200 rounded-card p-4 shadow-card">
+      <h3 className="font-heading text-sm font-semibold text-gray-700 mb-3">
         Operational overhead comparison
       </h3>
       <div className="overflow-x-auto">

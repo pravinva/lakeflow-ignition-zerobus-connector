@@ -174,7 +174,7 @@ export default function Landing() {
   return (
     <div className="max-w-4xl mx-auto">
       {/* Hero */}
-      <section className="mb-12">
+      <section className="mb-14 relative rounded-card overflow-hidden bg-gradient-to-br from-surface-canvas via-surface-canvas to-databricks-teal/5 px-6 py-8">
         <div className="flex items-center gap-4 mb-4">
           <img src={aglLogo} alt="AGL Energy" className="h-10 w-auto object-contain" />
           <img src={databricksLogo} alt="Databricks" className="h-8 w-auto object-contain" />
@@ -182,7 +182,7 @@ export default function Landing() {
         <p className="text-sm font-semibold text-databricks-primary tracking-wider uppercase mb-2">
           Lakeflow Ignition Zerobus Connector
         </p>
-        <h1 className="text-4xl font-bold text-gray-900 leading-tight mb-4">
+        <h1 className="font-heading text-4xl font-bold text-gray-900 leading-tight mb-4">
           From SCADA to Lakehouse
           <br />
           <span className="text-databricks-primary">in one module</span>
@@ -196,14 +196,14 @@ export default function Landing() {
       </section>
 
       {/* What's running */}
-      <section className="mb-12">
-        <h2 className="text-sm font-semibold text-gray-500 tracking-wider uppercase mb-4">
+      <section className="mb-14">
+        <h2 className="font-heading text-sm font-semibold text-gray-500 tracking-wider uppercase mb-4">
           What's running right now
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Sites */}
-          <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">
+          <div className="bg-surface-card border border-gray-200 rounded-card p-5 shadow-card">
+            <h3 className="font-heading text-sm font-semibold text-gray-700 mb-3">
               5 NEM sites &middot; 675 MW total
             </h3>
             <div className="space-y-2">
@@ -222,8 +222,8 @@ export default function Landing() {
           </div>
 
           {/* Data streams */}
-          <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">
+          <div className="bg-surface-card border border-gray-200 rounded-card p-5 shadow-card">
+            <h3 className="font-heading text-sm font-semibold text-gray-700 mb-3">
               4 data domains &middot; ~2,700 events/sec
             </h3>
             <div className="space-y-2">
@@ -242,11 +242,11 @@ export default function Landing() {
       </section>
 
       {/* The problem */}
-      <section className="mb-12">
-        <h2 className="text-sm font-semibold text-gray-500 tracking-wider uppercase mb-4">
+      <section className="mb-14">
+        <h2 className="font-heading text-sm font-semibold text-gray-500 tracking-wider uppercase mb-4">
           The problem
         </h2>
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="bg-surface-card border border-gray-200 rounded-card p-6 shadow-card">
           <p className="text-gray-700 leading-relaxed mb-4">
             Today, getting OT data from the plant floor to analytics often requires 8+
             components: interfaces, buffer subsystems, archive servers,
@@ -263,15 +263,15 @@ export default function Landing() {
       </section>
 
       {/* Pipeline */}
-      <section className="mb-12">
-        <h2 className="text-sm font-semibold text-gray-500 tracking-wider uppercase mb-4">
+      <section className="mb-14">
+        <h2 className="font-heading text-sm font-semibold text-gray-500 tracking-wider uppercase mb-4">
           Data pipeline (Lakeflow SDP)
         </h2>
         <div className="space-y-3">
           {pipelineSteps.map((step) => (
             <div
               key={step.table}
-              className="bg-white border border-gray-200 rounded-lg p-4 flex items-start gap-4 shadow-sm"
+              className="bg-surface-card border border-gray-200 rounded-card p-4 flex items-start gap-4 shadow-card"
             >
               <span
                 className={`text-xs font-bold uppercase tracking-wider mt-0.5 w-14 flex-shrink-0 ${layerColor[step.layer]}`}
@@ -279,7 +279,7 @@ export default function Landing() {
                 {step.layer}
               </span>
               <div>
-                <h3 className="text-sm font-semibold text-gray-800">
+                <h3 className="font-heading text-sm font-semibold text-gray-800">
                   {step.table}
                 </h3>
                 <p className="text-sm text-gray-600 leading-relaxed">
@@ -292,8 +292,8 @@ export default function Landing() {
       </section>
 
       {/* Demo walkthrough */}
-      <section className="mb-12">
-        <h2 className="text-sm font-semibold text-gray-500 tracking-wider uppercase mb-4">
+      <section className="mb-14">
+        <h2 className="font-heading text-sm font-semibold text-gray-500 tracking-wider uppercase mb-4">
           Demo walkthrough
         </h2>
         <div className="space-y-4">
@@ -303,14 +303,14 @@ export default function Landing() {
               <Link
                 key={stop.number}
                 to={stop.to}
-                className={`block bg-white border ${c.border} rounded-lg p-5 transition-colors shadow-sm hover:shadow-md`}
+                className={`block bg-surface-card border ${c.border} rounded-card p-5 transition-all duration-200 shadow-card hover:shadow-card-hover hover:scale-[1.01] focus:outline-none focus-visible:ring-2 focus-visible:ring-databricks-primary focus-visible:ring-offset-2`}
               >
                 <div className="flex items-start gap-4">
-                  <span className={`text-2xl font-bold ${c.number} opacity-60 select-none`}>
+                  <span className={`text-2xl font-heading font-bold ${c.number} opacity-60 select-none tabular-nums`}>
                     {stop.number}
                   </span>
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    <h3 className="font-heading text-lg font-semibold text-gray-900 mb-2">
                       {stop.title}
                     </h3>
                     <p className="text-sm text-gray-600 leading-relaxed mb-3">
@@ -328,17 +328,17 @@ export default function Landing() {
       </section>
 
       {/* Key messages */}
-      <section className="mb-12">
-        <h2 className="text-sm font-semibold text-gray-500 tracking-wider uppercase mb-4">
+      <section className="mb-14">
+        <h2 className="font-heading text-sm font-semibold text-gray-500 tracking-wider uppercase mb-4">
           Key messages
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {keyMessages.map((msg) => (
             <div
               key={msg.heading}
-              className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm"
+              className="bg-surface-card border border-gray-200 rounded-card p-4 shadow-card"
             >
-              <h3 className="text-sm font-semibold text-brand-green mb-1">
+              <h3 className="font-heading text-sm font-semibold text-brand-green mb-1">
                 {msg.heading}
               </h3>
               <p className="text-sm text-gray-600 leading-relaxed">
@@ -350,17 +350,17 @@ export default function Landing() {
       </section>
 
       {/* Closing */}
-      <section className="mb-8">
-        <div className="bg-white border border-databricks-teal rounded-lg p-6 text-center shadow-sm">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+      <section className="mb-10">
+        <div className="bg-surface-card border border-databricks-teal rounded-card p-8 text-center shadow-card">
+          <h2 className="font-heading text-xl font-semibold text-gray-900 mb-2">
             Ready to walk through it?
           </h2>
-          <p className="text-sm text-gray-600 mb-4">
+          <p className="text-sm text-gray-600 mb-6">
             Start with the live dashboard, then follow the stops above in order.
           </p>
           <Link
             to="/dashboard"
-            className="inline-block px-6 py-2 bg-databricks-primary text-white text-sm font-semibold rounded hover:bg-databricks-primary/90 transition-colors"
+            className="inline-block px-8 py-3 bg-databricks-primary text-white text-base font-semibold rounded-card shadow-card hover:bg-databricks-primary/90 hover:shadow-card-hover transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-databricks-primary focus-visible:ring-offset-2"
           >
             Start the demo
           </Link>

@@ -8,10 +8,15 @@ interface TemplateCardProps {
 export default function TemplateCard({ template, onClick }: TemplateCardProps) {
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className="bg-white border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-gray-600 transition-colors"
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
+      className="bg-surface-card border border-gray-200 rounded-card p-4 cursor-pointer shadow-card
+                 hover:border-gray-600 hover:shadow-card-hover transition-all duration-200
+                 focus:outline-none focus-visible:ring-2 focus-visible:ring-databricks-primary focus-visible:ring-offset-2"
     >
-      <h3 className="font-semibold text-gray-900">{template.template_name}</h3>
+      <h3 className="font-heading font-semibold text-gray-900">{template.template_name}</h3>
       <p className="text-xs text-gray-500 mt-1">
         {template.base_asset_type.replace(/_/g, ' ')}
       </p>

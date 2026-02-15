@@ -56,9 +56,18 @@ export default function Analytics() {
   const avgHealth = summary?.avg_health_score ?? null;
   const nextWindow = summary?.next_risk_window ?? null;
 
+  const avgHealthAccent =
+    avgHealth != null
+      ? avgHealth >= 0.8
+        ? ('success' as const)
+        : avgHealth >= 0.5
+          ? ('warning' as const)
+          : ('error' as const)
+      : undefined;
+
   return (
     <div>
-      <h2 className="text-2xl font-semibold mb-2">Fleet health & revenue risk</h2>
+      <h2 className="font-heading text-2xl font-semibold text-gray-900 mb-2">Fleet health & revenue risk</h2>
       <p className="text-gray-600 mb-6 max-w-2xl">
         This pipeline answers: <strong className="text-gray-800">{VALUE_PROP}</strong>
       </p>
@@ -70,6 +79,7 @@ export default function Analytics() {
           value={totalAtRisk > 0 ? `$${formatNumber(totalAtRisk, 0)}` : '$0'}
           subtitle="AUD (upcoming high-price windows)"
           colorClass={totalAtRisk > 0 ? 'text-brand-amber' : 'text-brand-green'}
+          accent={totalAtRisk > 0 ? 'warning' : 'success'}
         />
         <BigNumberCard
           label="Assets at risk"
@@ -81,6 +91,7 @@ export default function Analytics() {
           value={avgHealth != null ? formatNumber(avgHealth, 2) : '-'}
           subtitle="0 = critical, 1 = healthy"
           colorClass={healthColor(avgHealth)}
+          accent={avgHealthAccent}
         />
         <BigNumberCard
           label="Next risk window"
@@ -91,15 +102,15 @@ export default function Analytics() {
 
       {/* Health by asset */}
       <section className="mb-8">
-        <h3 className="text-lg font-semibold text-gray-700 mb-3">Health by asset</h3>
-        <div className="overflow-x-auto border border-gray-200 rounded-lg">
+        <h3 className="font-heading text-lg font-semibold text-gray-700 mb-3">Health by asset</h3>
+        <div className="overflow-x-auto border border-gray-200 rounded-card bg-surface-card shadow-card">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-white text-left text-gray-600">
-                <th className="px-4 py-3 font-medium">Asset</th>
-                <th className="px-4 py-3 font-medium">Health</th>
-                <th className="px-4 py-3 font-medium">Primary risk tag</th>
-                <th className="px-4 py-3 font-medium">Risk description</th>
+              <tr className="bg-gray-50 text-left text-gray-700 border-b-2 border-gray-200">
+                <th className="px-4 py-3 font-semibold">Asset</th>
+                <th className="px-4 py-3 font-semibold">Health</th>
+                <th className="px-4 py-3 font-semibold">Primary risk tag</th>
+                <th className="px-4 py-3 font-semibold">Risk description</th>
               </tr>
             </thead>
             <tbody>
@@ -131,19 +142,19 @@ export default function Analytics() {
 
       {/* Revenue at risk by asset */}
       <section>
-        <h3 className="text-lg font-semibold text-gray-700 mb-3">Revenue at risk by asset</h3>
-        <div className="overflow-x-auto border border-gray-200 rounded-lg">
+        <h3 className="font-heading text-lg font-semibold text-gray-700 mb-3">Revenue at risk by asset</h3>
+        <div className="overflow-x-auto border border-gray-200 rounded-card bg-surface-card shadow-card">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-white text-left text-gray-600">
-                <th className="px-4 py-3 font-medium">Asset</th>
-                <th className="px-4 py-3 font-medium">Risk window</th>
-                <th className="px-4 py-3 font-medium">Forecast $/MWh</th>
-                <th className="px-4 py-3 font-medium">Capacity MW</th>
-                <th className="px-4 py-3 font-medium">Health</th>
-                <th className="px-4 py-3 font-medium">Trip prob.</th>
-                <th className="px-4 py-3 font-medium">Revenue at risk (AUD)</th>
-                <th className="px-4 py-3 font-medium">Recommended action</th>
+              <tr className="bg-gray-50 text-left text-gray-700 border-b-2 border-gray-200">
+                <th className="px-4 py-3 font-semibold">Asset</th>
+                <th className="px-4 py-3 font-semibold">Risk window</th>
+                <th className="px-4 py-3 font-semibold">Forecast $/MWh</th>
+                <th className="px-4 py-3 font-semibold">Capacity MW</th>
+                <th className="px-4 py-3 font-semibold">Health</th>
+                <th className="px-4 py-3 font-semibold">Trip prob.</th>
+                <th className="px-4 py-3 font-semibold">Revenue at risk (AUD)</th>
+                <th className="px-4 py-3 font-semibold">Recommended action</th>
               </tr>
             </thead>
             <tbody>

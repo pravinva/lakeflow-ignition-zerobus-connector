@@ -101,24 +101,32 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-        <h2 className="text-2xl font-semibold">Dashboard</h2>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <h2 className="font-heading text-2xl font-semibold text-gray-900">Dashboard</h2>
         <div className="flex items-center gap-4">
-          {/* Metrics source toggle */}
+          {/* Metrics source toggle — segmented control */}
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600">Metrics source:</span>
-            <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+            <div className="flex rounded-card border border-gray-200 overflow-hidden bg-surface-card shadow-card">
               <button
                 type="button"
                 onClick={() => setMetricsSource('raw_tags')}
-                className={`px-3 py-1.5 text-sm font-medium ${metricsSource === 'raw_tags' ? 'bg-databricks-primary text-white' : 'bg-white text-gray-600 hover:text-gray-900 border border-gray-200'}`}
+                className={`px-3 py-2 text-sm font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-databricks-primary focus-visible:ring-inset ${
+                  metricsSource === 'raw_tags'
+                    ? 'bg-databricks-primary text-white'
+                    : 'bg-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
               >
                 raw_tags
               </button>
               <button
                 type="button"
                 onClick={() => setMetricsSource('raw_throughput')}
-                className={`px-3 py-1.5 text-sm font-medium ${metricsSource === 'raw_throughput' ? 'bg-databricks-primary text-white' : 'bg-white text-gray-600 hover:text-gray-900 border border-gray-200'}`}
+                className={`px-3 py-2 text-sm font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-databricks-primary focus-visible:ring-inset ${
+                  metricsSource === 'raw_throughput'
+                    ? 'bg-databricks-primary text-white'
+                    : 'bg-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
               >
                 raw_throughput
               </button>
@@ -127,16 +135,20 @@ export default function Dashboard() {
               {metricsSource === 'raw_tags' ? 'Zerobus landing' : 'Deduped (CDF)'}
             </span>
           </div>
-          {/* Time window selector */}
+          {/* Time window selector — segmented control */}
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600">Window:</span>
-            <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+            <div className="flex rounded-card border border-gray-200 overflow-hidden bg-surface-card shadow-card">
               {([5, 15, 30, 60] as WindowMinutes[]).map((m) => (
                 <button
                   key={m}
                   type="button"
                   onClick={() => setWindowMinutes(m)}
-                  className={`px-2 py-1.5 text-xs font-medium ${windowMinutes === m ? 'bg-databricks-primary text-white' : 'bg-white text-gray-600 hover:text-gray-900 border-r border-gray-200 last:border-r-0'}`}
+                  className={`px-2.5 py-2 text-xs font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-databricks-primary focus-visible:ring-inset ${
+                    windowMinutes === m
+                      ? 'bg-databricks-primary text-white'
+                      : 'bg-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
                 >
                   {m}m
                 </button>
@@ -148,29 +160,35 @@ export default function Dashboard() {
 
       {/* Error / empty-state banner */}
       {backendError && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-800">
-          <strong>Query error:</strong> {backendError}
+        <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-card p-4 mb-6 text-sm text-red-800">
+          <span className="flex h-5 w-5 flex-shrink-0 rounded-full bg-red-400 mt-0.5" aria-hidden />
+          <div>
+            <strong>Query error:</strong> {backendError}
+          </div>
         </div>
       )}
       {isEmpty && !backendError && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-sm text-amber-800">
-          <strong>No events in the last {windowMinutes} minutes.</strong>{' '}
-          Try a longer window or generate new events (e.g.{' '}
-          <code className="text-xs bg-amber-100 px-1 rounded">make simulate-83</code>).
-          {diagnostic && (
-            <span className="block mt-1 text-amber-700">
-              Table has <strong>{diagnostic.total_rows}</strong> total rows;{' '}
-              <strong>{diagnostic.rows_last_10_min}</strong> in the last 10 min.
-              {diagnostic.newest_event && (
-                <> Newest event: <code className="text-xs">{diagnostic.newest_event}</code></>
-              )}
-            </span>
-          )}
-          {diagnosticError && (
-            <span className="block mt-1 text-amber-700">
-              Diagnostic failed: {diagnosticError}
-            </span>
-          )}
+        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-card p-4 mb-6 text-sm text-amber-800">
+          <span className="flex h-5 w-5 flex-shrink-0 rounded-full bg-amber-300 mt-0.5" aria-hidden />
+          <div>
+            <strong>No events in the last {windowMinutes} minutes.</strong>{' '}
+            Try a longer window or generate new events (e.g.{' '}
+            <code className="text-xs bg-amber-100 px-1.5 py-0.5 rounded">make simulate-83</code>).
+            {diagnostic && (
+              <span className="block mt-1 text-amber-700">
+                Table has <strong>{diagnostic.total_rows}</strong> total rows;{' '}
+                <strong>{diagnostic.rows_last_10_min}</strong> in the last 10 min.
+                {diagnostic.newest_event && (
+                  <> Newest event: <code className="text-xs">{diagnostic.newest_event}</code></>
+                )}
+              </span>
+            )}
+            {diagnosticError && (
+              <span className="block mt-1 text-amber-700">
+                Diagnostic failed: {diagnosticError}
+              </span>
+            )}
+          </div>
         </div>
       )}
 

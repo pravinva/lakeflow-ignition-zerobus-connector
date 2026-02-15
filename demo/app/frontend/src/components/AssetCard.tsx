@@ -24,12 +24,13 @@ export default function AssetCard({ asset }: AssetCardProps) {
   return (
     <button
       onClick={() => navigate(`/assets/${asset.asset_id}`)}
-      className="bg-white border border-gray-200 rounded-lg p-4 text-left
-                 hover:border-databricks-primary/50 transition-colors w-full"
+      className="bg-surface-card border border-gray-200 rounded-card p-4 text-left shadow-card
+                 hover:border-databricks-primary/50 hover:shadow-card-hover transition-all duration-200 w-full
+                 focus:outline-none focus-visible:ring-2 focus-visible:ring-databricks-primary focus-visible:ring-offset-2"
     >
       <div className="flex items-center gap-2 mb-2">
         <span className="text-xl">{typeIcon(asset.asset_type)}</span>
-        <h3 className="font-semibold text-gray-900">{asset.asset_name}</h3>
+        <h3 className="font-heading font-semibold text-gray-900">{asset.asset_name}</h3>
       </div>
       <div className="space-y-1 text-sm">
         <p className="text-gray-600">

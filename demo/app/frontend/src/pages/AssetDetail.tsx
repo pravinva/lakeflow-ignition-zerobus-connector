@@ -34,7 +34,7 @@ type TimeRange = 5 | 15 | 60;
 
 function ChartSkeleton() {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 animate-pulse">
+    <div className="bg-surface-card border border-gray-200 rounded-card p-4 animate-pulse shadow-card">
       <div className="h-4 w-32 bg-gray-100 rounded mb-4" />
       <div className="h-[200px] bg-gray-100/50 rounded" />
     </div>
@@ -43,7 +43,7 @@ function ChartSkeleton() {
 
 function TableSkeleton() {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 animate-pulse">
+    <div className="bg-surface-card border border-gray-200 rounded-card p-4 animate-pulse shadow-card">
       <div className="h-4 w-20 bg-gray-100 rounded mb-4" />
       {Array.from({ length: 6 }).map((_, i) => (
         <div key={i} className="flex gap-4 py-2">
@@ -136,7 +136,7 @@ export default function AssetDetail() {
           </div>
         ) : (
           <>
-            <h2 className="text-2xl font-semibold">
+            <h2 className="font-heading text-2xl font-semibold text-gray-900">
               {asset ? `${asset.asset_name} - ${asset.site_name}` : 'Asset detail'}
             </h2>
             {asset && (
@@ -187,7 +187,7 @@ export default function AssetDetail() {
           : trendTags.map((tag, idx) => (
               <div
                 key={tag}
-                className="bg-white border border-gray-200 rounded-lg p-4"
+                className="bg-surface-card border border-gray-200 rounded-card p-4 shadow-card"
               >
                 <h4 className="text-sm text-gray-600 mb-2">{tag}</h4>
                 <ResponsiveContainer width="100%" height={200}>
@@ -242,7 +242,7 @@ export default function AssetDetail() {
       {tagsLoading && !allTags ? (
         <TableSkeleton />
       ) : (
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <div className="bg-surface-card border border-gray-200 rounded-card p-4 shadow-card">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">All tags</h3>
           <div className="overflow-auto">
             <table className="w-full text-sm">

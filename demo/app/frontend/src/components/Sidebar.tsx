@@ -26,10 +26,10 @@ function NavItem({ to, label }: { to: string; label: string }) {
         to={to}
         end={to === '/'}
         className={({ isActive }) =>
-          `block px-3 py-2 rounded text-sm ${
+          `block pl-3 py-2 pr-3 rounded-r text-sm transition-colors duration-200 border-l-4 -ml-px focus:outline-none focus-visible:ring-2 focus-visible:ring-databricks-primary focus-visible:ring-inset ${
             isActive
-              ? 'bg-gray-100 text-databricks-primary'
-              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              ? 'border-l-databricks-primary bg-databricks-primary/5 text-databricks-primary font-medium'
+              : 'border-l-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
           }`
         }
       >
@@ -41,33 +41,54 @@ function NavItem({ to, label }: { to: string; label: string }) {
 
 export default function Sidebar() {
   return (
-    <nav className="w-56 flex-shrink-0 bg-white border-r border-gray-200 p-4 shadow-sm">
-      <div className="mb-6">
-        <div className="flex items-center gap-2 mb-2">
-          <img src={aglLogo} alt="AGL Energy" className="h-8 w-auto object-contain" />
-          <h1 className="text-lg font-bold text-agl-blue">
-            AGL OT Lakehouse
+    <nav className="w-56 flex-shrink-0 bg-surface-card border-r border-gray-200 shadow-card flex flex-col">
+      {/* Branding block — clear hierarchy and alignment */}
+      <div className="p-4 pb-4 border-b border-gray-100">
+        <div className="flex items-center gap-3 mb-3">
+          <img
+            src={aglLogo}
+            alt="AGL Energy"
+            className="h-7 w-auto object-contain flex-shrink-0"
+            width={28}
+            height={28}
+          />
+          <h1 className="text-base font-heading font-semibold text-agl-blue leading-tight tracking-tight">
+            AGL OT
+            <br />
+            Lakehouse
           </h1>
         </div>
-        <p className="text-xs text-databricks-primary flex items-center gap-1.5">
-          <img src={databricksLogo} alt="" className="h-5 w-auto object-contain" aria-hidden />
-          Powered by Databricks
-        </p>
+        <div className="flex items-center gap-2 text-xs text-databricks-primary font-medium">
+          <img
+            src={databricksLogo}
+            alt=""
+            className="h-4 w-auto object-contain flex-shrink-0"
+            width={16}
+            height={16}
+            aria-hidden
+          />
+          <span>Powered by Databricks</span>
+        </div>
       </div>
-      <ul className="space-y-1">
-        {mainLinks.map(({ to, label }) => (
-          <NavItem key={to} to={to} label={label} />
-        ))}
-      </ul>
-      <div className="mt-6">
-        <p className="text-xs uppercase tracking-wider text-gray-500 px-3 mb-2">
-          Asset Framework
+      <div className="flex-1 overflow-auto p-4 pt-3">
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 px-3 mb-2">
+          Demo
         </p>
-        <ul className="space-y-1">
-          {assetFrameworkLinks.map(({ to, label }) => (
+        <ul className="space-y-0.5">
+          {mainLinks.map(({ to, label }) => (
             <NavItem key={to} to={to} label={label} />
           ))}
         </ul>
+        <div className="mt-6">
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 px-3 mb-2">
+            Asset Framework
+          </p>
+          <ul className="space-y-0.5">
+            {assetFrameworkLinks.map(({ to, label }) => (
+              <NavItem key={to} to={to} label={label} />
+            ))}
+          </ul>
+        </div>
       </div>
     </nav>
   );

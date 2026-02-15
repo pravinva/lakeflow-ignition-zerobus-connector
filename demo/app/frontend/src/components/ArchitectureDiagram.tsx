@@ -27,8 +27,8 @@ export default function ArchitectureDiagram() {
   return (
     <div className="space-y-6">
       {/* Before diagram */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4">
-        <h3 className="text-sm font-semibold text-red-400 mb-3">
+      <div className="bg-surface-card border border-gray-200 rounded-card p-4 shadow-card">
+        <h3 className="font-heading text-sm font-semibold text-red-400 mb-3">
           Before (traditional stack)
         </h3>
         <div className="flex flex-wrap items-center gap-1">
@@ -48,8 +48,8 @@ export default function ArchitectureDiagram() {
       </div>
 
       {/* After diagram */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4">
-        <h3 className="text-sm font-semibold text-brand-green mb-3">
+      <div className="bg-surface-card border border-gray-200 rounded-card p-4 shadow-card">
+        <h3 className="font-heading text-sm font-semibold text-brand-green mb-3">
           After (Lakehouse)
         </h3>
         <div className="flex flex-wrap items-center gap-1">

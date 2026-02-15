@@ -25,10 +25,10 @@ export default function ScenarioSwitcher({ activeScenario, onScenarioChange }: S
           key={s.id}
           data-active={s.id === activeScenario}
           onClick={() => handleClick(s.id)}
-          className={`px-3 py-1.5 rounded text-sm transition-colors ${
+          className={`px-3 py-1.5 rounded-card text-sm font-medium transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-databricks-primary focus-visible:ring-offset-2 ${
             s.id === activeScenario
               ? 'bg-databricks-primary text-white'
-              : 'bg-gray-100 text-gray-600 hover:text-gray-900 hover:bg-gray-700'
+              : 'bg-gray-100 text-gray-600 hover:text-gray-900 hover:bg-gray-200'
           }`}
         >
           {s.label}

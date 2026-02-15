@@ -30,10 +30,10 @@ export default function Performance() {
 
   return (
     <div>
-      <h2 className="text-2xl font-semibold mb-4">Performance</h2>
+      <h2 className="font-heading text-2xl font-semibold text-gray-900 mb-4">Performance</h2>
 
       {/* Section 1 - Platform specs */}
-      <h3 className="text-lg font-medium text-gray-700 mb-3">
+      <h3 className="font-heading text-lg font-medium text-gray-700 mb-3">
         Zerobus platform specifications
       </h3>
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
@@ -61,7 +61,7 @@ export default function Performance() {
       </div>
 
       {/* Section 2 - Live demo performance */}
-      <h3 className="text-lg font-medium text-gray-700 mb-3">
+      <h3 className="font-heading text-lg font-medium text-gray-700 mb-3">
         Live demo performance
       </h3>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

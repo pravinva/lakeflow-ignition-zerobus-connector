@@ -14,9 +14,9 @@ import DataGeneration from './pages/DataGeneration';
 
 export default function App() {
   return (
-    <div className="flex min-h-screen bg-gray-50 text-gray-900">
+    <div className="flex min-h-screen bg-surface-canvas text-gray-900">
       <Sidebar />
-      <main className="flex-1 p-6">
+      <main className="flex-1 p-6 overflow-auto">
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/dashboard" element={<Dashboard />} />
