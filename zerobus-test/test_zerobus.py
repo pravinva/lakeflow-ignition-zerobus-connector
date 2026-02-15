@@ -13,8 +13,18 @@ import time
 from zerobus.sdk.sync import ZerobusSdk
 from zerobus.sdk.shared import RecordType, StreamConfigurationOptions, TableProperties
 
-# --- Configuration (from env to avoid committing secrets) ---------------------
-SERVER_ENDPOINT = os.environ.get("ZEROBUS_ENDPOINT", "7405607216190670.zerobus.eastus2.azuredatabricks.net")
+# --- Configuration (ZEROBUS_ENDPOINT or WORKSPACE_ID+DATABRICKS_REGION from .env) ---
+def _zerobus_endpoint() -> str:
+    e = os.environ.get("ZEROBUS_ENDPOINT")
+    if e:
+        return e
+    wid, reg = os.environ.get("WORKSPACE_ID"), os.environ.get("DATABRICKS_REGION")
+    if wid and reg:
+        return f"{wid}.zerobus.{reg}.azuredatabricks.net"
+    return "7405607216190670.zerobus.eastus2.azuredatabricks.net"
+
+
+SERVER_ENDPOINT = _zerobus_endpoint()
 WORKSPACE_URL = os.environ.get("DATABRICKS_HOST", "https://adb-7405607216190670.10.azuredatabricks.net")
 TABLE_NAME = os.environ.get("ZEROBUS_TARGET_TABLE", "daveok.default.zerobus_test")
 CLIENT_ID = os.environ.get("DATABRICKS_CLIENT_ID", "")

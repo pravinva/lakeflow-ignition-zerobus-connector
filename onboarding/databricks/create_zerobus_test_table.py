@@ -7,7 +7,7 @@ Creates the table then grants MODIFY, SELECT to the service principal so Zerobus
 Usage:
   DATABRICKS_CONFIG_PROFILE=daveok SP_APPLICATION_ID=<sp-client-id> uv run --with databricks-sdk python onboarding/databricks/create_zerobus_test_table.py
 
-Optional env: CATALOG (default agl_demo), SCHEMA (default ot), WAREHOUSE_ID (default e65d34bf5b095b0f),
+Optional env: CATALOG (default agl_demo), SCHEMA (default ot), DATABRICKS_WAREHOUSE_ID (default e4082fdb7ea19a15),
   SP_APPLICATION_ID (service principal client_id for UC grants; required for Zerobus write).
 """
 
@@ -18,7 +18,7 @@ import sys
 
 from databricks.sdk import WorkspaceClient
 
-DEFAULT_WAREHOUSE_ID = "e65d34bf5b095b0f"
+DEFAULT_WAREHOUSE_ID = "e4082fdb7ea19a15"
 DEFAULT_CATALOG = "agl_demo"
 DEFAULT_SCHEMA = "ot"
 DEFAULT_SP_APPLICATION_ID = "66c066ad-d5a9-496f-8da5-6d7bc2f5d954"
@@ -48,7 +48,7 @@ def execute(w: WorkspaceClient, warehouse_id: str, statement: str, desc: str) ->
 
 def main() -> int:
     profile = os.environ.get("DATABRICKS_CONFIG_PROFILE", "daveok")
-    warehouse_id = os.environ.get("WAREHOUSE_ID", DEFAULT_WAREHOUSE_ID)
+    warehouse_id = os.environ.get("DATABRICKS_WAREHOUSE_ID", DEFAULT_WAREHOUSE_ID)
     catalog = os.environ.get("CATALOG", DEFAULT_CATALOG)
     schema = os.environ.get("SCHEMA", DEFAULT_SCHEMA)
     sp_id = os.environ.get("SP_APPLICATION_ID", DEFAULT_SP_APPLICATION_ID)

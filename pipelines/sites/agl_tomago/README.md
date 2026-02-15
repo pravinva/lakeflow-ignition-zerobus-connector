@@ -11,7 +11,7 @@ on top of the Ignition Zerobus connector.
 
 This pack builds Silver/Gold in:
 
-- `agl_ignition.agl_ot`
+- `agl_ignition.ot`
 
 ## Run order
 

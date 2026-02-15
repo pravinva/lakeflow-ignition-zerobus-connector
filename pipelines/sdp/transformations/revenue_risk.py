@@ -6,7 +6,7 @@ SDP materialized view joining health scores with price forecasts to compute reve
 from pyspark import pipelines as dp
 from pyspark.sql import functions as F
 
-from agl_analytics.config import site_table, table
+from agl_analytics.config import table
 
 
 @dp.materialized_view(
@@ -24,7 +24,7 @@ def revenue_risk():
     """
     health = spark.read.table(table("health_scores"))  # noqa: F821
     forecast = spark.read.table(table("price_forecast"))  # noqa: F821
-    assets = spark.read.table(site_table("agl_ot", "silver_asset_registry"))  # noqa: F821
+    assets = spark.read.table(table("silver_asset_registry"))  # noqa: F821
 
     # Derive capacity from asset_type (demo defaults for AGL Tomago)
     assets_with_capacity = assets.filter(F.col("active") == True).withColumn(  # noqa: E712

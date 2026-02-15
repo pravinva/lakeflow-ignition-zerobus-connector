@@ -14,7 +14,7 @@ make zerobus-test
 
 This will:
 
-1. **Create the table** — `make zerobus-test-table` (or run `make zerobus-test` which depends on it) creates `agl_demo.ot.zerobus_test` via the Databricks Statement Execution API (uses `DATABRICKS_PROFILE`, e.g. `daveok`). Ensure catalog/schema exist first (`make db-setup-sql`).
+1. **Create the table** — `make zerobus-test-table` (or run `make zerobus-test` which depends on it) creates `agl_demo.ot.zerobus_test` via the Databricks Statement Execution API (uses `DATABRICKS_CONFIG_PROFILE`, e.g. `daveok`). Ensure catalog/schema exist first (`make db-setup-sql`).
 2. **Run the SDK test** — Loads `.env`, sets `ZEROBUS_TARGET_TABLE=agl_demo.ot.zerobus_test`, and runs `zerobus-test/test_zerobus.py`.
 
 Override catalog/schema with: `CATALOG=my_catalog SCHEMA=my_schema make zerobus-test`.
@@ -28,7 +28,7 @@ make zerobus-test-table
 Or manually with the Databricks SDK (from repo root):
 
 ```bash
-DATABRICKS_CONFIG_PROFILE=daveok CATALOG=agl_demo SCHEMA=ot WAREHOUSE_ID=e65d34bf5b095b0f \
+DATABRICKS_CONFIG_PROFILE=daveok CATALOG=agl_demo SCHEMA=ot DATABRICKS_WAREHOUSE_ID=e4082fdb7ea19a15 \
   uv run --with databricks-sdk python onboarding/databricks/create_zerobus_test_table.py
 ```
 

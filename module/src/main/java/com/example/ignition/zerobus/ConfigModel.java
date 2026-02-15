@@ -1,6 +1,7 @@
 package com.example.ignition.zerobus;
 
 import java.io.Serializable;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -554,6 +555,13 @@ public class ConfigModel implements Serializable {
 
             if (zerobusEndpoint == null || zerobusEndpoint.isEmpty()) {
                 errors.add("Zerobus endpoint is required");
+            } else {
+                // Workspace URL and Zerobus endpoint must refer to the same workspace (same ID).
+                String urlId = extractWorkspaceIdFromWorkspaceUrl(workspaceUrl);
+                String endpointId = extractWorkspaceIdFromEndpoint(zerobusEndpoint);
+                if (urlId != null && endpointId != null && !urlId.equals(endpointId)) {
+                    errors.add("Workspace URL and Zerobus endpoint must be for the same workspace (workspace ID mismatch: " + urlId + " vs " + endpointId + ")");
+                }
             }
 
             if (isBearerTokenMode()) {
@@ -599,6 +607,14 @@ public class ConfigModel implements Serializable {
         
         if (batchFlushIntervalMs < 100 || batchFlushIntervalMs > 60000) {
             errors.add("Batch flush interval must be between 100ms and 60000ms");
+        }
+
+        if (maxQueueSize < 1 || maxQueueSize > 1_000_000) {
+            errors.add("Max queue size must be between 1 and 1000000");
+        }
+
+        if (maxEventsPerSecond < 1 || maxEventsPerSecond > 1_000_000) {
+            errors.add("Max events per second must be between 1 and 1000000");
         }
 
         if (enableStoreAndForward) {
@@ -687,6 +703,66 @@ public class ConfigModel implements Serializable {
             spoolDirectory = raw.replaceFirst("^/usr/local/ignition/", "/usr/local/bin/ignition/");
         } else {
             spoolDirectory = raw;
+        }
+    }
+
+    /**
+     * Extract workspace ID from Databricks workspace URL for validation.
+     * Azure: https://adb-7405607216190670.10.azuredatabricks.net -> 7405607216190670
+     * AWS: host may contain workspace ID in first segment.
+     */
+    private static String extractWorkspaceIdFromWorkspaceUrl(String workspaceUrl) {
+        if (workspaceUrl == null || workspaceUrl.isBlank()) {
+            return null;
+        }
+        try {
+            URI uri = URI.create(workspaceUrl.trim());
+            String host = uri.getHost();
+            if (host == null || host.isEmpty()) {
+                return null;
+            }
+            // Azure: adb-<workspaceId>.10.azuredatabricks.net
+            if (host.startsWith("adb-")) {
+                int dot = host.indexOf('.', 4);
+                return dot > 4 ? host.substring(4, dot) : host.substring(4);
+            }
+            // AWS: <workspaceId>.cloud.databricks.com or similar; first segment is often the ID
+            int dot = host.indexOf('.');
+            return dot > 0 ? host.substring(0, dot) : host;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Extract workspace ID from Zerobus endpoint host for validation.
+     * Format: <workspaceId>.zerobus.<region>.<domain> e.g. 7405607216190670.zerobus.eastus2.azuredatabricks.net
+     * Endpoint may be host-only (no scheme) or full URL.
+     */
+    private static String extractWorkspaceIdFromEndpoint(String zerobusEndpoint) {
+        if (zerobusEndpoint == null || zerobusEndpoint.isBlank()) {
+            return null;
+        }
+        try {
+            String s = zerobusEndpoint.trim();
+            String host = null;
+            if (s.contains("://")) {
+                URI uri = URI.create(s);
+                host = uri.getHost();
+            }
+            if (host == null || host.isEmpty()) {
+                int slash = s.indexOf('/');
+                String hostPart = slash > 0 ? s.substring(0, slash) : s;
+                int colon = hostPart.indexOf(':');
+                host = colon > 0 ? hostPart.substring(0, colon) : hostPart;
+            }
+            if (host == null || host.isEmpty()) {
+                return null;
+            }
+            int dot = host.indexOf('.');
+            return dot > 0 ? host.substring(0, dot) : host;
+        } catch (Exception e) {
+            return null;
         }
     }
     

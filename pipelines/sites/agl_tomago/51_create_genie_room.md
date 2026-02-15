@@ -26,9 +26,9 @@
 
 ## Manual Step: Add Data Sources
 
-The Genie API rejected adding tables from `agl_ignition.agl_ot` with:
+The Genie API rejected adding tables from `agl_ignition.ot` with:
 
-> Catalog 'agl_ignition.agl_ot.gold_site_kpis_5m' does not exist
+> Catalog 'agl_ignition.ot.gold_site_kpis_5m' does not exist
 
 Add these tables manually in the Genie room settings:
 
@@ -36,15 +36,15 @@ Add these tables manually in the Genie room settings:
 2. Click **Settings** (gear icon) → **Data sources**  
 3. Add these tables/views:
 
-   - `agl_ignition.agl_ot.gold_site_kpis_5m`
-   - `agl_ignition.agl_ot.gold_site_kpis_daily`
-   - `agl_ignition.agl_ot.gold_dispatch_performance_5m`
-   - `agl_ignition.agl_ot.gold_asset_reliability_daily`
-   - `agl_ignition.agl_ot.gold_revenue_proxy_daily`
-   - `agl_ignition.agl_ot.silver_signals_latest`
-   - `agl_ignition.agl_ot.silver_signals_1m`
-   - `agl_ignition.agl_ot.silver_grid_events`
-   - `agl_ignition.agl_ot.silver_maintenance_events`
+   - `agl_ignition.ot.gold_site_kpis_5m`
+   - `agl_ignition.ot.gold_site_kpis_daily`
+   - `agl_ignition.ot.gold_dispatch_performance_5m`
+   - `agl_ignition.ot.gold_asset_reliability_daily`
+   - `agl_ignition.ot.gold_revenue_proxy_daily`
+   - `agl_ignition.ot.silver_signals_latest`
+   - `agl_ignition.ot.silver_signals_1m`
+   - `agl_ignition.ot.silver_grid_events`
+   - `agl_ignition.ot.silver_maintenance_events`
 
 ---
 
@@ -57,7 +57,7 @@ You are an asset intelligence assistant for AGL's Tomago Battery (NSW) demo.
 Use Gold views for summaries and KPI trends, and Silver views for drilldown.
 
 Primary catalog: agl_ignition
-Primary schema: agl_ot
+Primary schema: ot
 
 Gold views:
 - gold_site_kpis_5m

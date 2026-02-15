@@ -10,7 +10,7 @@ Usage:
 Optional env:
   CATALOG (default: agl_demo)
   SCHEMA (default: ot)
-  WAREHOUSE_ID (default: e65d34bf5b095b0f)
+  DATABRICKS_WAREHOUSE_ID (default: e4082fdb7ea19a15)
 """
 
 from __future__ import annotations
@@ -22,14 +22,14 @@ from databricks.sdk import WorkspaceClient
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 VERIFY_SQL_PATH = os.path.join(REPO_ROOT, "pipelines/sdp/verify_health_scores.sql")
-DEFAULT_WAREHOUSE_ID = "e65d34bf5b095b0f"
+DEFAULT_WAREHOUSE_ID = "e4082fdb7ea19a15"
 DEFAULT_CATALOG = "agl_demo"
 DEFAULT_SCHEMA = "ot"
 
 
 def main() -> int:
     profile = os.environ.get("DATABRICKS_CONFIG_PROFILE", "daveok")
-    warehouse_id = os.environ.get("WAREHOUSE_ID", DEFAULT_WAREHOUSE_ID)
+    warehouse_id = os.environ.get("DATABRICKS_WAREHOUSE_ID", DEFAULT_WAREHOUSE_ID)
     catalog = os.environ.get("CATALOG", DEFAULT_CATALOG)
     schema = os.environ.get("SCHEMA", DEFAULT_SCHEMA)
 

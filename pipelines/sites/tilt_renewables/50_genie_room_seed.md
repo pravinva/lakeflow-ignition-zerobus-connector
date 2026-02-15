@@ -5,7 +5,7 @@ Use this file to seed a Genie space / room. The goal is to demonstrate business 
 ## Suggested room context (paste into Genie instructions)
 
 You are an operations analyst assistant for Tilt Renewables “Site01” (demo). You have access to Silver/Gold tables in
-catalog `ignition_demo`, schema `tilt_ot`.
+catalog `ignition_demo`, schema `ot`.
 
 Prefer answering with:
 

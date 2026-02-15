@@ -222,13 +222,19 @@ public class ZerobusGatewayHook83 extends AbstractGatewayModuleHook implements Z
     @Override
     public String getMetricsJson() {
         if (zerobusClientManager == null) {
-            return "{\"events_sent\":0,\"batches_sent\":0,\"bytes_sent\":0}";
+            long backlog = (tagSubscriptionService != null) ? tagSubscriptionService.getBufferBacklogBytes() : 0L;
+            return String.format(
+                    "{\"events_sent\":0,\"batches_sent\":0,\"bytes_sent\":0,\"total_failures\":0,\"buffer_backlog_bytes\":%d}",
+                    backlog);
         }
+        long backlog = (tagSubscriptionService != null) ? tagSubscriptionService.getBufferBacklogBytes() : 0L;
         return String.format(
-                "{\"events_sent\":%d,\"batches_sent\":%d,\"bytes_sent\":%d}",
+                "{\"events_sent\":%d,\"batches_sent\":%d,\"bytes_sent\":%d,\"total_failures\":%d,\"buffer_backlog_bytes\":%d}",
                 zerobusClientManager.getTotalEventsSent(),
                 zerobusClientManager.getTotalBatchesSent(),
-                zerobusClientManager.getTotalBytesSent());
+                zerobusClientManager.getTotalBytesSent(),
+                zerobusClientManager.getTotalFailures(),
+                backlog);
     }
 
     @Override

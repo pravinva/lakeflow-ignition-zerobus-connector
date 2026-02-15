@@ -15,7 +15,7 @@ Usage:
 Or with Databricks profile:
   DATABRICKS_CONFIG_PROFILE=daveok uv run python onboarding/databricks/deploy_zerobus_app_from_github.py
 
-Env: CATALOG (default agl_demo), SCHEMA (default ot), WAREHOUSE_ID (for running GRANT statements).
+Env: CATALOG (default agl_demo), SCHEMA (default ot), DATABRICKS_WAREHOUSE_ID (for running GRANT statements).
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ GIT_PROVIDER = "gitHub"
 
 DEFAULT_CATALOG = "agl_demo"
 DEFAULT_SCHEMA = "ot"
-DEFAULT_WAREHOUSE_ID = "e65d34bf5b095b0f"
+DEFAULT_WAREHOUSE_ID = "e4082fdb7ea19a15"
 
 
 def main() -> None:
@@ -69,7 +69,7 @@ def main() -> None:
 
     catalog = os.environ.get("CATALOG", DEFAULT_CATALOG)
     schema = os.environ.get("SCHEMA", DEFAULT_SCHEMA)
-    warehouse_id = os.environ.get("WAREHOUSE_ID", DEFAULT_WAREHOUSE_ID)
+    warehouse_id = os.environ.get("DATABRICKS_WAREHOUSE_ID", DEFAULT_WAREHOUSE_ID)
 
     # Step 1: Get existing app or create with git_repository
     try:
@@ -80,14 +80,29 @@ def main() -> None:
             print(f"App {APP_NAME} not found; cannot run grants.", file=sys.stderr)
             sys.exit(1)
         print(f"Creating app {APP_NAME} with git_repository={git_url}")
-        app = w.apps.create(
-            app=App(
-                name=APP_NAME,
-                description="Zerobus Ignition AGL – OT tag streaming and asset framework demo (from GitHub)",
-                git_repository=GitRepository(url=git_url, provider=GIT_PROVIDER),
-            )
-        ).result()
-        print(f"Created app: service_principal_id={app.service_principal_id}")
+        try:
+            app = w.apps.create(
+                app=App(
+                    name=APP_NAME,
+                    description="Zerobus Ignition AGL – OT tag streaming and asset framework demo (from GitHub)",
+                    git_repository=GitRepository(url=git_url, provider=GIT_PROVIDER),
+                )
+            ).result()
+            print(f"Created app: service_principal_id={app.service_principal_id}")
+        except Exception as e:
+            err_msg = str(e).lower()
+            if "git repository cannot be defined" in err_msg or "please try again later" in err_msg:
+                print(
+                    f"✘ Git-backed apps are not available in this workspace yet: {e}\n"
+                    "  This often happens on newly created workspaces (feature propagation).\n"
+                    "  Options:\n"
+                    "    1. Wait a few hours and run again: make db-app-deploy\n"
+                    "    2. Deploy via Asset Bundle: make db-bundle-deploy (see databricks.yml)\n"
+                    "    3. In the workspace: Settings → check Repos/Apps and enable if needed",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            raise
 
     sp_id = app.service_principal_id
     if not sp_id:
@@ -147,7 +162,7 @@ def main() -> None:
 
     # Step 4: Run UC grants for the app's service principal so the app can query agl_demo.ot
     print(f"▸ Running UC grants for app SP (catalog={catalog}, schema={schema})...")
-    run_uc_grants(w, sp_application_id, catalog, schema, warehouse_id)
+    run_uc_grants(w, sp_application_id, catalog, schema, DATABRICKS_WAREHOUSE_ID)
 
     print("Done. Start the app from the workspace UI or: databricks bundle run zerobus_ignition_agl -t dev")
 

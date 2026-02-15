@@ -3,7 +3,7 @@
 -- agl_bess, agl_grid, agl_market, agl_cmms
 
 -- Assets
-INSERT INTO agl_ignition.agl_ot.silver_asset_registry (asset_id, parent_asset_id, asset_type, site, display_name, active)
+INSERT INTO agl_ignition.ot.silver_asset_registry (asset_id, parent_asset_id, asset_type, site, display_name, active)
 VALUES
   ('tomago_site01', NULL, 'SITE', 'Tomago', 'Tomago Battery - Site01', true),
   ('bess01', 'tomago_site01', 'BESS', 'Tomago', 'BESS01 (500MW/2000MWh)', true),
@@ -15,7 +15,7 @@ VALUES
 -- Use full tag_path strings (matches connector output exactly).
 
 -- BESS telemetry (agl_bess)
-INSERT INTO agl_ignition.agl_ot.silver_signal_mapping
+INSERT INTO agl_ignition.ot.silver_signal_mapping
   (tag_path, asset_id, signal_name, unit, scale, offset, source_domain, active)
 VALUES
   ('[agl_bess]AGL/Australia/NSW/Tomago/Site01/BESS01/Telemetry/SoC_pct', 'bess01', 'soc_pct', '%', 1.0, 0.0, 'bess', true),
@@ -36,7 +36,7 @@ VALUES
   ('[agl_bess]AGL/Australia/NSW/Tomago/Site01/BESS01/Alarms/LastAlarm', 'bess01', 'last_alarm', 'string', 1.0, 0.0, 'bess', true);
 
 -- Grid / dispatch (agl_grid)
-INSERT INTO agl_ignition.agl_ot.silver_signal_mapping
+INSERT INTO agl_ignition.ot.silver_signal_mapping
   (tag_path, asset_id, signal_name, unit, scale, offset, source_domain, active)
 VALUES
   ('[agl_grid]AGL/Australia/NSW/Tomago/Site01/Substation01/POI/ExportPower_MW', 'substation01', 'poi_export_mw', 'MW', 1.0, 0.0, 'grid', true),
@@ -54,7 +54,7 @@ VALUES
   ('[agl_grid]AGL/Australia/NSW/Tomago/Site01/Events/LastEvent', 'tomago_site01', 'last_event', 'string', 1.0, 0.0, 'grid', true);
 
 -- Market (agl_market)
-INSERT INTO agl_ignition.agl_ot.silver_signal_mapping
+INSERT INTO agl_ignition.ot.silver_signal_mapping
   (tag_path, asset_id, signal_name, unit, scale, offset, source_domain, active)
 VALUES
   ('[agl_market]AGL/Australia/NSW/Tomago/Site01/Market/RRP_AUD_per_MWh', 'market', 'rrp_aud_per_mwh', 'AUD/MWh', 1.0, 0.0, 'market', true),
@@ -63,7 +63,7 @@ VALUES
   ('[agl_market]AGL/Australia/NSW/Tomago/Site01/Market/FCAS_RegPrice_AUD_per_MWh', 'market', 'fcas_reg_price', 'AUD/MWh', 1.0, 0.0, 'market', true);
 
 -- CMMS (agl_cmms)
-INSERT INTO agl_ignition.agl_ot.silver_signal_mapping
+INSERT INTO agl_ignition.ot.silver_signal_mapping
   (tag_path, asset_id, signal_name, unit, scale, offset, source_domain, active)
 VALUES
   ('[agl_cmms]AGL/Australia/NSW/Tomago/Site01/CMMS/OpenWorkOrders', 'cmms', 'open_work_orders', 'count', 1.0, 0.0, 'cmms', true),

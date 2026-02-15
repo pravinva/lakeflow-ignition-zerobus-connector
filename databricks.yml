@@ -14,7 +14,7 @@ variables:
   schema:
     description: Schema for OT tables (e.g. raw_tags, asset framework)
     default: "ot"
-  warehouse_id:
+  DATABRICKS_WAREHOUSE_ID:
     description: SQL warehouse ID for the app (lookup by name or set per target)
     lookup:
       warehouse: "Serverless Starter Warehouse"
@@ -58,5 +58,5 @@ resources:
       resources:
         - name: sql-warehouse
           sql_warehouse:
-            id: ${var.warehouse_id}
+            id: ${var.DATABRICKS_WAREHOUSE_ID}
             permission: CAN_USE

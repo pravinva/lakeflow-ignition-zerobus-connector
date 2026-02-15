@@ -37,7 +37,9 @@ def main() -> int:
     os.environ["DATABRICKS_CLIENT_ID"] = client_id
     os.environ["DATABRICKS_CLIENT_SECRET"] = client_secret
     if "ZEROBUS_ENDPOINT" not in os.environ:
-        os.environ.setdefault("ZEROBUS_ENDPOINT", "7405607216190670.zerobus.eastus2.azuredatabricks.net")
+        wid, reg = os.environ.get("WORKSPACE_ID"), os.environ.get("DATABRICKS_REGION")
+        default_ep = f"{wid}.zerobus.{reg}.azuredatabricks.net" if (wid and reg) else "7405607216190670.zerobus.eastus2.azuredatabricks.net"
+        os.environ.setdefault("ZEROBUS_ENDPOINT", default_ep)
     if "ZEROBUS_TARGET_TABLE" not in os.environ:
         os.environ.setdefault("ZEROBUS_TARGET_TABLE", "agl_demo.ot.zerobus_test")
     # Defer import so env is set before SDK reads it

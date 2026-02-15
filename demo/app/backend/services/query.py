@@ -315,11 +315,11 @@ def _compression_comparison() -> tuple[str, list[Any]]:
 
 
 def _raw_tags_storage_metrics() -> tuple[str, list[Any]]:
-    """Run ANALYZE TABLE ... COMPUTE STORAGE METRICS on raw_tags.
-    Returns a single row with total_bytes, active_bytes, etc. if the API returns it.
+    """Run DESCRIBE DETAIL on raw_tags to get Delta storage metrics.
+    Returns a single row with sizeInBytes, numFiles, etc.
     """
     table = f"{_catalog}.{_schema}.raw_tags"
-    return (f"ANALYZE TABLE {table} COMPUTE STORAGE METRICS", [])
+    return (f"DESCRIBE DETAIL {table}", [])
 
 
 def _sdt_config() -> tuple[str, list[Any]]:

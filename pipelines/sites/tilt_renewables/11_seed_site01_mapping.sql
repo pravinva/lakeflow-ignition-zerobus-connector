@@ -2,7 +2,7 @@
 -- NOTE: You can extend this list as you ingest more tags.
 
 -- Asset registry
-MERGE INTO ignition_demo.tilt_ot.silver_asset_registry t
+MERGE INTO ignition_demo.ot.silver_asset_registry t
 USING (
   SELECT 'site01' AS asset_id, NULL AS parent_asset_id, 'site' AS asset_type, 'Site01' AS site, 'Tilt Site01 (Demo)' AS display_name, true AS active
   UNION ALL SELECT 'metmast01', 'site01', 'met_mast', 'Site01', 'Met Mast 01', true
@@ -28,7 +28,7 @@ WHEN NOT MATCHED THEN INSERT *;
 
 -- Signal mapping: tag_path -> business signals
 -- Plant telemetry ([tilt])
-MERGE INTO ignition_demo.tilt_ot.silver_signal_mapping t
+MERGE INTO ignition_demo.ot.silver_signal_mapping t
 USING (
   SELECT '[tilt]Tilt/Site01/MetMast01/WindSpeed_mps' AS tag_path, 'metmast01' AS asset_id, 'wind_speed' AS signal_name, 'm/s' AS unit, 1.0 AS scale, 0.0 AS offset, 'plant' AS source_domain, true AS active
   UNION ALL SELECT '[tilt]Tilt/Site01/MetMast01/WindDir_deg', 'metmast01', 'wind_direction', 'deg', 1.0, 0.0, 'plant', true

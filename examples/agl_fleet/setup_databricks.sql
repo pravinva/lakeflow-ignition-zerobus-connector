@@ -6,17 +6,18 @@
 -- in the SQL Editor or with a user profile, then the SP can use the catalog.
 --
 -- Creates:
---   __CATALOG__              catalog (managed location below)
+--   __CATALOG__              catalog (uses metastore default root; no MANAGED LOCATION in this script)
 --   __CATALOG__.__SCHEMA__   schema
 --   __CATALOG__.__SCHEMA__.raw_tags  (Bronze - Zerobus writes here)
---   Asset Framework + SDP site schemas (agl_ot, saint_ot, tilt_ot) in same catalog.
+--   Asset Framework + SDP silver tables in same schema (ot).
 --
 -- Placeholders __CATALOG__ and __SCHEMA__ are replaced by run_setup_sql.py from env
 -- (CATALOG, SCHEMA; defaults agl_demo, ot). After running this, run setup_asset_framework.sql.
 
--- 0. Catalog and schema (managed location for catalog storage)
-CREATE CATALOG IF NOT EXISTS __CATALOG__
-  MANAGED LOCATION 'abfss://data@stdbwdaveokdata.dfs.core.windows.net/agl';
+-- 0. Catalog and schema (uses metastore default location if MANAGED LOCATION omitted)
+--    Optional: set env MANAGED_LOCATION to a path (e.g. abfss://container@storage.dfs.core.windows.net/path)
+--    and use __MANAGED_LOCATION__ in the CREATE CATALOG line for a custom root.
+CREATE CATALOG IF NOT EXISTS __CATALOG__;
 CREATE SCHEMA IF NOT EXISTS __CATALOG__.__SCHEMA__
   COMMENT 'OT data from Ignition via Zerobus connector';
 
@@ -149,9 +150,8 @@ WHEN NOT MATCHED THEN INSERT *;
 CREATE VOLUME IF NOT EXISTS __CATALOG__.__SCHEMA__.wheels
   COMMENT 'Python wheels for jobs and apps (e.g. agl_analytics)';
 
--- 3b. SDP pipeline schemas: agl_ot, saint_ot, tilt_ot (silver_signal_mapping + silver_asset_registry)
-CREATE SCHEMA IF NOT EXISTS __CATALOG__.agl_ot COMMENT 'AGL Silver/Gold for SDP pipeline';
-CREATE TABLE IF NOT EXISTS __CATALOG__.agl_ot.silver_asset_registry (
+-- 3b. SDP pipeline silver tables in __SCHEMA__ (ot)
+CREATE TABLE IF NOT EXISTS __CATALOG__.__SCHEMA__.silver_asset_registry (
   asset_id STRING,
   parent_asset_id STRING,
   asset_type STRING,
@@ -159,31 +159,7 @@ CREATE TABLE IF NOT EXISTS __CATALOG__.agl_ot.silver_asset_registry (
   display_name STRING,
   active BOOLEAN
 ) USING DELTA;
-CREATE TABLE IF NOT EXISTS __CATALOG__.agl_ot.silver_signal_mapping (
-  tag_path STRING,
-  asset_id STRING,
-  signal_name STRING,
-  unit STRING,
-  scale DOUBLE,
-  offset DOUBLE,
-  source_domain STRING,
-  active BOOLEAN
-) USING DELTA;
-
-CREATE SCHEMA IF NOT EXISTS __CATALOG__.saint_ot COMMENT 'Saint Gobain Silver (placeholder for SDP union)';
-CREATE TABLE IF NOT EXISTS __CATALOG__.saint_ot.silver_signal_mapping (
-  tag_path STRING,
-  asset_id STRING,
-  signal_name STRING,
-  unit STRING,
-  scale DOUBLE,
-  offset DOUBLE,
-  source_domain STRING,
-  active BOOLEAN
-) USING DELTA;
-
-CREATE SCHEMA IF NOT EXISTS __CATALOG__.tilt_ot COMMENT 'Tilt Silver (placeholder for SDP union)';
-CREATE TABLE IF NOT EXISTS __CATALOG__.tilt_ot.silver_signal_mapping (
+CREATE TABLE IF NOT EXISTS __CATALOG__.__SCHEMA__.silver_signal_mapping (
   tag_path STRING,
   asset_id STRING,
   signal_name STRING,
@@ -205,10 +181,5 @@ GRANT MODIFY, SELECT ON TABLE __CATALOG__.__SCHEMA__.asset_hierarchy TO `__SP_AP
 GRANT MODIFY, SELECT ON TABLE __CATALOG__.__SCHEMA__.asset_attribute_values TO `__SP_APPLICATION_ID__`;
 GRANT MODIFY, SELECT ON TABLE __CATALOG__.__SCHEMA__.sdt_config TO `__SP_APPLICATION_ID__`;
 GRANT READ VOLUME ON VOLUME __CATALOG__.__SCHEMA__.wheels TO `__SP_APPLICATION_ID__`;
-GRANT USE SCHEMA ON SCHEMA __CATALOG__.agl_ot TO `__SP_APPLICATION_ID__`;
-GRANT MODIFY, SELECT ON TABLE __CATALOG__.agl_ot.silver_asset_registry TO `__SP_APPLICATION_ID__`;
-GRANT MODIFY, SELECT ON TABLE __CATALOG__.agl_ot.silver_signal_mapping TO `__SP_APPLICATION_ID__`;
-GRANT USE SCHEMA ON SCHEMA __CATALOG__.saint_ot TO `__SP_APPLICATION_ID__`;
-GRANT MODIFY, SELECT ON TABLE __CATALOG__.saint_ot.silver_signal_mapping TO `__SP_APPLICATION_ID__`;
-GRANT USE SCHEMA ON SCHEMA __CATALOG__.tilt_ot TO `__SP_APPLICATION_ID__`;
-GRANT MODIFY, SELECT ON TABLE __CATALOG__.tilt_ot.silver_signal_mapping TO `__SP_APPLICATION_ID__`;
+GRANT MODIFY, SELECT ON TABLE __CATALOG__.__SCHEMA__.silver_asset_registry TO `__SP_APPLICATION_ID__`;
+GRANT MODIFY, SELECT ON TABLE __CATALOG__.__SCHEMA__.silver_signal_mapping TO `__SP_APPLICATION_ID__`;

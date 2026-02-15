@@ -10,20 +10,26 @@ The Zerobus connector sends `OTEvent` protobuf messages. The target Delta table 
 | event_time int64       | event_time BIGINT      | **Microseconds** since Unix epoch (Java sends micros) |
 | tag_path string        | tag_path STRING        |       |
 | tag_provider string    | tag_provider STRING    |       |
-| numeric_value double   | numeric_value DOUBLE   |       |
-| string_value string    | string_value STRING    |       |
-| boolean_value bool     | boolean_value BOOLEAN  |       |
-| quality string         | quality STRING         |       |
-| quality_code int32     | quality_code INT       |       |
+| optional double numeric_value   | numeric_value DOUBLE   | `optional` — see below |
+| optional string string_value    | string_value STRING    | `optional` — see below |
+| optional bool boolean_value     | boolean_value BOOLEAN  | `optional` — see below |
+| optional string quality         | quality STRING         | `optional` — see below |
+| optional int32 quality_code     | quality_code INT       | `optional` — see below |
 | source_system string   | source_system STRING   |       |
 | ingestion_timestamp int64 | ingestion_timestamp BIGINT | **Microseconds** since epoch |
 | data_type string       | data_type STRING       |       |
-| alarm_state string     | alarm_state STRING     |       |
-| alarm_priority int32   | alarm_priority INT     |       |
-| sdt_compressed bool    | sdt_compressed BOOLEAN |       |
-| compression_ratio double | compression_ratio DOUBLE |     |
-| sdt_enabled bool       | sdt_enabled BOOLEAN    |       |
-| batch_bytes_sent int64 | batch_bytes_sent BIGINT |      |
+| optional string alarm_state     | alarm_state STRING     | `optional` — see below |
+| optional int32 alarm_priority   | alarm_priority INT     | `optional` — see below |
+| optional bool sdt_compressed    | sdt_compressed BOOLEAN | `optional` — see below |
+| optional double compression_ratio | compression_ratio DOUBLE | `optional` — see below |
+| optional bool sdt_enabled       | sdt_enabled BOOLEAN    | `optional` — see below |
+| optional int64 batch_bytes_sent | batch_bytes_sent BIGINT | `optional` — see below |
+
+### Why `optional`?
+
+In proto3, fields at their default value (0, 0.0, false, "") are **not serialized** on the wire. Zerobus Ingest maps absent wire fields to NULL in Delta — so a DOUBLE tag with `numeric_value=64.22` but `boolean_value=false` would show `boolean_value` as NULL, not false. A legitimate `numeric_value=0.0` reading would also be NULL.
+
+The `optional` keyword (protobuf 3.15+) adds field-presence tracking. Once `setX()` is called, the field is always serialized — even at the default value. This ensures Zerobus writes the actual value to Delta, not NULL.
 
 ## Timestamp units
 

@@ -40,16 +40,26 @@ except ImportError:
 from zerobus.sdk.sync import ZerobusSdk
 from zerobus.sdk.shared import RecordType, StreamConfigurationOptions, TableProperties
 
-# --- Configuration -----------------------------------------------------------
-SERVER_ENDPOINT = os.environ.get("ZEROBUS_ENDPOINT", "7405607216190670.zerobus.eastus2.azuredatabricks.net")
+# --- Configuration (ZEROBUS_ENDPOINT or WORKSPACE_ID+DATABRICKS_REGION from .env) ---
+def _zerobus_endpoint() -> str:
+    e = os.environ.get("ZEROBUS_ENDPOINT")
+    if e:
+        return e
+    wid, reg = os.environ.get("WORKSPACE_ID"), os.environ.get("DATABRICKS_REGION")
+    if wid and reg:
+        return f"{wid}.zerobus.{reg}.azuredatabricks.net"
+    return "7405607216190670.zerobus.eastus2.azuredatabricks.net"
+
+
+SERVER_ENDPOINT = _zerobus_endpoint()
 WORKSPACE_URL = os.environ.get("DATABRICKS_HOST", "https://adb-7405607216190670.10.azuredatabricks.net")
 CLIENT_ID = os.environ.get("DATABRICKS_CLIENT_ID", "")
 CLIENT_SECRET = os.environ.get("DATABRICKS_CLIENT_SECRET", "")
 CATALOG = os.environ.get("CATALOG", "agl_demo")
 SCHEMA = os.environ.get("SCHEMA", "ot")
 SP_ID = os.environ.get("SP_APPLICATION_ID", "66c066ad-d5a9-496f-8da5-6d7bc2f5d954")
-WAREHOUSE_ID = os.environ.get("WAREHOUSE_ID", "e65d34bf5b095b0f")
-DATABRICKS_PROFILE = os.environ.get("DATABRICKS_CONFIG_PROFILE", "daveok")
+DATABRICKS_WAREHOUSE_ID = os.environ.get("DATABRICKS_WAREHOUSE_ID", "e4082fdb7ea19a15")
+DATABRICKS_CONFIG_PROFILE = os.environ.get("DATABRICKS_CONFIG_PROFILE", "daveok")
 # -----------------------------------------------------------------------------
 
 # Base columns (no constraints)
@@ -123,7 +133,7 @@ VARIANTS = [
 def run_sql(w, stmt: str, desc: str) -> bool:
     try:
         resp = w.statement_execution.execute_statement(
-            warehouse_id=WAREHOUSE_ID,
+            warehouse_id=DATABRICKS_WAREHOUSE_ID,
             statement=stmt.strip(),
             wait_timeout="30s",
         )
@@ -194,7 +204,7 @@ def main():
     print(f"Workspace: {WORKSPACE_URL}")
     print()
 
-    w = WorkspaceClient(profile=DATABRICKS_PROFILE)
+    w = WorkspaceClient(profile=DATABRICKS_CONFIG_PROFILE)
 
     results = []
     for variant in VARIANTS:

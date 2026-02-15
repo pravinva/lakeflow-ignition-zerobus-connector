@@ -167,7 +167,7 @@ def check_tables(w: WorkspaceClient) -> dict[str, str]:
         fqn = f"{CATALOG}.{SCHEMA}.{tbl}"
         try:
             resp = w.statement_execution.execute_statement(
-                warehouse_id=os.environ.get("WAREHOUSE_ID", "e65d34bf5b095b0f"),
+                warehouse_id=os.environ.get("DATABRICKS_WAREHOUSE_ID", "e4082fdb7ea19a15"),
                 statement=f"SELECT COUNT(*) AS cnt FROM {fqn}",
                 wait_timeout="30s",
             )
@@ -187,7 +187,7 @@ def check_tables(w: WorkspaceClient) -> dict[str, str]:
 def cleanup(w: WorkspaceClient, pipeline_id: str):
     """Delete the test pipeline and tables."""
     print("\n--- Cleanup ---")
-    wid = os.environ.get("WAREHOUSE_ID", "e65d34bf5b095b0f")
+    wid = os.environ.get("DATABRICKS_WAREHOUSE_ID", "e4082fdb7ea19a15")
     for tbl in ["test_generated", "test_date_trunc", "test_mv_daily"]:
         fqn = f"{CATALOG}.{SCHEMA}.{tbl}"
         try:

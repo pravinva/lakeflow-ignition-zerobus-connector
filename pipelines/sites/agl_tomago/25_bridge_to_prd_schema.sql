@@ -31,7 +31,7 @@ SELECT
   n.source_system,
   false AS sdt_compressed,  -- Connector handles compression internally
   NULL AS compression_ratio
-FROM agl_ignition.agl_ot.silver_events_normalized n
+FROM agl_ignition.ot.silver_events_normalized n
 WHERE n.asset_id IS NOT NULL;
 
 -- Bridge view: assets equivalent from asset registry
@@ -56,9 +56,9 @@ SELECT
   CASE WHEN site = 'Tomago' THEN 151.86 ELSE NULL END AS longitude,
   NULL AS commissioned_date,
   (SELECT COUNT(DISTINCT signal_name)
-   FROM agl_ignition.agl_ot.silver_signal_mapping m
+   FROM agl_ignition.ot.silver_signal_mapping m
    WHERE m.asset_id = r.asset_id) AS tag_count
-FROM agl_ignition.agl_ot.silver_asset_registry r
+FROM agl_ignition.ot.silver_asset_registry r
 WHERE active = true;
 
 -- Bridge view: ingest_metrics equivalent (aggregated from events)
@@ -73,7 +73,7 @@ SELECT
   PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY TIMESTAMPDIFF(MILLISECOND, event_time, ingestion_timestamp)) AS p99_latency_ms,
   COUNT(DISTINCT CONCAT(asset_id, '.', signal_name)) AS tags_active,
   1.0 AS sdt_compression_ratio
-FROM agl_ignition.agl_ot.silver_events_normalized
+FROM agl_ignition.ot.silver_events_normalized
 GROUP BY window(event_time, '5 seconds');
 
 -- Usage note:

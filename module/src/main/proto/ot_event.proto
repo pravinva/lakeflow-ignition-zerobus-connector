@@ -11,6 +11,11 @@ option java_multiple_files = true;
  *
  * This protobuf schema MUST match the Delta table (catalog.schema.raw_tags) exactly:
  * column names, types, and order. See module/SCHEMA_ALIGNMENT.md.
+ *
+ * IMPORTANT: All value fields use the `optional` keyword so that proto3 serializes
+ * them even at default values (0, 0.0, false, ""). Without `optional`, proto3 omits
+ * default-valued fields from the wire and Zerobus Ingest maps them to NULL in Delta
+ * instead of the actual value. See: https://protobuf.dev/programming-guides/proto3/#field-labels
  */
 message OTEvent {
   // Unique event identifier
@@ -25,23 +30,21 @@ message OTEvent {
   // Ignition tag provider name (e.g., "default")
   string tag_provider = 4;
   
-  // Numeric tag value (for numeric tags)
-  // Can be null/0.0 if not applicable
-    double numeric_value = 5;
+  // Numeric tag value (for numeric tags); 0.0 when not applicable.
+  // `optional` ensures a legitimate 0.0 reading is not mapped to NULL by Zerobus.
+  optional double numeric_value = 5;
   
-  // String tag value (for string tags)
-  // Can be empty if not applicable
-  string string_value = 6;
+  // String tag value (for string tags); empty when not applicable.
+  optional string string_value = 6;
   
-  // Boolean tag value (for boolean tags)
-  // Can be false if not applicable
-  bool boolean_value = 7;
+  // Boolean tag value (for boolean tags); false when not applicable.
+  optional bool boolean_value = 7;
   
   // Quality indicator as string ("GOOD", "BAD", "UNCERTAIN")
-  string quality = 8;
+  optional string quality = 8;
   
   // Numeric quality code from Ignition
-  int32 quality_code = 9;
+  optional int32 quality_code = 9;
   
   // Source Ignition Gateway identifier
   string source_system = 10;
@@ -52,22 +55,22 @@ message OTEvent {
   // Original data type from Ignition tag
   string data_type = 12;
   
-  // Alarm state if tag is in alarm (can be empty)
-  string alarm_state = 13;
+  // Alarm state if tag is in alarm (empty string when no alarm)
+  optional string alarm_state = 13;
   
-  // Alarm priority if applicable (can be 0)
-  int32 alarm_priority = 14;
+  // Alarm priority if applicable (0 when no alarm)
+  optional int32 alarm_priority = 14;
 
   // Whether this event was emitted by the SDT path (survived or passthrough)
-  bool sdt_compressed = 15;
+  optional bool sdt_compressed = 15;
 
   // Running compression ratio at emission time (e.g., 3.2 = 3.2:1). 0 when SDT off.
-  double compression_ratio = 16;
+  optional double compression_ratio = 16;
 
   // Gateway config: SDT compression was enabled when this event was sent (authoritative on/off).
-  bool sdt_enabled = 17;
+  optional bool sdt_enabled = 17;
 
   // Size in bytes of the batch this event was sent in (sum of serialized event sizes). Demo observability.
-  int64 batch_bytes_sent = 18;
+  optional int64 batch_bytes_sent = 18;
 }
 

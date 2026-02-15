@@ -120,10 +120,19 @@ def parse_args() -> argparse.Namespace:
         default=os.environ.get("DATABRICKS_CONFIG_PROFILE", "DEFAULT"),
         help="Databricks CLI profile name (default: DEFAULT)",
     )
+    def _zerobus_endpoint_default() -> str | None:
+        e = os.environ.get("ZEROBUS_ENDPOINT")
+        if e:
+            return e
+        wid, reg = os.environ.get("WORKSPACE_ID"), os.environ.get("DATABRICKS_REGION")
+        if wid and reg:
+            return f"{wid}.zerobus.{reg}.azuredatabricks.net"
+        return None
+
     setup_group.add_argument(
         "--zerobus-endpoint",
-        default=os.environ.get("ZEROBUS_ENDPOINT"),
-        help="Zerobus gRPC endpoint (e.g. <id>.zerobus.<region>.azuredatabricks.net)",
+        default=_zerobus_endpoint_default(),
+        help="Zerobus gRPC endpoint (or set ZEROBUS_ENDPOINT / WORKSPACE_ID+DATABRICKS_REGION in env)",
     )
     setup_group.add_argument(
         "--target-table",

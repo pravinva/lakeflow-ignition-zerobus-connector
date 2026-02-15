@@ -118,7 +118,7 @@ Functions:
 Generate Ignition-compatible tag JSON configs:
 
 - `generate_tag_json(asset: Asset) -> dict` - Single asset's tag structure
-- `generate_fleet_json(fleet: Fleet, provider_name: str = "agl_ot") -> dict` - Full fleet as Ignition folder hierarchy
+- `generate_fleet_json(fleet: Fleet, provider_name: str = "ot") -> dict` - Full fleet as Ignition folder hierarchy
 - `generate_timer_script(asset: Asset) -> str` - Python timer script for Ignition Gateway
 
 The JSON format must match Ignition's tag import schema (see existing examples):
@@ -156,7 +156,7 @@ Arguments:
 - `--output`: Output directory (default: `output/`)
 - `--sites`: Comma-separated site names to include (default: all)
 - `--count`: Max assets per site (default: all)
-- `--provider`: Ignition tag provider name (default: `agl_ot`)
+- `--provider`: Ignition tag provider name (default: `ot`)
 
 ### FR-305: Degradation scenario support
 Support injecting degradation scenarios for demo:

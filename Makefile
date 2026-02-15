@@ -41,14 +41,26 @@ IGNITION_81_HOME      ?= /usr/local/ignition
 PORT_83 ?= 7088
 PORT_81 ?= 8097
 
-# ── Zerobus config ───────────────────────────────────────────
-ZEROBUS_ENDPOINT ?= 7405607216190670.zerobus.eastus2.azuredatabricks.net
-DATABRICKS_PROFILE ?= daveok
+# ── Zerobus / workspace (set once in .env, used everywhere) ─────
+# Source .env before make, or export: DATABRICKS_WAREHOUSE_ID, WORKSPACE_ID, DATABRICKS_REGION
+WORKSPACE_ID       ?= 7405616025546271
+DATABRICKS_REGION  ?= australiaeast
+# ZEROBUS_ENDPOINT: set explicitly or derived from WORKSPACE_ID + DATABRICKS_REGION
+ifndef ZEROBUS_ENDPOINT
+ZEROBUS_ENDPOINT   = $(WORKSPACE_ID).zerobus.$(DATABRICKS_REGION).azuredatabricks.net
+endif
+export DATABRICKS_WAREHOUSE_ID WORKSPACE_ID DATABRICKS_REGION ZEROBUS_ENDPOINT
+
+DATABRICKS_CONFIG_PROFILE ?= daveok
 
 # ── Databricks / pipeline / app ──────────────────────────────
 CATALOG       ?= agl_demo
 SCHEMA        ?= ot
-WAREHOUSE_ID  ?= e65d34bf5b095b0f
+DATABRICKS_WAREHOUSE_ID  ?= e4082fdb7ea19a15
+# Apply default when DATABRICKS_WAREHOUSE_ID is set but empty (e.g. from .env)
+ifeq ($(strip $(DATABRICKS_WAREHOUSE_ID)),)
+DATABRICKS_WAREHOUSE_ID  := e4082fdb7ea19a15
+endif
 REPO_PATH     ?= /Users/david.okeeffe@databricks.com/lakeflow-ignition-zerobus-connector
 PIPELINE_NAME ?= [production] agl-etl
 BUNDLE_TARGET ?= production
@@ -266,8 +278,8 @@ diag-81: ## Full diagnostics on 8.1 gateway (plain text)
 .PHONY: zerobus-test-table
 zerobus-test-table: ## Create agl_demo.ot.zerobus_test and grant SP UC write (run db-setup-sql first)
 	@echo "▸ Creating $(CATALOG).$(SCHEMA).zerobus_test and granting SP $(SP_APPLICATION_ID) MODIFY, SELECT..."
-	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_PROFILE) \
-	CATALOG=$(CATALOG) SCHEMA=$(SCHEMA) WAREHOUSE_ID=$(WAREHOUSE_ID) \
+	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
+	CATALOG=$(CATALOG) SCHEMA=$(SCHEMA) DATABRICKS_WAREHOUSE_ID=$(DATABRICKS_WAREHOUSE_ID) \
 	SP_APPLICATION_ID="$(SP_APPLICATION_ID)" \
 		uv run --with databricks-sdk python onboarding/databricks/create_zerobus_test_table.py
 	@echo "✔ Table and UC grants ready"
@@ -311,11 +323,11 @@ db-create-sp: ## Create SP, generate OAuth secret, write ~/.databrickscfg profil
 	@echo "▸ Creating service principal '$(SP_NAME)'..."
 	CATALOG=$(CATALOG) \
 	SCHEMA=$(SCHEMA) \
-	WAREHOUSE_ID=$(WAREHOUSE_ID) \
+	DATABRICKS_WAREHOUSE_ID=$(DATABRICKS_WAREHOUSE_ID) \
 		uv run --with databricks-sdk python onboarding/databricks/create_service_principal.py \
 			--sp-name "$(SP_NAME)" \
 			--profile-name "$(SP_PROFILE_NAME)" \
-			--workspace-profile "$(DATABRICKS_PROFILE)"
+			--workspace-profile "$(DATABRICKS_CONFIG_PROFILE)"
 
 .PHONY: db-create-sp-no-grants
 db-create-sp-no-grants: ## Create SP without running UC grants
@@ -323,7 +335,7 @@ db-create-sp-no-grants: ## Create SP without running UC grants
 	uv run --with databricks-sdk python onboarding/databricks/create_service_principal.py \
 		--sp-name "$(SP_NAME)" \
 		--profile-name "$(SP_PROFILE_NAME)" \
-		--workspace-profile "$(DATABRICKS_PROFILE)" \
+		--workspace-profile "$(DATABRICKS_CONFIG_PROFILE)" \
 		--skip-grants
 
 .PHONY: db-check-sp
@@ -339,21 +351,22 @@ db-check-sp: ## Check [agl-demo] profile and verify SP OAuth secret works
 .PHONY: db-setup-sql
 db-setup-sql: ## Run setup SQL (catalog, schema, tables, SP grants)
 	@echo "▸ Running setup SQL (catalog=$(CATALOG), schema=$(SCHEMA), SP=$(SP_APPLICATION_ID))..."
-	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_PROFILE) \
+	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
 	CATALOG=$(CATALOG) \
 	SCHEMA=$(SCHEMA) \
-	WAREHOUSE_ID=$(WAREHOUSE_ID) \
+	DATABRICKS_WAREHOUSE_ID=$(DATABRICKS_WAREHOUSE_ID) \
 	SP_APPLICATION_ID=$(SP_APPLICATION_ID) \
+	SKIP_CATALOG_CREATE=$(SKIP_CATALOG_CREATE) \
 		uv run --with databricks-sdk python onboarding/databricks/run_setup_sql.py
 	@echo "✔ Setup SQL complete"
 
 .PHONY: db-clean
 db-clean: ## Drop catalog CASCADE, delete pipeline and app (clean Databricks for full reset)
 	@echo "▸ Cleaning Databricks (catalog=$(CATALOG), pipeline=$(PIPELINE_NAME), app=zerobus-ignition-agl)..."
-	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_PROFILE) \
+	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
 	CATALOG=$(CATALOG) \
 	PIPELINE_NAME="$(PIPELINE_NAME)" \
-	WAREHOUSE_ID=$(WAREHOUSE_ID) \
+	DATABRICKS_WAREHOUSE_ID=$(DATABRICKS_WAREHOUSE_ID) \
 		uv run --with databricks-sdk python onboarding/databricks/clean_databricks.py
 	@echo "✔ Databricks clean complete"
 
@@ -372,7 +385,7 @@ db-wheel-upload: ## Upload agl_analytics wheel to UC volume
 	@test -f $(SDP_DIR)/dist/$(WHEEL_FILE) || \
 		(echo "✘ Wheel not found. Run: make db-wheel-build" && exit 1)
 	@echo "▸ Uploading wheel to /Volumes/$(CATALOG)/$(SCHEMA)/wheels/$(WHEEL_FILE)..."
-	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_PROFILE) \
+	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
 		databricks fs cp $(SDP_DIR)/dist/$(WHEEL_FILE) \
 			"dbfs:/Volumes/$(CATALOG)/$(SCHEMA)/wheels/$(WHEEL_FILE)" --overwrite
 	@echo "✔ Wheel uploaded"
@@ -387,7 +400,7 @@ db-wheel: db-wheel-build db-wheel-upload ## Build + upload wheel to UC volume
 .PHONY: db-pipeline
 db-pipeline: ## Create or update SDP pipeline (Git folder in workspace)
 	@echo "▸ Deploying pipeline '$(PIPELINE_NAME)' -> $(REPO_PATH)/pipelines/sdp..."
-	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_PROFILE) \
+	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
 	CATALOG=$(CATALOG) \
 	SCHEMA=$(SCHEMA) \
 	PIPELINE_NAME="$(PIPELINE_NAME)" \
@@ -398,7 +411,7 @@ db-pipeline: ## Create or update SDP pipeline (Git folder in workspace)
 .PHONY: db-pipeline-upload
 db-pipeline-upload: ## Create/update pipeline + build/upload wheel
 	@echo "▸ Deploying pipeline with --upload-wheel..."
-	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_PROFILE) \
+	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
 	CATALOG=$(CATALOG) \
 	SCHEMA=$(SCHEMA) \
 	PIPELINE_NAME="$(PIPELINE_NAME)" \
@@ -408,15 +421,15 @@ db-pipeline-upload: ## Create/update pipeline + build/upload wheel
 
 .PHONY: db-verify-ml
 db-verify-ml: ## Run health_scores verification query; exit 0 if ML path active (ml_health non-null)
-	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_PROFILE) \
+	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
 	CATALOG=$(CATALOG) \
 	SCHEMA=$(SCHEMA) \
-	WAREHOUSE_ID=$(WAREHOUSE_ID) \
+	DATABRICKS_WAREHOUSE_ID=$(DATABRICKS_WAREHOUSE_ID) \
 		uv run --with databricks-sdk python onboarding/databricks/verify_ml_health.py
 
 .PHONY: db-train-health-model
 db-train-health-model: ## Create/update train_health_model job, run it, wait until model registered in UC
-	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_PROFILE) \
+	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
 	CATALOG=$(CATALOG) \
 	SCHEMA=$(SCHEMA) \
 	REPO_PATH="$(REPO_PATH)" \
@@ -430,14 +443,14 @@ db-train-health-model: ## Create/update train_health_model job, run it, wait unt
 .PHONY: db-app-deploy
 db-app-deploy: ## Deploy Databricks App from GitHub (SDK) + UC grants for app SP
 	@echo "▸ Deploying app from GitHub via SDK..."
-	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_PROFILE) \
+	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
 		uv run --with databricks-sdk python onboarding/databricks/deploy_zerobus_app_from_github.py
 	@echo "✔ App deployed (and UC grants applied for app SP)"
 
 .PHONY: db-app-grant
 db-app-grant: ## Run UC grants for the app's service principal only (no deploy)
 	@echo "▸ Running UC grants for app SP..."
-	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_PROFILE) CATALOG=$(CATALOG) SCHEMA=$(SCHEMA) WAREHOUSE_ID=$(WAREHOUSE_ID) \
+	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) CATALOG=$(CATALOG) SCHEMA=$(SCHEMA) DATABRICKS_WAREHOUSE_ID=$(DATABRICKS_WAREHOUSE_ID) \
 		uv run --with databricks-sdk python onboarding/databricks/deploy_zerobus_app_from_github.py --grant-only
 	@echo "✔ App SP grants done"
 
@@ -463,7 +476,7 @@ db-bundle: db-bundle-deploy db-app-start ## Deploy + start app via Asset Bundle
 .PHONY: db-repo-sync
 db-repo-sync: ## Pull latest from $(REPO_BRANCH) into workspace repo
 	@echo "▸ Syncing workspace repo $(REPO_PATH) to branch $(REPO_BRANCH)..."
-	@DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_PROFILE) \
+	@DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
 		uv run --with databricks-sdk python -c "\
 from databricks.sdk import WorkspaceClient; \
 w = WorkspaceClient(); \
@@ -523,14 +536,14 @@ links-83: ## [Step 7] Print all URLs for workspace, app, gateway, pipeline
 	@echo "   Diag:    http://localhost:$(PORT_83)/system/zerobus/diagnostics"
 	@echo ""
 	@echo " Databricks Workspace"
-	@WS_HOST=$$(awk '/^\[$(DATABRICKS_PROFILE)\]/{found=1} found && /^host/{gsub(/^[^=]+=[ \t]*/,""); print; exit}' ~/.databrickscfg 2>/dev/null); \
+	@WS_HOST=$$(awk '/^\[$(DATABRICKS_CONFIG_PROFILE)\]/{found=1} found && /^host/{gsub(/^[^=]+=[ \t]*/,""); print; exit}' ~/.databrickscfg 2>/dev/null); \
 	if [ -n "$$WS_HOST" ]; then \
 		echo "   $$WS_HOST"; \
 		echo "   Catalog: $$WS_HOST/explore/data/$(CATALOG)/$(SCHEMA)"; \
 		echo "   Apps:    $$WS_HOST/apps"; \
 		echo "   Pipelines: $$WS_HOST/pipelines"; \
 	else \
-		echo "   (could not read host from [$(DATABRICKS_PROFILE)] profile)"; \
+		echo "   (could not read host from [$(DATABRICKS_CONFIG_PROFILE)] profile)"; \
 	fi
 	@echo ""
 	@echo " Key Make commands"
@@ -565,13 +578,39 @@ bootstrap-83: db-all build-83 up-83 ## Everything from scratch (steps 1-4, then 
 	@echo " ✔ Step 3: Ignition module built"
 	@echo " ✔ Step 4: Gateway started on http://localhost:$(PORT_83)"
 	@echo ""
-	@echo " Continue with:"
-	@echo "   make setup-wizard-83    Step 4b: Complete Ignition setup in browser"
-	@echo "   make configure-83       Step 5:  Push SP credentials to gateway"
-	@echo "   make simulate-83        Step 6:  Start synthetic data generation"
-	@echo "   make links-83           Step 7:  Show all URLs"
-	@echo "   make db-train-health-model  Step 8:  (optional) Train health model, register in UC"
+	@echo " Continue with (run in this order):"
+	@echo "   4b  make setup-wizard-83       Complete Ignition setup in browser"
+	@echo "   5   make configure-83          Push SP credentials to gateway"
+	@echo "   6   make simulate-83           Start synthetic data generation"
+	@echo "   7   make links-83              Show all URLs"
+	@echo "   8   make db-train-health-model (optional) Train health model, register in UC"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+.PHONY: next-steps-83
+next-steps-83: ## Print post-bootstrap steps (4b–8) in sequence
+	@echo ""
+	@echo " Continue with (run in this order):"
+	@echo "   4b  make setup-wizard-83       Complete Ignition setup in browser"
+	@echo "   5   make configure-83          Push SP credentials to gateway"
+	@echo "   6   make simulate-83           Start synthetic data generation"
+	@echo "   7   make links-83              Show all URLs"
+	@echo "   8   make db-train-health-model (optional) Train health model, register in UC"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo ""
+
+.PHONY: redeploy
+redeploy: ## Print steps to redeploy to a new workspace (see CLAUDE.md)
+	@echo "Redeploy to a new workspace:"
+	@echo "  1. In ~/.databrickscfg set [$(DATABRICKS_CONFIG_PROFILE)] host = new workspace URL"
+	@echo "  2. Create SQL warehouse in new workspace; set DATABRICKS_WAREHOUSE_ID=<id>"
+	@echo "  3. Clone this repo in workspace (Repos); set REPO_PATH=/Repos/.../lakeflow-ignition-zerobus-connector"
+	@echo "  4. make db-create-sp"
+	@echo "  5. DATABRICKS_WAREHOUSE_ID=<id> make db-setup-sql"
+	@echo "  6. make db-wheel"
+	@echo "  7. REPO_PATH=/Repos/... make db-pipeline"
+	@echo "  8. make db-app-deploy"
+	@echo "  9. make build-83 up-83 && make setup-wizard-83 && make configure-83"
+	@echo "  Set WORKSPACE_ID and DATABRICKS_REGION (or ZEROBUS_ENDPOINT) in env or .env; Make derives endpoint if unset."
 
 # ──────────────────────────────────────────────────────────────
 # Help
@@ -619,8 +658,10 @@ help: ## Show this help
 	@grep -E '^links-[0-9]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2}'
 	@echo ""
-	@echo "── Overrides ───────────────────────────────"
+	@echo "── Overrides (or set once in .env and source before make) ──"
+	@echo "  DATABRICKS_WAREHOUSE_ID=<id> WORKSPACE_ID=<id> DATABRICKS_REGION=<region>  (used everywhere)"
 	@echo "  CATALOG=x SCHEMA=y make db-setup-sql"
+	@echo "  SKIP_CATALOG_CREATE=1 make db-setup-sql   (if catalog exists / no CREATE CATALOG permission)"
 	@echo "  Heavier sim (data in ~30–60s): SIM_SITES=5 SIM_UNITS=4 SIM_INTERVAL=500 make simulate-83"
 	@echo "  SIM_SITES=5 SIM_UNITS=4 make simulate-83"
 	@echo "  REPO_PATH=/Repos/me@co.com/repo make db-pipeline"

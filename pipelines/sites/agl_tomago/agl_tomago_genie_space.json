@@ -16,15 +16,15 @@
   },
   "data_sources": {
     "tables": [
-      {"identifier": "agl_ignition.agl_ot.gold_site_kpis_5m"},
-      {"identifier": "agl_ignition.agl_ot.gold_site_kpis_daily"},
-      {"identifier": "agl_ignition.agl_ot.gold_dispatch_performance_5m"},
-      {"identifier": "agl_ignition.agl_ot.gold_asset_reliability_daily"},
-      {"identifier": "agl_ignition.agl_ot.gold_revenue_proxy_daily"},
-      {"identifier": "agl_ignition.agl_ot.silver_signals_latest"},
-      {"identifier": "agl_ignition.agl_ot.silver_signals_1m"},
-      {"identifier": "agl_ignition.agl_ot.silver_grid_events"},
-      {"identifier": "agl_ignition.agl_ot.silver_maintenance_events"}
+      {"identifier": "agl_ignition.ot.gold_site_kpis_5m"},
+      {"identifier": "agl_ignition.ot.gold_site_kpis_daily"},
+      {"identifier": "agl_ignition.ot.gold_dispatch_performance_5m"},
+      {"identifier": "agl_ignition.ot.gold_asset_reliability_daily"},
+      {"identifier": "agl_ignition.ot.gold_revenue_proxy_daily"},
+      {"identifier": "agl_ignition.ot.silver_signals_latest"},
+      {"identifier": "agl_ignition.ot.silver_signals_1m"},
+      {"identifier": "agl_ignition.ot.silver_grid_events"},
+      {"identifier": "agl_ignition.ot.silver_maintenance_events"}
     ]
   },
   "instructions": {
@@ -36,7 +36,7 @@
           "Use Gold views for summaries and KPI trends, and Silver views for drilldown.\n",
           "\n",
           "Primary catalog: agl_ignition\n",
-          "Primary schema: agl_ot\n",
+          "Primary schema: ot\n",
           "\n",
           "Gold views:\n",
           "- gold_site_kpis_5m\n",

@@ -6,7 +6,7 @@ This pack reuses the **same Bronze** table as other demos:
 
 and builds Saint-Gobain specific business layers in:
 
-- **Silver/Gold schema**: `ignition_demo.saint_ot`
+- **Silver/Gold schema**: `ignition_demo.ot`
 
 ### Run order
 

@@ -231,10 +231,14 @@ public class TagSubscriptionService {
     public boolean isRunning() {
         return running.get();
     }
-    
-    
-    
-    
+
+    /**
+     * Current buffer backlog in bytes (for metrics/observability).
+     * When disk-backed, this is the spool file backlog; when in-memory, an approximate size.
+     */
+    public long getBufferBacklogBytes() {
+        return buffer.backlogBytes();
+    }
     
     private void subscribeConfiguredTags() {
         try {

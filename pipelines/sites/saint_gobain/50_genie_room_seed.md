@@ -18,13 +18,13 @@ Add these as data sources so Genie can query them.
 #### Suggested data sources to add
 
 - Gold:
-  - `ignition_demo.saint_ot.gold_site_kpis_5m`
-  - `ignition_demo.saint_ot.gold_site_kpis_daily`
-  - `ignition_demo.saint_ot.gold_forecast_accuracy_hourly`
+  - `ignition_demo.ot.gold_site_kpis_5m`
+  - `ignition_demo.ot.gold_site_kpis_daily`
+  - `ignition_demo.ot.gold_forecast_accuracy_hourly`
 - Silver (drilldown):
-  - `ignition_demo.saint_ot.silver_signals_1m`
-  - `ignition_demo.saint_ot.silver_signals_latest`
-  - `ignition_demo.saint_ot.silver_maintenance_events`
+  - `ignition_demo.ot.silver_signals_1m`
+  - `ignition_demo.ot.silver_signals_latest`
+  - `ignition_demo.ot.silver_maintenance_events`
 
 Tip: If you want Genie to stay “executive friendly”, add **Gold only** first, then add the Silver drilldown tables once the room is answering well.
 

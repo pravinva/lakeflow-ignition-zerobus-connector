@@ -197,5 +197,75 @@ public class ConfigModelTest {
         errors = config.validate();
         assertTrue(errors.stream().anyMatch(e -> e.contains("explicit")));
     }
+
+    @Test
+    public void testWorkspaceIdMismatchValidation() {
+        config.setEnabled(true);
+        config.setWorkspaceUrl("https://adb-1111111111111111.10.azuredatabricks.net");
+        config.setZerobusEndpoint("2222222222222222.zerobus.eastus2.azuredatabricks.net");
+        config.setOauthClientId("client-id");
+        config.setOauthClientSecret("client-secret");
+        config.setTargetTable("dev.bronze.events");
+        config.setTagSelectionMode("folder");
+        config.setTagFolderPath("[default]Production");
+
+        List<String> errors = config.validate();
+        assertTrue(errors.stream().anyMatch(e -> e.contains("Workspace URL and Zerobus endpoint") && e.contains("mismatch")),
+                "Should fail when workspace ID in URL does not match endpoint: " + errors);
+    }
+
+    @Test
+    public void testWorkspaceIdMatchPasses() {
+        config.setEnabled(true);
+        config.setWorkspaceUrl("https://adb-7405607216190670.10.azuredatabricks.net");
+        config.setZerobusEndpoint("7405607216190670.zerobus.eastus2.azuredatabricks.net");
+        config.setOauthClientId("client-id");
+        config.setOauthClientSecret("client-secret");
+        config.setTargetTable("dev.bronze.events");
+        config.setTagSelectionMode("folder");
+        config.setTagFolderPath("[default]Production");
+
+        List<String> errors = config.validate();
+        assertFalse(errors.stream().anyMatch(e -> e.contains("mismatch")),
+                "Should pass when workspace IDs match: " + errors);
+    }
+
+    @Test
+    public void testMaxQueueSizeValidation() {
+        config.setWorkspaceUrl("https://workspace.databricks.com");
+        config.setZerobusEndpoint("workspace.zerobus.region.databricks.com");
+        config.setOauthClientId("client-id");
+        config.setOauthClientSecret("client-secret");
+        config.setTargetTable("dev.bronze.events");
+        config.setTagSelectionMode("folder");
+        config.setTagFolderPath("[default]Production");
+        config.setMaxQueueSize(0);
+
+        List<String> errors = config.validate();
+        assertTrue(errors.stream().anyMatch(e -> e.contains("Max queue size")));
+
+        config.setMaxQueueSize(2_000_000);
+        errors = config.validate();
+        assertTrue(errors.stream().anyMatch(e -> e.contains("Max queue size")));
+    }
+
+    @Test
+    public void testMaxEventsPerSecondValidation() {
+        config.setWorkspaceUrl("https://workspace.databricks.com");
+        config.setZerobusEndpoint("workspace.zerobus.region.databricks.com");
+        config.setOauthClientId("client-id");
+        config.setOauthClientSecret("client-secret");
+        config.setTargetTable("dev.bronze.events");
+        config.setTagSelectionMode("folder");
+        config.setTagFolderPath("[default]Production");
+        config.setMaxEventsPerSecond(0);
+
+        List<String> errors = config.validate();
+        assertTrue(errors.stream().anyMatch(e -> e.contains("Max events per second")));
+
+        config.setMaxEventsPerSecond(2_000_000);
+        errors = config.validate();
+        assertTrue(errors.stream().anyMatch(e -> e.contains("Max events per second")));
+    }
 }
 

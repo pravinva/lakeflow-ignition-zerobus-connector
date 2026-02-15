@@ -9,7 +9,7 @@ on top of the Ignition Zerobus connector.
   - In your environment, use:
     - Bronze source: `ignition_demo.scada_data.tag_events`
 
-This pack builds Silver/Gold in `ignition_demo.tilt_ot` on top of that Bronze table.
+This pack builds Silver/Gold in `ignition_demo.ot` on top of that Bronze table.
 
 ## Run order
 

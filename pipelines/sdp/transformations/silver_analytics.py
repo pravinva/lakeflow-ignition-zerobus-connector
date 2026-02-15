@@ -9,7 +9,7 @@ behaviour. No ML model is used so the baseline is the actual simulator output.
 from pyspark import pipelines as dp
 from pyspark.sql import functions as F
 
-from agl_analytics.config import site_table, table
+from agl_analytics.config import table
 from agl_analytics.health import BATTERY_KEY_TAGS, WIND_KEY_TAGS
 
 
@@ -28,7 +28,7 @@ def health_scores():
     is the tag with the largest absolute z-score.
     """
     enriched = spark.read.table(table("enriched_tags"))  # noqa: F821
-    assets = spark.read.table(site_table("agl_ot", "silver_asset_registry"))  # noqa: F821
+    assets = spark.read.table(table("silver_asset_registry"))  # noqa: F821
 
     one_hour_ago = F.current_timestamp() - F.expr("INTERVAL 1 HOUR")
     recent = enriched.filter(F.col("window_start") >= one_hour_ago)

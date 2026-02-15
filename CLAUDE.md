@@ -54,7 +54,7 @@ make db-clean clean-83 bootstrap-83
 # then manual: make setup-wizard-83 configure-83 simulate-83 links-83
 ```
 
-- `db-clean`: Drops catalog CASCADE, deletes SDP pipeline and zerobus app. Use same profile as setup (e.g. `DATABRICKS_PROFILE`).
+- `db-clean`: Drops catalog CASCADE, deletes SDP pipeline and zerobus app. Use same profile as setup (e.g. `DATABRICKS_CONFIG_PROFILE`).
 - `clean-83`: Stops gateway and destroys volume (next start needs setup wizard again).
 
 ### Individual targets
@@ -104,19 +104,21 @@ Override with: `SIM_SITES=5 SIM_UNITS=4 SIM_INTERVAL=500 make simulate-83`
 
 ### Overridable variables
 
-All have sensible defaults; override at invocation or export in your shell.
+All have sensible defaults; override at invocation or **set once in `.env` and source before `make`** (`set -a && source .env && set +a`). Copy `.env.example` to `.env` and edit.
 
 | Variable | Default | Used by |
 |----------|---------|---------|
-| `DATABRICKS_PROFILE` | `daveok` | SDK operations (setup SQL, pipeline, app deploy, wheel upload) |
+| **`DATABRICKS_WAREHOUSE_ID`** | `e4082fdb7ea19a15` | SQL warehouse for statement execution (Make + onboarding scripts) |
+| **`WORKSPACE_ID`** | `7405616025546271` | Workspace numeric ID; used with `DATABRICKS_REGION` to derive `ZEROBUS_ENDPOINT` when unset |
+| **`DATABRICKS_REGION`** | `australiaeast` | Region segment for Zerobus endpoint (Azure: `<id>.zerobus.<region>.azuredatabricks.net`) |
+| `ZEROBUS_ENDPOINT` | derived from `WORKSPACE_ID` + `DATABRICKS_REGION` | Zerobus gRPC endpoint; set explicitly to override derivation |
+| `DATABRICKS_CONFIG_PROFILE` | `daveok` | SDK operations (setup SQL, pipeline, app deploy, wheel upload) |
 | `SP_PROFILE_NAME` | `agl-demo` | SP profile in `~/.databrickscfg`; used by `configure-*` (needs M2M creds) |
 | `SP_NAME` | `ignition-zerobus-agl` | Service principal display name |
 | `CATALOG` | `agl_demo` | Unity Catalog catalog name |
 | `SCHEMA` | `ot` | Unity Catalog schema name |
-| `WAREHOUSE_ID` | `41d8de8c185d0973` | SQL warehouse for statement execution |
 | `REPO_PATH` | `/Users/david.okeeffe@databricks.com/...` | Workspace path for pipeline Git folder |
 | `PIPELINE_NAME` | `[production] agl-etl` | SDP pipeline display name |
-| `ZEROBUS_ENDPOINT` | `7405617163765305.zerobus.australiaeast.azuredatabricks.net` | Zerobus gRPC endpoint |
 | `PORT_83` / `PORT_81` | `7088` / `8097` | Host port for Ignition gateway |
 | `SIM_SITES` | `3` | Number of sites (1-5) |
 | `SIM_UNITS` | `2` | BESS units per site (1-8) |
@@ -127,7 +129,7 @@ All have sensible defaults; override at invocation or export in your shell.
 
 Three profiles are involved (`~/.databrickscfg`):
 
-- **`daveok`** (`DATABRICKS_PROFILE`) — your personal SSO. Used for SDK operations: creating tables, deploying pipelines, uploading wheels.
+- **`daveok`** (`DATABRICKS_CONFIG_PROFILE`) — your personal SSO. Used for SDK operations: creating tables, deploying pipelines, uploading wheels.
 - **`agl-demo`** (`SP_PROFILE_NAME`) — service principal OAuth M2M. Used by `configure-*` (pushes `client_id`/`client_secret` to the gateway). Auto-created by `db-create-sp`.
 - **`ACCOUNT-*`** — auto-detected. Used by `db-create-sp` to create the SP at the account level. Re-authenticate with: `databricks auth login --host https://accounts.azuredatabricks.net --account-id <id>`.
 
@@ -222,7 +224,7 @@ make db-bundle         # Deploy + start via Asset Bundle (databricks.yml)
 
 Manual alternative: `databricks bundle deploy -t production` then `databricks bundle run zerobus_ignition_agl -t production`.
 
-Bundle: `databricks.yml` at repo root. Variables: `catalog`, `schema`, `warehouse_id` (lookup "Serverless Starter Warehouse"). See `demo/app/README.md`.
+Bundle: `databricks.yml` at repo root. Variables: `catalog`, `schema`, `DATABRICKS_WAREHOUSE_ID` (lookup "Serverless Starter Warehouse"). See `demo/app/README.md`.
 
 **Pipeline (AGL ETL):** Not in the bundle. Use `make db-pipeline` or run manually: `onboarding/databricks/deploy_pipeline_sdk.py --repo-path /Repos/<user>@databricks.com/lakeflow-ignition-zerobus-connector`. See `pipelines/sdp/README.md`.
 
@@ -243,7 +245,7 @@ All under `/system/zerobus`: `GET /health`, `GET /diagnostics`, `POST /config`, 
 | SP Display Name | `ignition-zerobus-agl` |
 | Target Table | `${var.catalog}.${var.schema}.raw_tags` (e.g. agl_demo.ot.raw_tags) |
 | Databricks CLI Profile | `agl-demo` (in `~/.databrickscfg`, OAuth M2M; created by `make db-create-sp`) |
-| SQL Warehouse | Set `WAREHOUSE_ID` to your new workspace’s warehouse ID (see Redeploy below) |
+| SQL Warehouse | Set `DATABRICKS_WAREHOUSE_ID` to your new workspace’s warehouse ID (see Redeploy below) |
 | Repo path | Set `REPO_PATH` to the workspace path after cloning (e.g. `/Repos/<user>@databricks.com/lakeflow-ignition-zerobus-connector`) |
 
 Credentials are in `.env` (gitignored) and `~/.databrickscfg` under the `[agl-demo]` profile (written by `make db-create-sp`).
@@ -252,21 +254,21 @@ Credentials are in `.env` (gitignored) and `~/.databrickscfg` under the `[agl-de
 
 After recreating or switching to a new Databricks workspace:
 
-1. **Point your workspace profile** at the new workspace: in `~/.databrickscfg` set `[daveok]` (or `DATABRICKS_PROFILE`) `host = https://adb-<workspace-id>.<suffix>.azuredatabricks.net`. Log in if needed: `databricks auth login --host https://accounts.azuredatabricks.net --account-id <id>` then workspace profile.
-2. **Create a SQL warehouse** in the new workspace (SQL Warehouses → Create or use default). Note the warehouse ID (e.g. from URL or `databricks sql warehouses list`). Set when running make: `WAREHOUSE_ID=<id>`.
+1. **Point your workspace profile** at the new workspace: in `~/.databrickscfg` set `[daveok]` (or `DATABRICKS_CONFIG_PROFILE`) `host = https://adb-<workspace-id>.<suffix>.azuredatabricks.net`. Log in if needed: `databricks auth login --host https://accounts.azuredatabricks.net --account-id <id>` then workspace profile.
+2. **Create a SQL warehouse** in the new workspace (SQL Warehouses → Create or use default). Note the warehouse ID (e.g. from URL or `databricks sql warehouses list`). Set when running make: `DATABRICKS_WAREHOUSE_ID=<id>`.
 3. **Clone this repo** in the new workspace (Repos → Add Repo). Set `REPO_PATH` to that path (e.g. `REPO_PATH=/Repos/you@databricks.com/lakeflow-ignition-zerobus-connector`).
 4. **Run full Databricks setup** (SP is created for the new workspace and `[agl-demo]` is written with the new host):
    ```bash
    make db-create-sp
-   WAREHOUSE_ID=<your-warehouse-id> make db-setup-sql
+   DATABRICKS_WAREHOUSE_ID=<your-warehouse-id> make db-setup-sql
    make db-wheel
    REPO_PATH=/Repos/... make db-pipeline
    make db-app-deploy
    ```
-   Or in one go: `WAREHOUSE_ID=<id> REPO_PATH=/Repos/... make db-all` (after cloning the repo in the workspace).
-5. **Set Zerobus endpoint** for the new workspace (Makefile default is `7405617163765305.zerobus.australiaeast.azuredatabricks.net`). If your region differs: `ZEROBUS_ENDPOINT=7405617163765305.zerobus.<region>.azuredatabricks.net`.
+   Or in one go: `DATABRICKS_WAREHOUSE_ID=<id> REPO_PATH=/Repos/... make db-all` (after cloning the repo in the workspace).
+5. **Set workspace/endpoint** in `.env` (copy from `.env.example`): `WORKSPACE_ID=<id>`, `DATABRICKS_REGION=<region>`, `DATABRICKS_WAREHOUSE_ID=<warehouse-id>`. Make and scripts derive `ZEROBUS_ENDPOINT` from `WORKSPACE_ID` + `DATABRICKS_REGION`; or set `ZEROBUS_ENDPOINT` explicitly. Source before make: `set -a && source .env && set +a`.
 6. **Ignition**: `make build-83 up-83`, then `make setup-wizard-83`, then `make configure-83` (uses `[agl-demo]` and `ZEROBUS_ENDPOINT`).
-7. **Optional**: Update `.env` with `DATABRICKS_HOST` and `ZEROBUS_ENDPOINT` for local scripts and zerobus-test.
+7. **Optional**: Add `DATABRICKS_HOST` to `.env` for local scripts and zerobus-test (workspace URL).
 
 ### Zerobus endpoint format
 

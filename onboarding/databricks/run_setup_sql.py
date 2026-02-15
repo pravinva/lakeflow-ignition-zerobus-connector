@@ -11,7 +11,8 @@ Optional env:
   CATALOG (default: agl_demo)
   SCHEMA (default: ot)
   SP_APPLICATION_ID (default: 66c066ad-d5a9-496f-8da5-6d7bc2f5d954)
-  WAREHOUSE_ID (default: e65d34bf5b095b0f)
+  DATABRICKS_WAREHOUSE_ID (default: e4082fdb7ea19a15)
+  SKIP_CATALOG_CREATE (set to 1 if catalog already exists or you lack CREATE CATALOG on metastore)
 """
 
 from __future__ import annotations
@@ -25,7 +26,7 @@ from databricks.sdk import WorkspaceClient
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 SETUP_SQL = os.path.join(REPO_ROOT, "examples/agl_fleet/setup_databricks.sql")
-DEFAULT_WAREHOUSE_ID = "e65d34bf5b095b0f"
+DEFAULT_WAREHOUSE_ID = "e4082fdb7ea19a15"
 DEFAULT_CATALOG = "agl_demo"
 DEFAULT_SCHEMA = "ot"
 DEFAULT_SP_APPLICATION_ID = "66c066ad-d5a9-496f-8da5-6d7bc2f5d954"
@@ -49,10 +50,11 @@ def split_sql(content: str) -> list[str]:
 
 def main() -> None:
     profile = os.environ.get("DATABRICKS_CONFIG_PROFILE", "agl-demo")
-    warehouse_id = os.environ.get("WAREHOUSE_ID", DEFAULT_WAREHOUSE_ID)
+    warehouse_id = os.environ.get("DATABRICKS_WAREHOUSE_ID", DEFAULT_WAREHOUSE_ID)
     catalog = os.environ.get("CATALOG", DEFAULT_CATALOG)
     schema = os.environ.get("SCHEMA", DEFAULT_SCHEMA)
     sp_id = os.environ.get("SP_APPLICATION_ID", DEFAULT_SP_APPLICATION_ID)
+    skip_catalog_create = os.environ.get("SKIP_CATALOG_CREATE", "").strip().lower() in ("1", "true", "yes")
 
     if not os.path.isfile(SETUP_SQL):
         print(f"Not found: {SETUP_SQL}", file=sys.stderr)
@@ -67,10 +69,27 @@ def main() -> None:
         .replace("__SP_APPLICATION_ID__", sp_id)
     )
     statements = split_sql(sql_content)
+    if skip_catalog_create:
+        # Drop only the first statement if it is CREATE CATALOG IF NOT EXISTS <catalog>;
+        create_catalog_re = re.compile(
+            r"^\s*CREATE\s+CATALOG\s+IF\s+NOT\s+EXISTS\s+" + re.escape(catalog) + r"\s*;\s*$",
+            re.IGNORECASE | re.DOTALL,
+        )
+        if statements and create_catalog_re.match(statements[0].strip()):
+            statements = statements[1:]
+            print(f"Skipping CREATE CATALOG (SKIP_CATALOG_CREATE=1); running {len(statements)} statements.")
     print(f"Running {len(statements)} statements from {SETUP_SQL}")
     print(f"  CATALOG={catalog} SCHEMA={schema} SP_APPLICATION_ID={sp_id} warehouse_id={warehouse_id}")
 
-    w = WorkspaceClient(profile=profile)
+    try:
+        w = WorkspaceClient(profile=profile)
+    except Exception as e:
+        print(
+            f"✘ Failed to connect with profile [{profile}]: {e}\n"
+            f"  Log in: databricks auth login (then set DATABRICKS_CONFIG_PROFILE={profile})",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     for i, stmt in enumerate(statements):
         # First line for logging (e.g. CREATE CATALOG...)
@@ -100,10 +119,42 @@ def main() -> None:
                 if drop_raw_tags and wrong_type:
                     print(f"      -> (ignored: object is other type) {first_line}...")
                 else:
-                    print(f"      -> state={state} message={msg} error={err_str}", file=sys.stderr)
+                    is_create_catalog = "CREATE CATALOG" in stmt.upper() and "IF NOT EXISTS" in stmt.upper()
+                    if is_create_catalog and ("PERMISSION_DENIED" in err_str or "CREATE CATALOG" in err_str):
+                        print(
+                            f"      -> {err_str}\n"
+                            "  You do not have CREATE CATALOG on the metastore.\n"
+                            "  Option 1: Ask a metastore admin to run once in SQL:\n"
+                            f"    CREATE CATALOG IF NOT EXISTS {catalog};\n"
+                            "  Then re-run this script with:\n"
+                            f"    SKIP_CATALOG_CREATE=1 make db-setup-sql\n"
+                            "  Option 2: Have the admin run the full setup SQL (this file) once.",
+                            file=sys.stderr,
+                        )
+                    else:
+                        if "UC_CLOUD_STORAGE_ACCESS_FAILURE" in err_str or "cloud storage" in err_str.lower():
+                            print(
+                                f"      -> {err_str}\n"
+                                "  Unity Catalog cannot access the metastore/catalog storage (Azure).\n"
+                                "  Check: Account console → Data → Metastore → root storage location and\n"
+                                "  ensure the metastore identity has access to the Azure storage account.",
+                                file=sys.stderr,
+                            )
+                        else:
+                            print(f"      -> state={state} message={msg} error={err_str}", file=sys.stderr)
+                            print(f"      Failing statement [{i+1}/{len(statements)}]:\n{stmt[:500]}...", file=sys.stderr)
                     sys.exit(1)
         except Exception as e:
-            print(f"      FAILED: {e}", file=sys.stderr)
+            err_str = str(e)
+            if "UC_CLOUD_STORAGE_ACCESS_FAILURE" in err_str or "cloud storage" in err_str.lower():
+                print(
+                    f"      FAILED: {e}\n"
+                    "  Unity Catalog cannot access metastore/catalog storage. Check metastore root location and Azure access.",
+                    file=sys.stderr,
+                )
+            else:
+                print(f"      FAILED: {e}", file=sys.stderr)
+                print(f"      Failing statement [{i+1}/{len(statements)}]:\n{stmt[:500]}...", file=sys.stderr)
             sys.exit(1)
 
     print(f"Done. Catalog {catalog}, schema {schema}, tables, volume wheels, and SP grants created.")

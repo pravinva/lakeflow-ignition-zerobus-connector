@@ -29,13 +29,22 @@ databricks bundle run zerobus_ignition_agl -t dev
 ### Bundle configuration
 
 - **Bundle:** `databricks.yml` at repo root.
-- **Variables:** `catalog`, `schema`, `warehouse_id` (lookup: "Serverless Starter Warehouse"). Override in a target or via `--var`.
+- **Variables:** `catalog`, `schema`, `DATABRICKS_WAREHOUSE_ID` (lookup: "Serverless Starter Warehouse"). Override in a target or via `--var`.
 
 ### Local development
 
 - **Frontend:** `npm run dev` from `demo/app`.
 - **Backend:** `uv run uvicorn backend.main:app --reload` from `demo/app`.
 - **Run as Databricks app locally:** From repo root, `databricks apps run-local` (see [Databricks Apps run-local](https://docs.databricks.com/en/dev-tools/databricks-apps/run-local.html)).
+
+### Backend tests
+
+From `demo/app`:
+
+- **Unit tests (no Databricks):** `uv run pytest backend/tests/` — runs compression layer-building and other unit tests; integration tests are skipped when Databricks env is not set.
+- **Integration tests (real `agl_demo.ot.raw_tags`):** From repo root, copy `.env.example` to `.env` and set `DATABRICKS_CONFIG_PROFILE=daveok` and `DATABRICKS_WAREHOUSE_ID`. Run `databricks auth login --host https://adb-<workspace-id>.11.azuredatabricks.net` and choose profile `daveok`. If tests still skip with "auth failed", set `DATABRICKS_HOST` in `.env` to that same URL (or leave it unset to use the profile host). Source before tests: `set -a && source .env && set +a`, then from `demo/app`: `uv run pytest backend/tests/ -m integration`. Ensure `raw_tags` has recent data (e.g. run `make simulate-83` first).
+
+By default, pytest skips integration tests when the warehouse or auth is missing. Run only unit tests with: `uv run pytest backend/tests/ -m "not integration"`.
 
 ### Schema: `sdt_enabled` (SDT on/off from Ignition)
 

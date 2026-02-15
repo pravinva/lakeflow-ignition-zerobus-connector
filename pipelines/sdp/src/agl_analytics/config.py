@@ -24,5 +24,5 @@ def table(name: str) -> str:
 
 
 def site_table(site_schema: str, name: str) -> str:
-    """Fully qualified table in a site schema (same catalog, e.g. agl_ot, saint_ot, tilt_ot)."""
+    """Fully qualified table in a schema (same catalog, e.g. ot)."""
     return f"{CATALOG}.{site_schema}.{name}"

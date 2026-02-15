@@ -21,13 +21,6 @@ def run_grants(
         f"GRANT USE SCHEMA ON SCHEMA {catalog}.{schema} TO `{sp_application_id}`",
         f"GRANT MODIFY, SELECT ON SCHEMA {catalog}.{schema} TO `{sp_application_id}`",
         f"GRANT READ VOLUME ON VOLUME {catalog}.{schema}.wheels TO `{sp_application_id}`",
-        # SDP site schemas
-        f"GRANT USE SCHEMA ON SCHEMA {catalog}.agl_ot TO `{sp_application_id}`",
-        f"GRANT MODIFY, SELECT ON SCHEMA {catalog}.agl_ot TO `{sp_application_id}`",
-        f"GRANT USE SCHEMA ON SCHEMA {catalog}.saint_ot TO `{sp_application_id}`",
-        f"GRANT MODIFY, SELECT ON SCHEMA {catalog}.saint_ot TO `{sp_application_id}`",
-        f"GRANT USE SCHEMA ON SCHEMA {catalog}.tilt_ot TO `{sp_application_id}`",
-        f"GRANT MODIFY, SELECT ON SCHEMA {catalog}.tilt_ot TO `{sp_application_id}`",
     ]
     print(f"  Running {len(stmts)} GRANT statements...")
     for i, stmt in enumerate(stmts, 1):

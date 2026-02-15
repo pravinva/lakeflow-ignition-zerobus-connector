@@ -42,7 +42,7 @@ DEFAULT_PROFILE_NAME = "agl-demo"
 DEFAULT_WORKSPACE_PROFILE = "daveok"
 DEFAULT_CATALOG = "agl_demo"
 DEFAULT_SCHEMA = "ot"
-DEFAULT_WAREHOUSE_ID = "e65d34bf5b095b0f"
+DEFAULT_WAREHOUSE_ID = "e4082fdb7ea19a15"
 
 
 # ── helpers ──────────────────────────────────────────────────
@@ -162,12 +162,22 @@ def main() -> int:
     # ── step 1: connect to account ──
 
     print("▸ Step 1: Connecting to Databricks account...")
-    a = AccountClient(profile=account_profile)
+    try:
+        a = AccountClient(profile=account_profile)
+        sp = find_existing_sp(a, args.sp_name)
+    except Exception as e:
+        account_id = account_profile.replace("ACCOUNT-", "") if account_profile.startswith("ACCOUNT-") else "<account-id>"
+        print(
+            f"✘ Account auth failed for [{account_profile}]: {e}\n"
+            "  Re-authenticate at the account level:\n"
+            f"    databricks auth login --host https://accounts.azuredatabricks.net --account-id {account_id}",
+            file=sys.stderr,
+        )
+        return 1
 
-    # ── step 2: create or find SP ──
+    # ── step 2: create or find SP (we have sp from above, or need to create) ──
 
     print("▸ Step 2: Creating service principal...")
-    sp = find_existing_sp(a, args.sp_name)
     if sp:
         print(f"  Found existing SP: id={sp.id}  application_id={sp.application_id}")
     else:
@@ -236,8 +246,8 @@ def main() -> int:
     print(f"  Workspace:       {ws_host}")
     print()
     print("  Test auth:    databricks auth env --profile " + args.profile_name)
-    print("  Create catalog + apply grants:  make db-setup-sql DATABRICKS_PROFILE=" + args.workspace_profile)
-    print("  Use in Make:  make configure-83 DATABRICKS_PROFILE=" + args.profile_name)
+    print("  Create catalog + apply grants:  make db-setup-sql DATABRICKS_CONFIG_PROFILE=" + args.workspace_profile)
+    print("  Use in Make:  make configure-83 DATABRICKS_CONFIG_PROFILE=" + args.profile_name)
     print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     return 0
 

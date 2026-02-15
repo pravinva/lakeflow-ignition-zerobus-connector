@@ -10,7 +10,7 @@ Usage:
 Optional env:
   CATALOG (default: agl_demo)
   PIPELINE_NAME (default: [production] agl-etl)
-  WAREHOUSE_ID (default: e65d34bf5b095b0f)
+  DATABRICKS_WAREHOUSE_ID (default: e4082fdb7ea19a15)
 
 Flags:
   --skip-catalog   Do not drop the catalog (e.g. keep data, only remove pipeline + app).
@@ -28,7 +28,7 @@ from databricks.sdk import WorkspaceClient
 
 DEFAULT_CATALOG = "agl_demo"
 DEFAULT_PIPELINE_NAME = "[production] agl-etl"
-DEFAULT_WAREHOUSE_ID = "e65d34bf5b095b0f"
+DEFAULT_WAREHOUSE_ID = "e4082fdb7ea19a15"
 APP_NAME = "zerobus-ignition-agl"
 
 
@@ -56,7 +56,7 @@ def main() -> int:
     profile = os.environ.get("DATABRICKS_CONFIG_PROFILE", "daveok")
     catalog = os.environ.get("CATALOG", DEFAULT_CATALOG)
     pipeline_name = os.environ.get("PIPELINE_NAME", DEFAULT_PIPELINE_NAME)
-    warehouse_id = os.environ.get("WAREHOUSE_ID", DEFAULT_WAREHOUSE_ID)
+    warehouse_id = os.environ.get("DATABRICKS_WAREHOUSE_ID", DEFAULT_WAREHOUSE_ID)
 
     w = WorkspaceClient(profile=profile)
 

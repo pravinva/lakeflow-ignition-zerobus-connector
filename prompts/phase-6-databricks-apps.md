@@ -173,7 +173,7 @@ Follow TDD (red-green-refactor):
 1. Read context files, especially `progress.txt`
 2. Plan the restructuring: decide on Option A (app/ directory) vs Option B (root package.json)
 3. **Red**: Write config tests for service principal auth
-4. **Green**: Update config to support CLIENT_ID + CLIENT_SECRET and WAREHOUSE_ID
+4. **Green**: Update config to support CLIENT_ID + CLIENT_SECRET and DATABRICKS_WAREHOUSE_ID
 5. **Red**: Write static serving tests
 6. **Green**: Add Express static file serving and SPA fallback for production mode
 7. Create `app.yaml` with proper resource references

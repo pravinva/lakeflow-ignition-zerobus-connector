@@ -24,7 +24,7 @@ raw_tags schema (from Zerobus connector):
 from pyspark import pipelines as dp
 from pyspark.sql import functions as F
 
-from agl_analytics.config import site_table, table
+from agl_analytics.config import table
 
 # CDF metadata columns are reserved by Delta and cannot exist in a table that has CDF enabled.
 # DLT enables CDF on raw_throughput, so we must exclude all of them from the target and carry
@@ -174,18 +174,14 @@ def parsed_tags():
 @dp.expect("valid_window_start", "window_start IS NOT NULL")
 @dp.expect("valid_sample_count", "sample_count >= 0")
 def enriched_tags():
-    """Materialized view: joins aggregated_tags with all site signal mappings.
+    """Materialized view: joins aggregated_tags with signal mapping in schema ot.
 
-    Unions the signal_mapping tables from agl_ot, saint_ot, and tilt_ot to
-    resolve tag_path -> asset_id, signal_name, unit, source_domain.
+    Resolves tag_path -> asset_id, signal_name, unit, source_domain.
     """
     agg = spark.read.table(table("aggregated_tags"))  # noqa: F821
 
-    # Union all active signal mappings across sites (same catalog, site schemas)
     mappings = (
-        spark.read.table(site_table("agl_ot", "silver_signal_mapping"))  # noqa: F821
-        .unionByName(spark.read.table(site_table("saint_ot", "silver_signal_mapping")))  # noqa: F821
-        .unionByName(spark.read.table(site_table("tilt_ot", "silver_signal_mapping")))  # noqa: F821
+        spark.read.table(table("silver_signal_mapping"))  # noqa: F821
         .filter(F.col("active") == True)  # noqa: E712
         .select("tag_path", "asset_id", "signal_name", "unit", "source_domain")
     )

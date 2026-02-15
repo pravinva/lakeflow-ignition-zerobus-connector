@@ -57,7 +57,7 @@ SELECT
   derate_active,
   curtailment_pct_avg,
   rrp_aud_per_mwh_avg
-FROM agl_ignition.agl_ot.gold_site_kpis_5m
+FROM agl_ignition.ot.gold_site_kpis_5m
 ORDER BY ts_5m DESC
 LIMIT 1;
 ```
@@ -79,7 +79,7 @@ SELECT
   constraint_active,
   derate_active,
   rrp_aud_per_mwh_avg
-FROM agl_ignition.agl_ot.gold_site_kpis_5m
+FROM agl_ignition.ot.gold_site_kpis_5m
 WHERE ts_5m >= current_timestamp() - INTERVAL 6 HOURS
 ORDER BY ts_5m;
 ```
@@ -96,7 +96,7 @@ SELECT
   source_domain,
   MAX(event_time) AS last_event_time,
   MAX(ingestion_timestamp) AS last_ingestion_timestamp
-FROM agl_ignition.agl_ot.silver_events_normalized
+FROM agl_ignition.ot.silver_events_normalized
 GROUP BY source_domain
 ORDER BY source_domain;
 ```
@@ -111,7 +111,7 @@ Colors: constraint = #001CB0, derate = #005FC5, curtailment highlight = #00D6EA.
 SQL:
 WITH k AS (
   SELECT *
-  FROM agl_ignition.agl_ot.gold_site_kpis_5m
+  FROM agl_ignition.ot.gold_site_kpis_5m
   WHERE ts_5m >= date_trunc('day', current_timestamp())
 )
 SELECT
@@ -151,7 +151,7 @@ SELECT
   tracking_error_mw,
   constraint_active,
   derate_active
-FROM agl_ignition.agl_ot.gold_dispatch_performance_5m
+FROM agl_ignition.ot.gold_dispatch_performance_5m
 WHERE ts_5m >= current_timestamp() - INTERVAL 2 HOURS
 ORDER BY tracking_error_mw DESC
 LIMIT 25;
@@ -170,7 +170,7 @@ SELECT
   AVG(tracking_error_mw) AS tracking_error_mw_avg,
   MAX(tracking_error_mw) AS tracking_error_mw_max,
   percentile_approx(tracking_error_mw, 0.95) AS tracking_error_mw_p95
-FROM agl_ignition.agl_ot.gold_dispatch_performance_5m
+FROM agl_ignition.ot.gold_dispatch_performance_5m
 WHERE ts_5m >= current_timestamp() - INTERVAL 24 HOURS
 GROUP BY date_trunc('hour', ts_5m)
 ORDER BY hour_ts;
@@ -189,7 +189,7 @@ SELECT
   dispatch_target_mw_avg,
   poi_net_mw_avg,
   tracking_error_mw
-FROM agl_ignition.agl_ot.gold_dispatch_performance_5m
+FROM agl_ignition.ot.gold_dispatch_performance_5m
 WHERE ts_5m >= current_timestamp() - INTERVAL 6 HOURS
 ORDER BY ts_5m;
 ```
@@ -216,7 +216,7 @@ SELECT
   MAX(CASE WHEN signal_name = 'critical_alarm_active' THEN boolean_value END) AS critical_alarm_active,
   MAX(CASE WHEN signal_name = 'max_rack_temp_c' THEN value_numeric END) AS max_rack_temp_c,
   MAX(event_time) AS as_of
-FROM agl_ignition.agl_ot.silver_signals_latest
+FROM agl_ignition.ot.silver_signals_latest
 WHERE asset_id = 'bess01'
   AND signal_name IN ('alarm_count', 'critical_alarm_active', 'max_rack_temp_c');
 ```
@@ -234,7 +234,7 @@ SELECT
   alarm_count_avg,
   any_critical_alarm,
   max_rack_temp_c_avg
-FROM agl_ignition.agl_ot.gold_asset_reliability_daily
+FROM agl_ignition.ot.gold_asset_reliability_daily
 WHERE day >= date_sub(current_date(), 30)
 ORDER BY day;
 ```
@@ -250,7 +250,7 @@ SQL:
 SELECT
   minute_ts,
   value_avg AS max_rack_temp_c_avg_1m
-FROM agl_ignition.agl_ot.silver_signals_1m
+FROM agl_ignition.ot.silver_signals_1m
 WHERE asset_id = 'bess01'
   AND signal_name = 'max_rack_temp_c'
   AND minute_ts >= current_timestamp() - INTERVAL 24 HOURS
@@ -281,7 +281,7 @@ SELECT
   charged_mwh,
   net_mwh,
   revenue_proxy_aud
-FROM agl_ignition.agl_ot.gold_revenue_proxy_daily
+FROM agl_ignition.ot.gold_revenue_proxy_daily
 WHERE day >= date_sub(current_date(), 60)
 ORDER BY day;
 ```
@@ -307,7 +307,7 @@ SELECT
   date_trunc('hour', event_time) AS hour_ts,
   MAX(CASE WHEN signal_name = 'constraint_active' THEN boolean_value END) AS constraint_active,
   AVG(CASE WHEN signal_name = 'curtailment_pct' THEN value_numeric END) AS curtailment_pct_avg
-FROM agl_ignition.agl_ot.silver_grid_events
+FROM agl_ignition.ot.silver_grid_events
 WHERE asset_id = 'tomago_site01'
   AND event_time >= current_timestamp() - INTERVAL 24 HOURS
   AND signal_name IN ('constraint_active','curtailment_pct')
@@ -338,7 +338,7 @@ SELECT
   MAX(CASE WHEN signal_name = 'planned_outage_active' THEN boolean_value END) AS planned_outage_active,
   MAX(CASE WHEN signal_name = 'forced_outage_active' THEN boolean_value END) AS forced_outage_active,
   MAX(event_time) AS as_of
-FROM agl_ignition.agl_ot.silver_signals_latest
+FROM agl_ignition.ot.silver_signals_latest
 WHERE asset_id = 'cmms'
   AND signal_name IN ('open_work_orders','high_priority_work_orders','planned_outage_active','forced_outage_active');
 ```

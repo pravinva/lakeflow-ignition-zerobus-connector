@@ -1,14 +1,14 @@
 -- Silver scaffolding (tables + base view)
 -- Catalog: agl_ignition
 -- Bronze:  agl_ignition.scada_data.tag_events
--- Silver:  agl_ignition.agl_ot
+-- Silver:  agl_ignition.ot
 
 CREATE CATALOG IF NOT EXISTS agl_ignition;
 CREATE SCHEMA IF NOT EXISTS agl_ignition.scada_data;
-CREATE SCHEMA IF NOT EXISTS agl_ignition.agl_ot;
+CREATE SCHEMA IF NOT EXISTS agl_ignition.ot;
 
 -- Dimensions (assets + mapping)
-CREATE TABLE IF NOT EXISTS agl_ignition.agl_ot.silver_asset_registry (
+CREATE TABLE IF NOT EXISTS agl_ignition.ot.silver_asset_registry (
   asset_id STRING,
   parent_asset_id STRING,
   asset_type STRING,
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS agl_ignition.agl_ot.silver_asset_registry (
 )
 USING DELTA;
 
-CREATE TABLE IF NOT EXISTS agl_ignition.agl_ot.silver_signal_mapping (
+CREATE TABLE IF NOT EXISTS agl_ignition.ot.silver_signal_mapping (
   tag_path STRING,
   asset_id STRING,
   signal_name STRING,
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS agl_ignition.agl_ot.silver_signal_mapping (
 USING DELTA;
 
 -- Normalized long-form view
-CREATE OR REPLACE VIEW agl_ignition.agl_ot.silver_events_normalized AS
+CREATE OR REPLACE VIEW agl_ignition.ot.silver_events_normalized AS
 SELECT
   b.event_time,
   b.ingestion_timestamp,
@@ -52,6 +52,6 @@ SELECT
   b.quality_code,
   b.tag_path
 FROM agl_ignition.scada_data.tag_events b
-LEFT JOIN agl_ignition.agl_ot.silver_signal_mapping m
+LEFT JOIN agl_ignition.ot.silver_signal_mapping m
   ON b.tag_path = m.tag_path AND m.active = true;
 
