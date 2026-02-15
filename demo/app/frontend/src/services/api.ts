@@ -2,11 +2,15 @@ const API_BASE = import.meta.env.VITE_API_URL ?? '';
 
 interface ApiResponse<T> {
   data: T;
-  meta: { timestamp: string; query_time_ms: number };
+  meta: { timestamp: string; query_time_ms: number; error?: string };
 }
 
 async function fetchJson<T>(path: string): Promise<ApiResponse<T>> {
   const res = await fetch(`${API_BASE}${path}`);
+  // 502 = QueryError from backend; body still contains {data, meta} with meta.error
+  if (res.status === 502) {
+    return res.json() as Promise<ApiResponse<T>>;
+  }
   if (!res.ok) {
     throw new Error(`API error ${res.status}: ${res.statusText}`);
   }
@@ -19,9 +23,8 @@ async function postJson<T>(path: string, body: unknown): Promise<ApiResponse<T>>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    throw new Error(`API error ${res.status}: ${res.statusText}`);
-  }
+  if (res.status === 502) return res.json() as Promise<ApiResponse<T>>;
+  if (!res.ok) throw new Error(`API error ${res.status}: ${res.statusText}`);
   return res.json() as Promise<ApiResponse<T>>;
 }
 
@@ -31,17 +34,15 @@ async function putJson<T>(path: string, body: unknown): Promise<ApiResponse<T>> 
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    throw new Error(`API error ${res.status}: ${res.statusText}`);
-  }
+  if (res.status === 502) return res.json() as Promise<ApiResponse<T>>;
+  if (!res.ok) throw new Error(`API error ${res.status}: ${res.statusText}`);
   return res.json() as Promise<ApiResponse<T>>;
 }
 
 async function deleteJson<T>(path: string): Promise<ApiResponse<T>> {
   const res = await fetch(`${API_BASE}${path}`, { method: 'DELETE' });
-  if (!res.ok) {
-    throw new Error(`API error ${res.status}: ${res.statusText}`);
-  }
+  if (res.status === 502) return res.json() as Promise<ApiResponse<T>>;
+  if (!res.ok) throw new Error(`API error ${res.status}: ${res.statusText}`);
   return res.json() as Promise<ApiResponse<T>>;
 }
 
@@ -206,11 +207,20 @@ export interface AssetAttributeValue {
   updated_at: string | null;
 }
 
+export interface DiagnosticData {
+  total_rows: string;
+  rows_last_10_min: string;
+  oldest_event: string | null;
+  newest_event: string | null;
+  warehouse_now: string;
+}
+
 export const api = {
-  getThroughput: (source: 'raw_tags' | 'raw_throughput' = 'raw_tags') =>
-    fetchJson<ThroughputMetric[]>(`/api/metrics/throughput?source=${source}`),
-  getLatency: (source: 'raw_tags' | 'raw_throughput' = 'raw_tags') =>
-    fetchJson<LatencyMetric[]>(`/api/metrics/latency?source=${source}`),
+  getThroughput: (source: 'raw_tags' | 'raw_throughput' = 'raw_tags', minutes = 5) =>
+    fetchJson<ThroughputMetric[]>(`/api/metrics/throughput?source=${source}&minutes=${minutes}`),
+  getLatency: (source: 'raw_tags' | 'raw_throughput' = 'raw_tags', minutes = 5) =>
+    fetchJson<LatencyMetric[]>(`/api/metrics/latency?source=${source}&minutes=${minutes}`),
+  getDiagnostic: () => fetchJson<DiagnosticData>('/api/metrics/diagnostic'),
   getCompression: () => fetchJson<unknown[]>('/api/metrics/compression'),
   getEventsLatest: (limit = 50) => fetchJson<TagEvent[]>(`/api/events/latest?limit=${limit}`),
   getAssets: () => fetchJson<Asset[]>('/api/assets'),

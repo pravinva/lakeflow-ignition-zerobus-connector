@@ -22,6 +22,16 @@ from typing import Any
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.sql import StatementParameterListItem, StatementState
 
+
+class QueryError(Exception):
+    """Raised when a SQL query fails so callers can surface the message."""
+
+    def __init__(self, query_name: str, message: str) -> None:
+        self.query_name = query_name
+        self.message = message
+        super().__init__(f"Query {query_name} failed: {message}")
+
+
 _catalog: str = os.environ.get("APP_TARGET_CATALOG", os.environ.get("DATABRICKS_CATALOG", "agl_demo"))
 _schema: str = os.environ.get("APP_TARGET_SCHEMA", os.environ.get("DATABRICKS_SCHEMA", "ot"))
 
@@ -77,15 +87,19 @@ def _event_cte() -> str:
         "  SELECT"
         "    TIMESTAMP_MICROS(event_time) AS event_timestamp,"
         "    TIMESTAMP_MICROS(ingestion_timestamp) AS ingest_timestamp,"
-        "    LOWER(CONCAT(_p[3], '_', _p[5])) AS asset_id,"
+        "    CASE WHEN SIZE(_p) >= 6 THEN LOWER(CONCAT(_p[3], '_', _p[5]))"
+        "         ELSE COALESCE(LOWER(tag_provider), 'unknown') END AS asset_id,"
         "    CASE"
         "      WHEN tag_provider = 'agl_bess' THEN 'battery_bess'"
         "      WHEN tag_provider = 'agl_grid' THEN 'grid_infrastructure'"
         "      WHEN tag_provider = 'agl_market' THEN 'market_data'"
         "      WHEN tag_provider = 'agl_cmms' THEN 'maintenance'"
-        "      ELSE tag_provider"
+        "      ELSE COALESCE(tag_provider, 'unknown')"
         "    END AS asset_type,"
-        "    LOWER(ARRAY_JOIN(SLICE(_p, 7, SIZE(_p) - 6), '/')) AS tag_name,"
+        "    CASE WHEN SIZE(_p) >= 7 THEN LOWER(ARRAY_JOIN(SLICE(_p, 7, SIZE(_p) - 6), '/'))"
+        "         WHEN SIZE(_p) >= 1 THEN LOWER(_p[SIZE(_p) - 1])"
+        "         ELSE LOWER(REGEXP_REPLACE(tag_path, '" + pat + "', ''))"
+        "    END AS tag_name,"
         "    COALESCE(numeric_value,"
         "      CASE WHEN boolean_value THEN 1.0"
         "           WHEN boolean_value = false THEN 0.0 END"
@@ -96,7 +110,6 @@ def _event_cte() -> str:
         "    COALESCE(sdt_compressed, false) AS sdt_compressed,"
         "    COALESCE(compression_ratio, 0.0) AS compression_ratio"
         "  FROM _paths"
-        "  WHERE SIZE(_p) >= 6"
         ")"
     )
 
@@ -699,7 +712,24 @@ def _asset_attr_values_update(
     )
 
 
+def _diagnostic() -> tuple[str, list[Any]]:
+    """Quick health check: row counts and time range of raw_tags."""
+    return (
+        "SELECT"
+        "  COUNT(*) AS total_rows,"
+        "  COUNT(*) FILTER ("
+        "    WHERE TIMESTAMP_MICROS(event_time) >= TIMESTAMPADD(MINUTE, -10, CURRENT_TIMESTAMP())"
+        "  ) AS rows_last_10_min,"
+        "  CAST(MIN(TIMESTAMP_MICROS(event_time)) AS STRING) AS oldest_event,"
+        "  CAST(MAX(TIMESTAMP_MICROS(event_time)) AS STRING) AS newest_event,"
+        "  CAST(CURRENT_TIMESTAMP() AS STRING) AS warehouse_now"
+        f" FROM {_t('raw_tags')}",
+        [],
+    )
+
+
 QUERY_BUILDERS: dict[str, Any] = {
+    "diagnostic": _diagnostic,
     "throughput": _throughput,
     "latency": _latency,
     "latencyE2e": _latency_e2e,
@@ -796,17 +826,14 @@ async def execute(name: str, **kwargs: Any) -> list[dict[str, Any]]:
             parameters=sdk_params,
             wait_timeout="30s",
         )
-    except Exception:
+    except Exception as exc:
         _logger.exception("SQL execution failed for query %s", name)
-        return []
+        raise QueryError(name, str(exc)) from exc
 
     if response.status and response.status.state != StatementState.SUCCEEDED:
-        _logger.error(
-            "Query %s failed: %s",
-            name,
-            response.status.error.message if response.status.error else "unknown",
-        )
-        return []
+        err_msg = response.status.error.message if response.status.error else "unknown"
+        _logger.error("Query %s failed: %s", name, err_msg)
+        raise QueryError(name, err_msg)
 
     if not response.manifest or not response.result or not response.result.data_array:
         return []

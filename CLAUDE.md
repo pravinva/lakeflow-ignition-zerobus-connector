@@ -337,6 +337,18 @@ When Zerobus shows **Initialized: false, Connected: false** and **Stream creatio
 
 See `onboarding/databricks/verify_raw_throughput_cdf.sql` for a single script that checks and enables CDF.
 
+### Dashboard shows nothing (raw_tags has data)
+
+The dashboard only shows metrics for events whose **event_time** falls in the **last 5–10 minutes**. If `raw_tags` is populated but the app shows empty KPIs and an empty throughput chart:
+
+1. **Time window** — All data may be older than 10 minutes (e.g. from a previous run, or Ignition gateway clock behind Databricks). **Fix:** Generate fresh events: run `make simulate-83` (or your tag simulator) so new rows land with recent `event_time`. Check gateway and warehouse clocks if you expect live data.
+
+2. **Catalog/schema mismatch** — The app reads from `APP_TARGET_CATALOG.APP_TARGET_SCHEMA.raw_tags` (e.g. `agl_demo.ot.raw_tags`). If the app was deployed with different bundle variables or env (e.g. a different catalog), it will query a different table. **Fix:** Ensure app env `APP_TARGET_CATALOG` and `APP_TARGET_SCHEMA` match the Zerobus target table (same catalog.schema as in gateway config).
+
+3. **SQL errors** — The backend returns empty data on any query failure. **Fix:** Check the Databricks App backend logs for exceptions (e.g. permission denied, missing column). Fix the underlying error (grants, schema, or warehouse).
+
+4. **Run the diagnostic script** — In a SQL Warehouse run `onboarding/databricks/verify_dashboard_raw_tags.sql` (adjust catalog/schema if needed). It reports total rows, how many fall in the last 10 minutes, and min/max event times so you can confirm whether the issue is time window or wrong table.
+
 ## Configuring the Ignition Gateway
 
 ### Automated (recommended)

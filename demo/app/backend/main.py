@@ -6,12 +6,13 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .config import AppConfig
 from .routes import admin, analytics, asset_framework, assets, compression, config, events, health, metrics
 from .services import query as query_service
+from .services.query import QueryError
 
 _logger = logging.getLogger(__name__)
 
@@ -34,6 +35,18 @@ def create_app(static_dir: str | None = None) -> FastAPI:
         os.environ.get("DATABRICKS_SCHEMA", "<unset>"),
     )
     query_service.init(cfg.catalog, cfg.schema)
+
+    @app.exception_handler(QueryError)
+    async def _handle_query_error(_request: Request, exc: QueryError) -> JSONResponse:
+        """Return a structured JSON error when a SQL query fails, rather than 500."""
+        _logger.warning("QueryError on %s: %s", exc.query_name, exc.message)
+        return JSONResponse(
+            status_code=502,
+            content={
+                "data": [],
+                "meta": {"error": exc.message, "query": exc.query_name},
+            },
+        )
 
     cors_origins = os.environ.get("CORS_ORIGINS", "http://localhost:5173").split(",")
     app.add_middleware(

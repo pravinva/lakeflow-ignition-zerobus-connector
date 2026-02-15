@@ -25,6 +25,7 @@ vi.mock('../../services/api', () => ({
     getThroughput: vi.fn().mockRejectedValue(new Error('no server')),
     getLatency: vi.fn().mockRejectedValue(new Error('no server')),
     getEventsLatest: vi.fn().mockRejectedValue(new Error('no server')),
+    getDiagnostic: vi.fn().mockRejectedValue(new Error('no server')),
   },
 }));
 
@@ -43,10 +44,8 @@ describe('Dashboard page', () => {
     // Page title
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
 
-    // Big number cards for throughput/latency
+    // Big number cards
     expect(screen.getByText('Active tags')).toBeInTheDocument();
-    expect(screen.getByText('Avg latency')).toBeInTheDocument();
-    expect(screen.getByText('P99 latency')).toBeInTheDocument();
     expect(screen.getByText('SDT compression ratio')).toBeInTheDocument();
 
     // Throughput chart section

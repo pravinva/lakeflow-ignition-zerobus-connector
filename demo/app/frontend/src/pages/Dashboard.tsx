@@ -1,26 +1,48 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { usePolling } from '../hooks/usePolling';
 import { api } from '../services/api';
+import type { DiagnosticData } from '../services/api';
 import ThroughputChart from '../components/ThroughputChart';
 import BigNumberCard from '../components/BigNumberCard';
 import EventStream from '../components/EventStream';
 import { formatNumber, latencyColor } from '../utils/format';
 
 type MetricsSource = 'raw_tags' | 'raw_throughput';
+type WindowMinutes = 5 | 15 | 30 | 60;
 
 export default function Dashboard() {
   const [metricsSource, setMetricsSource] = useState<MetricsSource>('raw_tags');
+  const [windowMinutes, setWindowMinutes] = useState<WindowMinutes>(5);
+  const [diagnostic, setDiagnostic] = useState<DiagnosticData | null>(null);
+  const [diagnosticError, setDiagnosticError] = useState<string | null>(null);
+
+  // Track backend errors from meta.error
+  const [throughputError, setThroughputError] = useState<string | null>(null);
+  const [latencyError, setLatencyError] = useState<string | null>(null);
+  const [eventsError, setEventsError] = useState<string | null>(null);
 
   const throughputFetcher = useCallback(
-    () => api.getThroughput(metricsSource).then((r) => r.data),
-    [metricsSource],
+    () =>
+      api.getThroughput(metricsSource, windowMinutes).then((r) => {
+        setThroughputError(r.meta?.error ?? null);
+        return r.data;
+      }),
+    [metricsSource, windowMinutes],
   );
   const latencyFetcher = useCallback(
-    () => api.getLatency(metricsSource).then((r) => r.data),
-    [metricsSource],
+    () =>
+      api.getLatency(metricsSource, windowMinutes).then((r) => {
+        setLatencyError(r.meta?.error ?? null);
+        return r.data;
+      }),
+    [metricsSource, windowMinutes],
   );
   const eventsFetcher = useCallback(
-    () => api.getEventsLatest(50).then((r) => r.data),
+    () =>
+      api.getEventsLatest(50).then((r) => {
+        setEventsError(r.meta?.error ?? null);
+        return r.data;
+      }),
     [],
   );
 
@@ -37,6 +59,35 @@ export default function Dashboard() {
     intervalMs: 2000,
   });
 
+  // Fetch diagnostic when throughput data is empty (to explain why)
+  const isEmpty =
+    !throughput.loading && (!throughput.data || throughput.data.length === 0);
+  useEffect(() => {
+    if (!isEmpty) {
+      setDiagnostic(null);
+      setDiagnosticError(null);
+      return;
+    }
+    let cancelled = false;
+    api
+      .getDiagnostic()
+      .then((r) => {
+        if (!cancelled) {
+          setDiagnostic(r.data ?? null);
+          setDiagnosticError(r.meta?.error ?? null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDiagnostic(null);
+          setDiagnosticError('Could not fetch diagnostic');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isEmpty]);
+
   const latest = throughput.data?.at(-1);
   const latestLatency = latency.data?.at(-1);
   const windowSeconds = 5;
@@ -45,33 +96,83 @@ export default function Dashboard() {
       ? (Number(latest.records_after_sdt) || 0) / windowSeconds
       : null;
 
+  // Compose empty-state / error message
+  const backendError = throughputError || latencyError || eventsError;
+
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
         <h2 className="text-2xl font-semibold">Dashboard</h2>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">Metrics source:</span>
-          <div className="flex rounded-lg border border-gray-200 overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setMetricsSource('raw_tags')}
-              className={`px-3 py-1.5 text-sm font-medium ${metricsSource === 'raw_tags' ? 'bg-databricks-primary text-white' : 'bg-white text-gray-600 hover:text-gray-900 border border-gray-200'}`}
-            >
-              raw_tags
-            </button>
-            <button
-              type="button"
-              onClick={() => setMetricsSource('raw_throughput')}
-              className={`px-3 py-1.5 text-sm font-medium ${metricsSource === 'raw_throughput' ? 'bg-databricks-primary text-white' : 'bg-white text-gray-600 hover:text-gray-900 border border-gray-200'}`}
-            >
-              raw_throughput
-            </button>
+        <div className="flex items-center gap-4">
+          {/* Metrics source toggle */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Metrics source:</span>
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setMetricsSource('raw_tags')}
+                className={`px-3 py-1.5 text-sm font-medium ${metricsSource === 'raw_tags' ? 'bg-databricks-primary text-white' : 'bg-white text-gray-600 hover:text-gray-900 border border-gray-200'}`}
+              >
+                raw_tags
+              </button>
+              <button
+                type="button"
+                onClick={() => setMetricsSource('raw_throughput')}
+                className={`px-3 py-1.5 text-sm font-medium ${metricsSource === 'raw_throughput' ? 'bg-databricks-primary text-white' : 'bg-white text-gray-600 hover:text-gray-900 border border-gray-200'}`}
+              >
+                raw_throughput
+              </button>
+            </div>
+            <span className="text-xs text-gray-500">
+              {metricsSource === 'raw_tags' ? 'Zerobus landing' : 'Deduped (CDF)'}
+            </span>
           </div>
-          <span className="text-xs text-gray-500">
-            {metricsSource === 'raw_tags' ? 'Zerobus landing' : 'Deduped (CDF)'}
-          </span>
+          {/* Time window selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Window:</span>
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+              {([5, 15, 30, 60] as WindowMinutes[]).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setWindowMinutes(m)}
+                  className={`px-2 py-1.5 text-xs font-medium ${windowMinutes === m ? 'bg-databricks-primary text-white' : 'bg-white text-gray-600 hover:text-gray-900 border-r border-gray-200 last:border-r-0'}`}
+                >
+                  {m}m
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Error / empty-state banner */}
+      {backendError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-800">
+          <strong>Query error:</strong> {backendError}
+        </div>
+      )}
+      {isEmpty && !backendError && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-sm text-amber-800">
+          <strong>No events in the last {windowMinutes} minutes.</strong>{' '}
+          Try a longer window or generate new events (e.g.{' '}
+          <code className="text-xs bg-amber-100 px-1 rounded">make simulate-83</code>).
+          {diagnostic && (
+            <span className="block mt-1 text-amber-700">
+              Table has <strong>{diagnostic.total_rows}</strong> total rows;{' '}
+              <strong>{diagnostic.rows_last_10_min}</strong> in the last 10 min.
+              {diagnostic.newest_event && (
+                <> Newest event: <code className="text-xs">{diagnostic.newest_event}</code></>
+              )}
+            </span>
+          )}
+          {diagnosticError && (
+            <span className="block mt-1 text-amber-700">
+              Diagnostic failed: {diagnosticError}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Big number cards */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
@@ -164,7 +265,7 @@ export default function Dashboard() {
       <p className="text-gray-500 text-sm mb-6">
         <strong>Time to insight</strong> = full path from tag event in Ignition to row committed in Delta
         (from <code>raw_throughput</code> CDF <code>_commit_timestamp</code>). Use <strong>raw_throughput</strong> for
-        deduped metrics. “Tag → connector” is in-process only (no network/Zerobus/Delta).
+        deduped metrics. "Tag → connector" is in-process only (no network/Zerobus/Delta).
       </p>
 
       {/* Throughput chart */}
