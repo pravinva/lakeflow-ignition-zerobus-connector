@@ -26,20 +26,25 @@ from pyspark.sql import functions as F
 
 from agl_analytics.config import site_table, table
 
-# CDF metadata to exclude from the CDC target. We keep _commit_timestamp so E2E latency
-# (tag time → Delta commit) can be computed; _change_type and _commit_version are not needed in the table.
-_CDF_EXCEPT_COLUMNS = ["_change_type", "_commit_version"]
+# CDF metadata columns are reserved by Delta and cannot exist in a table that has CDF enabled.
+# DLT enables CDF on raw_throughput, so we must exclude all of them from the target and carry
+# the commit timestamp under a non-reserved name for E2E latency.
+_CDF_EXCEPT_COLUMNS = ["_change_type", "_commit_version", "_commit_timestamp"]
 
 
 @dp.view(name="raw_tags_cdf")
 def raw_tags_cdf():
-    """Source view: raw_tags change data feed with lightweight added columns only (no groupBy, no drops)."""
+    """Source view: raw_tags change data feed with lightweight added columns only (no groupBy, no drops).
+    Copies _commit_timestamp to delta_commit_timestamp so the CDC target can keep it without
+    using a reserved CDF column name.
+    """
     return (
         spark.readStream.option("readChangeFeed", "true").table(table("raw_tags"))  # noqa: F821
         .withColumn(
             "event_timestamp",
             F.to_timestamp(F.col("event_time") / 1_000_000),
         )
+        .withColumn("delta_commit_timestamp", F.col("_commit_timestamp"))
     )
 
 
@@ -135,7 +140,7 @@ def parsed_tags():
         .select(
             F.to_timestamp(F.col("event_time") / 1000000).alias("event_timestamp"),
             F.to_timestamp(F.col("ingestion_timestamp") / 1000000).alias("ingest_timestamp"),
-            F.col("_commit_timestamp").alias("delta_commit_timestamp"),
+            F.col("delta_commit_timestamp"),
             F.lower(F.concat_ws("_", F.col("_p")[3], F.col("_p")[5])).alias("asset_id"),
             F.when(F.col("tag_provider") == "agl_bess", "battery_bess")
             .when(F.col("tag_provider") == "agl_grid", "grid_infrastructure")

@@ -113,10 +113,10 @@ All have sensible defaults; override at invocation or export in your shell.
 | `SP_NAME` | `ignition-zerobus-agl` | Service principal display name |
 | `CATALOG` | `agl_demo` | Unity Catalog catalog name |
 | `SCHEMA` | `ot` | Unity Catalog schema name |
-| `WAREHOUSE_ID` | `e65d34bf5b095b0f` | SQL warehouse for statement execution |
+| `WAREHOUSE_ID` | `41d8de8c185d0973` | SQL warehouse for statement execution |
 | `REPO_PATH` | `/Users/david.okeeffe@databricks.com/...` | Workspace path for pipeline Git folder |
 | `PIPELINE_NAME` | `[production] agl-etl` | SDP pipeline display name |
-| `ZEROBUS_ENDPOINT` | `7405607216190670.zerobus.eastus2.azuredatabricks.net` | Zerobus gRPC endpoint |
+| `ZEROBUS_ENDPOINT` | `7405617163765305.zerobus.australiaeast.azuredatabricks.net` | Zerobus gRPC endpoint |
 | `PORT_83` / `PORT_81` | `7088` / `8097` | Host port for Ignition gateway |
 | `SIM_SITES` | `3` | Number of sites (1-5) |
 | `SIM_UNITS` | `2` | BESS units per site (1-8) |
@@ -230,23 +230,43 @@ Bundle: `databricks.yml` at repo root. Variables: `catalog`, `schema`, `warehous
 
 All under `/system/zerobus`: `GET /health`, `GET /diagnostics`, `POST /config`, `POST /test-connection`, `POST /ingest`, `POST /ingest/batch`
 
-## Current working environment (daveok workspace)
+## Current working environment (recreated Azure workspace)
 
-**IMPORTANT** — previous agent sessions misdiagnosed auth failures. The credentials below are verified working (2026-02-13). If you see `Failed to get Zerobus token`, check the workspace URL and endpoint match first — it is almost certainly a config mismatch, not a credential problem.
+**IMPORTANT** — If you see `Failed to get Zerobus token`, check that `workspaceUrl` and `zerobusEndpoint` point to the **same workspace ID**.
 
 | Setting | Value |
 |---------|-------|
-| Workspace URL | `https://adb-7405607216190670.10.azuredatabricks.net` |
-| Workspace ID | `7405607216190670` |
-| Region | `eastus2` |
-| Zerobus Endpoint | `7405607216190670.zerobus.eastus2.azuredatabricks.net` |
-| Service Principal ID | `66c066ad-d5a9-496f-8da5-6d7bc2f5d954` |
+| Workspace URL | `https://adb-7405617163765305.5.azuredatabricks.net` |
+| Workspace ID | `7405617163765305` |
+| Region | `australiaeast` |
+| Zerobus Endpoint | `7405617163765305.zerobus.australiaeast.azuredatabricks.net` |
 | SP Display Name | `ignition-zerobus-agl` |
 | Target Table | `${var.catalog}.${var.schema}.raw_tags` (e.g. agl_demo.ot.raw_tags) |
-| Databricks CLI Profile | `agl-demo` (in `~/.databrickscfg`, OAuth M2M) |
-| SQL Warehouse | `e65d34bf5b095b0f` (Serverless Starter Warehouse) |
+| Databricks CLI Profile | `agl-demo` (in `~/.databrickscfg`, OAuth M2M; created by `make db-create-sp`) |
+| SQL Warehouse | Set `WAREHOUSE_ID` to your new workspace’s warehouse ID (see Redeploy below) |
+| Repo path | Set `REPO_PATH` to the workspace path after cloning (e.g. `/Repos/<user>@databricks.com/lakeflow-ignition-zerobus-connector`) |
 
-Credentials are in `.env` (gitignored) and `~/.databrickscfg` under the `[agl-demo]` profile.
+Credentials are in `.env` (gitignored) and `~/.databrickscfg` under the `[agl-demo]` profile (written by `make db-create-sp`).
+
+### Redeploy to a new workspace
+
+After recreating or switching to a new Databricks workspace:
+
+1. **Point your workspace profile** at the new workspace: in `~/.databrickscfg` set `[daveok]` (or `DATABRICKS_PROFILE`) `host = https://adb-<workspace-id>.<suffix>.azuredatabricks.net`. Log in if needed: `databricks auth login --host https://accounts.azuredatabricks.net --account-id <id>` then workspace profile.
+2. **Create a SQL warehouse** in the new workspace (SQL Warehouses → Create or use default). Note the warehouse ID (e.g. from URL or `databricks sql warehouses list`). Set when running make: `WAREHOUSE_ID=<id>`.
+3. **Clone this repo** in the new workspace (Repos → Add Repo). Set `REPO_PATH` to that path (e.g. `REPO_PATH=/Repos/you@databricks.com/lakeflow-ignition-zerobus-connector`).
+4. **Run full Databricks setup** (SP is created for the new workspace and `[agl-demo]` is written with the new host):
+   ```bash
+   make db-create-sp
+   WAREHOUSE_ID=<your-warehouse-id> make db-setup-sql
+   make db-wheel
+   REPO_PATH=/Repos/... make db-pipeline
+   make db-app-deploy
+   ```
+   Or in one go: `WAREHOUSE_ID=<id> REPO_PATH=/Repos/... make db-all` (after cloning the repo in the workspace).
+5. **Set Zerobus endpoint** for the new workspace (Makefile default is `7405617163765305.zerobus.australiaeast.azuredatabricks.net`). If your region differs: `ZEROBUS_ENDPOINT=7405617163765305.zerobus.<region>.azuredatabricks.net`.
+6. **Ignition**: `make build-83 up-83`, then `make setup-wizard-83`, then `make configure-83` (uses `[agl-demo]` and `ZEROBUS_ENDPOINT`).
+7. **Optional**: Update `.env` with `DATABRICKS_HOST` and `ZEROBUS_ENDPOINT` for local scripts and zerobus-test.
 
 ### Zerobus endpoint format
 
@@ -254,7 +274,7 @@ The endpoint follows `<workspace-id>.zerobus.<region>.<cloud-domain>`:
 - **Azure**: `<workspace-id>.zerobus.<region>.azuredatabricks.net`
 - **AWS**: `<workspace-id>.zerobus.<region>.cloud.databricks.com`
 
-Extract the workspace ID from the URL: `adb-7405607216190670` → `7405607216190670`.
+Extract the workspace ID from the URL: `adb-7405617163765305` → `7405617163765305`.
 
 ### Double-check before configure (stream creation / Error 1521)
 
@@ -264,9 +284,9 @@ When Zerobus shows **Initialized: false, Connected: false** and **Stream creatio
 
 1. **No CLUSTER BY (liquid clustering)** — Zerobus Ingest **does not support** tables with `CLUSTER BY`. Stream creation fails immediately with 1521. Fix: `ALTER TABLE ... CLUSTER BY NONE`. The DDL in `setup_databricks.sql` no longer uses CLUSTER BY. See `module/SCHEMA_ALIGNMENT.md` for the full isolation test results.
 2. **Workspace ID match** — `workspaceUrl` and `zerobusEndpoint` must be the **same workspace**.
-   - `workspaceUrl` comes from the **[agl-demo]** profile `host` in `~/.databrickscfg` (e.g. `https://adb-7405607216190670.10.azuredatabricks.net`).
-   - `zerobusEndpoint` comes from Makefile `ZEROBUS_ENDPOINT` (e.g. `7405607216190670.zerobus.eastus2.azuredatabricks.net`).
-   - Extract IDs: URL `adb-7405607216190670` → `7405607216190670`; endpoint first segment → `7405607216190670`. They must match.
+   - `workspaceUrl` comes from the **[agl-demo]** profile `host` in `~/.databrickscfg` (e.g. `https://adb-7405617163765305.5.azuredatabricks.net`).
+   - `zerobusEndpoint` comes from Makefile `ZEROBUS_ENDPOINT` (e.g. `7405617163765305.zerobus.australiaeast.azuredatabricks.net`).
+   - Extract IDs: URL `adb-7405617163765305` → `7405617163765305`; endpoint first segment → `7405617163765305`. They must match.
    - `make configure-83` now validates this and fails with a clear error if they differ.
 3. **Target table** — Must exist and be writable: `agl_demo.ot.raw_tags` (or your `CATALOG.SCHEMA.raw_tags`). After `db-clean`, run `make db-setup-sql` so the table and SP grants exist before configuring the gateway.
 4. **Schema match** — The Delta table schema (column names, order, types) must match the OTEvent protobuf exactly for Zerobus to accept the stream; mismatch can cause INTERNAL/1521. See `module/SCHEMA_ALIGNMENT.md`. Timestamps are **microseconds** (BIGINT) in both proto and table; Java mapper sends micros.
@@ -281,7 +301,7 @@ When Zerobus shows **Initialized: false, Connected: false** and **Stream creatio
 
 ### Common pitfalls (save yourself 30 minutes)
 
-1. **"Failed to get Zerobus token"** — Does NOT always mean bad credentials. Check that `workspaceUrl` and `zerobusEndpoint` point to the **same workspace ID**. A previous config pointed endpoint to workspace `984752964297111` (az-field-east) while the SP only had access to `7405607216190670` (daveok).
+1. **"Failed to get Zerobus token"** — Does NOT always mean bad credentials. Check that `workspaceUrl` and `zerobusEndpoint` point to the **same workspace ID**.
 
 2. **SP needs UC grants** — The service principal needs `USE CATALOG`, `USE SCHEMA`, `MODIFY`, and `SELECT` on `raw_tags`. Run the GRANTs in `examples/agl_fleet/setup_databricks.sql`.
 
@@ -294,6 +314,28 @@ When Zerobus shows **Initialized: false, Connected: false** and **Stream creatio
 6. **Ignition caches modules in its volume** — After rebuilding a `.modl`, you must `docker compose down -v` (remove the volume) then `up -d` and redo the setup wizard. A simple `restart` will NOT load the new module.
 
 7. **Setup wizard after volume reset** — Ignition 8.3 does not support auto-commissioning. After `down -v`, open http://localhost:7088 in a browser and complete: EULA → admin user (`admin`/`password`) → Standard Trial → Finish.
+
+### raw_throughput not updating (CDF / pipeline)
+
+`raw_throughput` is **not** written by Zerobus. The SDP pipeline (`[production] agl-etl`) reads the **change data feed (CDF)** from `agl_demo.ot.raw_tags` and writes the deduplicated bronze copy into `agl_demo.ot.raw_throughput`. If `raw_tags` is growing but `raw_throughput` stays empty:
+
+1. **CDF must be enabled on `raw_tags`** — Zerobus does not set this. If the table was auto-created by Zerobus or created before CDF was in the DDL, enable it:
+   ```sql
+   ALTER TABLE agl_demo.ot.raw_tags SET TBLPROPERTIES (delta.enableChangeDataFeed = 'true');
+   ```
+   Only changes **after** CDF is enabled are recorded; existing rows are not backfilled into the feed.
+
+2. **Verify CDF is on** (SQL Warehouse or notebook):
+   ```sql
+   SHOW TBLPROPERTIES agl_demo.ot.raw_tags ('delta.enableChangeDataFeed');
+   ```
+   Expect `delta.enableChangeDataFeed true`.
+
+3. **Pipeline must be running** — In the workspace go to **Workflows → Lakeflow Pipelines** and open `[production] agl-etl`. Ensure it is **Running** (not Paused/Failed). If the pipeline failed on the CDF flow (e.g. CDF was off at start), fix CDF then **Start** (or restart) the pipeline so the stream reads from the current snapshot and then continues with new changes.
+
+4. **After enabling CDF** — New inserts into `raw_tags` will appear in the feed. Restarting the pipeline (Stop → Start) makes the stream re-read from the latest snapshot as INSERTs, then consume new changes; use this if the pipeline had been running with CDF off.
+
+See `onboarding/databricks/verify_raw_throughput_cdf.sql` for a single script that checks and enables CDF.
 
 ## Configuring the Ignition Gateway
 
@@ -311,7 +353,7 @@ Manual alternative:
 ```bash
 cd examples/agl_fleet
 uv run --extra setup agl-sim --setup-only --profile agl-demo \
-    --zerobus-endpoint 7405607216190670.zerobus.eastus2.azuredatabricks.net \
+    --zerobus-endpoint 7405617163765305.zerobus.australiaeast.azuredatabricks.net \
     --gateway http://localhost:7088
 ```
 
@@ -324,8 +366,8 @@ curl -s -X POST http://localhost:7088/system/zerobus/config \
   -H 'Content-Type: application/json' \
   -d '{
     "enabled": true,
-    "workspaceUrl": "https://adb-7405607216190670.10.azuredatabricks.net",
-    "zerobusEndpoint": "7405607216190670.zerobus.eastus2.azuredatabricks.net",
+    "workspaceUrl": "https://adb-7405617163765305.5.azuredatabricks.net",
+    "zerobusEndpoint": "7405617163765305.zerobus.australiaeast.azuredatabricks.net",
     "oauthClientId": "66c066ad-d5a9-496f-8da5-6d7bc2f5d954",
     "oauthClientSecret": "<your-oauth-client-secret>",
     "targetTable": "${var.catalog}.${var.schema}.raw_tags",
