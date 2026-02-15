@@ -71,6 +71,8 @@ SELECT
 FROM __CATALOG__.__SCHEMA__.raw_tags
 GROUP BY 1, 2;
 
--- 3. SDT config - reference the existing ot.sdt_config table
+-- 3. SDT config - reference the existing ot.sdt_config table (read-only view).
+--    The app backend must use APP_TARGET_SCHEMA=__SCHEMA__ (ot) so MERGE targets the table;
+--    MERGE into a view is not supported.
 CREATE OR REPLACE VIEW __CATALOG__.app.sdt_config AS
 SELECT * FROM __CATALOG__.__SCHEMA__.sdt_config;

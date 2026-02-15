@@ -91,8 +91,17 @@ def main() -> None:
                 err_str = ""
                 if err:
                     err_str = getattr(err, "message", "") or str(err)
-                print(f"      -> state={state} message={msg} error={err_str}", file=sys.stderr)
-                sys.exit(1)
+                # raw_tags may be a view (old) or table (current); one of DROP VIEW / DROP TABLE will fail
+                drop_raw_tags = "raw_tags" in stmt and (
+                    stmt.strip().upper().startswith("DROP VIEW ")
+                    or stmt.strip().upper().startswith("DROP TABLE ")
+                )
+                wrong_type = "Cannot drop a table with DROP VIEW" in err_str or "Cannot drop a view with DROP TABLE" in err_str
+                if drop_raw_tags and wrong_type:
+                    print(f"      -> (ignored: object is other type) {first_line}...")
+                else:
+                    print(f"      -> state={state} message={msg} error={err_str}", file=sys.stderr)
+                    sys.exit(1)
         except Exception as e:
             print(f"      FAILED: {e}", file=sys.stderr)
             sys.exit(1)
