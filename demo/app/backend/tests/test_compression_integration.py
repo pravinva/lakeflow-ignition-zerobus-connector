@@ -83,13 +83,10 @@ async def test_compression_comparison_query_and_layers(catalog: str, schema: str
     assert raw_layer["size_bytes"] == total_raw * 150
 
     # When table has data, DESCRIBE DETAIL returns sizeInBytes (Delta/ZSTD on disk)
+    # Note: Delta size is for the entire table, while raw_layer is for the 30-min window,
+    # so we can't directly compare them. Just verify the value is non-negative.
     if total_raw > 0:
         assert after_delta_layer["size_bytes"] >= 0
-        # ZSTD: on-disk size should be smaller than estimated raw size (compression)
-        if after_delta_layer["size_bytes"] > 0:
-            assert after_delta_layer["size_bytes"] < raw_layer["size_bytes"], (
-                "Delta Lake ZSTD: on-disk size should be less than raw estimate"
-            )
 
     # SDT: when compression_ratio > 1 in data, total_after_sdt <= total_raw
     total_after_sdt = after_sdt_layer["event_count"]

@@ -32,6 +32,23 @@ DEFAULT_SCHEMA = "ot"
 DEFAULT_SP_APPLICATION_ID = "66c066ad-d5a9-496f-8da5-6d7bc2f5d954"
 
 
+def _host_from_profile(profile: str) -> str | None:
+    """Read host for profile from ~/.databrickscfg."""
+    path = os.path.expanduser("~/.databrickscfg")
+    if not os.path.isfile(path):
+        return None
+    in_section = False
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith("[") and line.endswith("]"):
+                in_section = line[1:-1].strip() == profile
+                continue
+            if in_section and line.startswith("host") and "=" in line:
+                return line.split("=", 1)[1].strip()
+    return None
+
+
 def split_sql(content: str) -> list[str]:
     """Split SQL into statements by ; at end of line; drop comment-only and empty."""
     statements = []
@@ -84,9 +101,20 @@ def main() -> None:
     try:
         w = WorkspaceClient(profile=profile)
     except Exception as e:
+        host = _host_from_profile(profile) or os.environ.get("DATABRICKS_HOST")
+        login_hint = (
+            f"  Log in to the workspace (profile [{profile}]):\n"
+            f"    databricks auth login --host {host}\n"
+            f"  Then re-run: make db-setup-sql"
+            if host
+            else (
+                f"  Log in: databricks auth login (then set DATABRICKS_CONFIG_PROFILE={profile})\n"
+                "  If you ran make db-clear-account-cache, re-login to the workspace too."
+            )
+        )
         print(
             f"✘ Failed to connect with profile [{profile}]: {e}\n"
-            f"  Log in: databricks auth login (then set DATABRICKS_CONFIG_PROFILE={profile})",
+            f"{login_hint}",
             file=sys.stderr,
         )
         sys.exit(1)

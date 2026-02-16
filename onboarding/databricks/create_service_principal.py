@@ -169,8 +169,11 @@ def main() -> int:
         account_id = account_profile.replace("ACCOUNT-", "") if account_profile.startswith("ACCOUNT-") else "<account-id>"
         print(
             f"✘ Account auth failed for [{account_profile}]: {e}\n"
-            "  Re-authenticate at the account level:\n"
-            f"    databricks auth login --host https://accounts.azuredatabricks.net --account-id {account_id}",
+            "  If you recently re-authenticated, the CLI token cache may be stale. Clear it:\n"
+            "    make db-clear-account-cache\n"
+            "  Then re-authenticate at the account level:\n"
+            f"    databricks auth login --host https://accounts.azuredatabricks.net --account-id {account_id}\n"
+            "  Then run: make db-create-sp",
             file=sys.stderr,
         )
         return 1
