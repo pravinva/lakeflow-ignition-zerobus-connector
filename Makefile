@@ -65,7 +65,6 @@ DATABRICKS_WAREHOUSE_ID  := e4082fdb7ea19a15
 endif
 REPO_PATH     ?= /Users/david.okeeffe@databricks.com/lakeflow-ignition-zerobus-connector
 PIPELINE_NAME ?= [production] agl-etl
-BUNDLE_TARGET ?= production
 REPO_BRANCH   ?= main
 
 # ── Service principal ────────────────────────────────────────
@@ -474,7 +473,7 @@ db-train-health-model: ## Create/update train_health_model job, run it, wait unt
 			--repo-path "$(REPO_PATH)"
 
 # ──────────────────────────────────────────────────────────────
-# Databricks App (Git-backed via SDK or Asset Bundle)
+# Databricks App (Git-backed via SDK)
 # ──────────────────────────────────────────────────────────────
 
 .PHONY: db-app-deploy
@@ -492,21 +491,6 @@ db-app-grant: ## Run UC grants for the app's service principal only (no deploy)
 		uv run --with databricks-sdk python onboarding/databricks/deploy_zerobus_app_from_github.py --grant-only
 	@echo "✔ App SP grants done"
 
-.PHONY: db-bundle-deploy
-db-bundle-deploy: ## Deploy Databricks App via Asset Bundle
-	@echo "▸ Deploying bundle (target=$(BUNDLE_TARGET))..."
-	databricks bundle deploy -t $(BUNDLE_TARGET)
-	@echo "✔ Bundle deployed"
-
-.PHONY: db-app-start
-db-app-start: ## Start the Databricks App via bundle
-	@echo "▸ Starting app via bundle (target=$(BUNDLE_TARGET))..."
-	databricks bundle run zerobus_ignition_agl -t $(BUNDLE_TARGET)
-	@echo "✔ App started"
-
-.PHONY: db-bundle
-db-bundle: db-bundle-deploy db-app-start ## Deploy + start app via Asset Bundle
-
 # ──────────────────────────────────────────────────────────────
 # Repo sync (git pull in workspace)
 # ──────────────────────────────────────────────────────────────
@@ -515,14 +499,7 @@ db-bundle: db-bundle-deploy db-app-start ## Deploy + start app via Asset Bundle
 db-repo-sync: ## Pull latest from $(REPO_BRANCH) into workspace repo
 	@echo "▸ Syncing workspace repo $(REPO_PATH) to branch $(REPO_BRANCH)..."
 	@DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) DATABRICKS_HOST=$(or $(DATABRICKS_HOST),$(WS_HOST)) \
-		uv run --with databricks-sdk python -c "\
-from databricks.sdk import WorkspaceClient; \
-w = WorkspaceClient(); \
-repos = [r for r in w.repos.list(path_prefix='$(REPO_PATH)') if r.path.rstrip('/') == '$(REPO_PATH)'.rstrip('/')]; \
-assert repos, 'Repo not found at $(REPO_PATH)'; \
-r = repos[0]; \
-w.repos.update(repo_id=r.id, branch='$(REPO_BRANCH)'); \
-print(f'✔ Repo {r.path} (id={r.id}) synced to $(REPO_BRANCH)')"
+		uv run --with databricks-sdk python onboarding/databricks/repo_sync.py "$(REPO_PATH)" "$(REPO_BRANCH)"
 
 # ──────────────────────────────────────────────────────────────
 # Simulator (synthetic OT data generation)
