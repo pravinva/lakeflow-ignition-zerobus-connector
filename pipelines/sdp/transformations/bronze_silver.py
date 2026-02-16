@@ -166,21 +166,26 @@ def parsed_tags():
     )
 
 
-@dp.materialized_view(
+@dp.table(
     name="enriched_tags",
-    comment="Aggregated tags enriched with asset_id and signal_name from signal mappings",
+    comment="Streaming table: aggregated tags enriched with asset_id and signal_name via stream-static join",
     cluster_by=["window_start", "asset_id"],
 )
 @dp.expect("valid_window_start", "window_start IS NOT NULL")
 @dp.expect("valid_sample_count", "sample_count >= 0")
 def enriched_tags():
-    """Materialized view: joins aggregated_tags with signal mapping in schema ot.
+    """Streaming table: stream-static join of aggregated_tags with signal mapping.
 
+    Streams from aggregated_tags and joins with static silver_signal_mapping.
     Resolves tag_path -> asset_id, signal_name, unit, source_domain.
     When silver_signal_mapping has no row, derives asset_id and signal_name from
     simulator-style tag_path [sim]asset_id/subsystem/signal (e.g. [sim]bess_site01_u01/battery/soc_pct).
     """
-    agg = spark.read.table(table("aggregated_tags"))  # noqa: F821
+    # Stream-static join: stream from aggregated_tags, static read from signal_mapping
+    agg = (
+        spark.readStream.table(table("aggregated_tags"))  # noqa: F821
+        .withWatermark("window_start", "30 seconds")
+    )
 
     mappings = (
         spark.read.table(table("silver_signal_mapping"))  # noqa: F821
