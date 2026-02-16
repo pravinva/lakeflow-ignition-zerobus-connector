@@ -838,5 +838,25 @@ async def execute(name: str, **kwargs: Any) -> list[dict[str, Any]]:
     if not response.manifest or not response.result or not response.result.data_array:
         return []
 
-    columns = [col.name for col in response.manifest.schema.columns]
-    return [dict(zip(columns, row)) for row in response.result.data_array]
+    # Extract column names and types for proper type conversion
+    schema_cols = response.manifest.schema.columns
+    columns = [col.name for col in schema_cols]
+    col_types = [col.type_name for col in schema_cols]
+
+    def convert_value(val: Any, type_name: str) -> Any:
+        """Convert string values from data_array to proper Python types."""
+        if val is None:
+            return None
+        if type_name == "BOOLEAN":
+            return val.lower() == "true" if isinstance(val, str) else bool(val)
+        if type_name in ("INT", "BIGINT", "SMALLINT", "TINYINT"):
+            return int(val) if val else None
+        if type_name in ("DOUBLE", "FLOAT", "DECIMAL"):
+            return float(val) if val else None
+        return val  # STRING, TIMESTAMP, etc. - keep as-is
+
+    results = []
+    for row in response.result.data_array:
+        converted_row = [convert_value(val, col_types[i]) for i, val in enumerate(row)]
+        results.append(dict(zip(columns, converted_row)))
+    return results
