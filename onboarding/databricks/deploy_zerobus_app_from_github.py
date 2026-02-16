@@ -35,6 +35,9 @@ from databricks.sdk.service.apps import (
     App,
     AppDeployment,
     AppDeploymentMode,
+    AppResource,
+    AppResourceSqlWarehouse,
+    AppResourceSqlWarehouseSqlWarehousePermission,
     GitRepository,
     GitSource,
 )
@@ -71,10 +74,37 @@ def main() -> None:
     schema = os.environ.get("SCHEMA", DEFAULT_SCHEMA)
     warehouse_id = os.environ.get("DATABRICKS_WAREHOUSE_ID", DEFAULT_WAREHOUSE_ID)
 
+    # Build the SQL warehouse resource (must be attached to the app)
+    sql_warehouse_resource = AppResource(
+        name="sql-warehouse",  # This matches the valueFrom in app.yaml
+        description="SQL warehouse for running queries",
+        sql_warehouse=AppResourceSqlWarehouse(
+            id=warehouse_id,
+            permission=AppResourceSqlWarehouseSqlWarehousePermission.CAN_USE,
+        ),
+    )
+
     # Step 1: Get existing app or create with git_repository
     try:
         app = w.apps.get(name=APP_NAME)
         print(f"Using existing app: {APP_NAME} (service_principal_id={app.service_principal_id})")
+
+        # Check if app already has the sql-warehouse resource
+        existing_resources = app.resources or []
+        has_warehouse = any(r.name == "sql-warehouse" for r in existing_resources)
+        if not has_warehouse:
+            print(f"Adding sql-warehouse resource (warehouse_id={warehouse_id}) to existing app...")
+            app = w.apps.update(
+                name=APP_NAME,
+                app=App(
+                    name=APP_NAME,
+                    description=app.description,
+                    resources=[sql_warehouse_resource],
+                ),
+            )
+            print("SQL warehouse resource added.")
+        else:
+            print("App already has sql-warehouse resource.")
     except Exception:
         if args.grant_only:
             print(f"App {APP_NAME} not found; cannot run grants.", file=sys.stderr)
@@ -86,6 +116,7 @@ def main() -> None:
                     name=APP_NAME,
                     description="Zerobus Ignition AGL – OT tag streaming and asset framework demo (from GitHub)",
                     git_repository=GitRepository(url=git_url, provider=GIT_PROVIDER),
+                    resources=[sql_warehouse_resource],
                 )
             ).result()
             print(f"Created app: service_principal_id={app.service_principal_id}")
@@ -162,7 +193,7 @@ def main() -> None:
 
     # Step 4: Run UC grants for the app's service principal so the app can query agl_demo.ot
     print(f"▸ Running UC grants for app SP (catalog={catalog}, schema={schema})...")
-    run_uc_grants(w, sp_application_id, catalog, schema, DATABRICKS_WAREHOUSE_ID)
+    run_uc_grants(w, sp_application_id, catalog, schema, warehouse_id)
 
     print("Done. Start the app from the workspace UI or: databricks bundle run zerobus_ignition_agl -t dev")
 
