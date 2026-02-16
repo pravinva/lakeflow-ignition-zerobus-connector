@@ -52,6 +52,8 @@ endif
 export DATABRICKS_WAREHOUSE_ID WORKSPACE_ID DATABRICKS_REGION ZEROBUS_ENDPOINT
 
 DATABRICKS_CONFIG_PROFILE ?= daveok
+# Workspace host from profile (so workspace steps get credentials when DATABRICKS_HOST is unset after db-create-sp)
+WS_HOST ?= $(shell awk '/^\[$(DATABRICKS_CONFIG_PROFILE)\]/{found=1} found && /^host/{gsub(/^[^=]+=[ \t]*/,""); print; exit}' ~/.databrickscfg 2>/dev/null)
 
 # ── Databricks / pipeline / app ──────────────────────────────
 CATALOG       ?= agl_demo
@@ -318,12 +320,25 @@ test-connection-81: ## Validate Zerobus auth from inside Ignition (POST test-con
 # Service principal (account-level create + workspace assign)
 # ──────────────────────────────────────────────────────────────
 
+# Clears the Databricks CLI token cache so the next account-level call re-authenticates.
+# Use when you see "Endpoint not found" for account SCIM after re-running databricks auth login.
+.PHONY: db-clear-account-cache
+db-clear-account-cache: ## Clear CLI token cache so account auth is re-prompted
+	@rm -f ~/.databricks/token-cache.json && \
+	echo "✔ Cleared ~/.databricks/token-cache.json" && \
+	echo "" && \
+	echo "Re-authenticate at the account level, then run db-create-sp:" && \
+	echo "  databricks auth login --host https://accounts.azuredatabricks.net --account-id ccb842e7-2376-4152-b0b0-29fa952379b8" && \
+	echo "  make db-create-sp"
+
 .PHONY: db-create-sp
 db-create-sp: ## Create SP, generate OAuth secret, write ~/.databrickscfg profile
 	@echo "▸ Creating service principal '$(SP_NAME)'..."
+	@# Unset DATABRICKS_HOST so AccountClient uses the account profile host (accounts.azuredatabricks.net), not workspace URL
 	CATALOG=$(CATALOG) \
 	SCHEMA=$(SCHEMA) \
 	DATABRICKS_WAREHOUSE_ID=$(DATABRICKS_WAREHOUSE_ID) \
+	DATABRICKS_HOST= \
 		uv run --with databricks-sdk python onboarding/databricks/create_service_principal.py \
 			--sp-name "$(SP_NAME)" \
 			--profile-name "$(SP_PROFILE_NAME)" \
@@ -344,6 +359,21 @@ db-check-sp: ## Check [agl-demo] profile and verify SP OAuth secret works
 	SP_PROFILE_NAME="$(SP_PROFILE_NAME)" uv run --with databricks-sdk python onboarding/databricks/check_sp_and_secret.py
 	@echo "✔ SP and secret OK. Use this profile for: make configure-83"
 
+# Print the command to log in to the workspace (profile [daveok]). Use when db-setup-sql fails with "cannot configure default credentials".
+.PHONY: db-login-workspace
+db-login-workspace: ## Print command to log in to workspace (run it, then retry db-setup-sql)
+	@WS_HOST="$(WS_HOST)"; \
+	if [ -z "$$WS_HOST" ]; then \
+		echo "✘ Could not read host from profile [$(DATABRICKS_CONFIG_PROFILE)] in ~/.databrickscfg"; \
+		echo "  Ensure [$(DATABRICKS_CONFIG_PROFILE)] has a 'host' line (workspace URL)."; \
+		exit 1; \
+	fi; \
+	echo "▸ Log in to the workspace so db-setup-sql can use profile [$(DATABRICKS_CONFIG_PROFILE)]:"; \
+	echo ""; \
+	echo "  databricks auth login --host $$WS_HOST"; \
+	echo ""; \
+	echo "Then run: make db-setup-sql"
+
 # ──────────────────────────────────────────────────────────────
 # Catalog / schema / tables / grants
 # ──────────────────────────────────────────────────────────────
@@ -352,6 +382,7 @@ db-check-sp: ## Check [agl-demo] profile and verify SP OAuth secret works
 db-setup-sql: ## Run setup SQL (catalog, schema, tables, SP grants)
 	@echo "▸ Running setup SQL (catalog=$(CATALOG), schema=$(SCHEMA), SP=$(SP_APPLICATION_ID))..."
 	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
+	DATABRICKS_HOST=$(or $(DATABRICKS_HOST),$(WS_HOST)) \
 	CATALOG=$(CATALOG) \
 	SCHEMA=$(SCHEMA) \
 	DATABRICKS_WAREHOUSE_ID=$(DATABRICKS_WAREHOUSE_ID) \
@@ -364,6 +395,7 @@ db-setup-sql: ## Run setup SQL (catalog, schema, tables, SP grants)
 db-clean: ## Drop catalog CASCADE, delete pipeline and app (clean Databricks for full reset)
 	@echo "▸ Cleaning Databricks (catalog=$(CATALOG), pipeline=$(PIPELINE_NAME), app=zerobus-ignition-agl)..."
 	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
+	DATABRICKS_HOST=$(or $(DATABRICKS_HOST),$(WS_HOST)) \
 	CATALOG=$(CATALOG) \
 	PIPELINE_NAME="$(PIPELINE_NAME)" \
 	DATABRICKS_WAREHOUSE_ID=$(DATABRICKS_WAREHOUSE_ID) \
@@ -386,6 +418,7 @@ db-wheel-upload: ## Upload agl_analytics wheel to UC volume
 		(echo "✘ Wheel not found. Run: make db-wheel-build" && exit 1)
 	@echo "▸ Uploading wheel to /Volumes/$(CATALOG)/$(SCHEMA)/wheels/$(WHEEL_FILE)..."
 	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
+	DATABRICKS_HOST=$(or $(DATABRICKS_HOST),$(WS_HOST)) \
 		databricks fs cp $(SDP_DIR)/dist/$(WHEEL_FILE) \
 			"dbfs:/Volumes/$(CATALOG)/$(SCHEMA)/wheels/$(WHEEL_FILE)" --overwrite
 	@echo "✔ Wheel uploaded"
@@ -401,6 +434,7 @@ db-wheel: db-wheel-build db-wheel-upload ## Build + upload wheel to UC volume
 db-pipeline: ## Create or update SDP pipeline (Git folder in workspace)
 	@echo "▸ Deploying pipeline '$(PIPELINE_NAME)' -> $(REPO_PATH)/pipelines/sdp..."
 	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
+	DATABRICKS_HOST=$(or $(DATABRICKS_HOST),$(WS_HOST)) \
 	CATALOG=$(CATALOG) \
 	SCHEMA=$(SCHEMA) \
 	PIPELINE_NAME="$(PIPELINE_NAME)" \
@@ -412,6 +446,7 @@ db-pipeline: ## Create or update SDP pipeline (Git folder in workspace)
 db-pipeline-upload: ## Create/update pipeline + build/upload wheel
 	@echo "▸ Deploying pipeline with --upload-wheel..."
 	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
+	DATABRICKS_HOST=$(or $(DATABRICKS_HOST),$(WS_HOST)) \
 	CATALOG=$(CATALOG) \
 	SCHEMA=$(SCHEMA) \
 	PIPELINE_NAME="$(PIPELINE_NAME)" \
@@ -422,6 +457,7 @@ db-pipeline-upload: ## Create/update pipeline + build/upload wheel
 .PHONY: db-verify-ml
 db-verify-ml: ## Run health_scores verification query; exit 0 if ML path active (ml_health non-null)
 	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
+	DATABRICKS_HOST=$(or $(DATABRICKS_HOST),$(WS_HOST)) \
 	CATALOG=$(CATALOG) \
 	SCHEMA=$(SCHEMA) \
 	DATABRICKS_WAREHOUSE_ID=$(DATABRICKS_WAREHOUSE_ID) \
@@ -430,6 +466,7 @@ db-verify-ml: ## Run health_scores verification query; exit 0 if ML path active 
 .PHONY: db-train-health-model
 db-train-health-model: ## Create/update train_health_model job, run it, wait until model registered in UC
 	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
+	DATABRICKS_HOST=$(or $(DATABRICKS_HOST),$(WS_HOST)) \
 	CATALOG=$(CATALOG) \
 	SCHEMA=$(SCHEMA) \
 	REPO_PATH="$(REPO_PATH)" \
@@ -444,13 +481,14 @@ db-train-health-model: ## Create/update train_health_model job, run it, wait unt
 db-app-deploy: ## Deploy Databricks App from GitHub (SDK) + UC grants for app SP
 	@echo "▸ Deploying app from GitHub via SDK..."
 	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
+	DATABRICKS_HOST=$(or $(DATABRICKS_HOST),$(WS_HOST)) \
 		uv run --with databricks-sdk python onboarding/databricks/deploy_zerobus_app_from_github.py
 	@echo "✔ App deployed (and UC grants applied for app SP)"
 
 .PHONY: db-app-grant
 db-app-grant: ## Run UC grants for the app's service principal only (no deploy)
 	@echo "▸ Running UC grants for app SP..."
-	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) CATALOG=$(CATALOG) SCHEMA=$(SCHEMA) DATABRICKS_WAREHOUSE_ID=$(DATABRICKS_WAREHOUSE_ID) \
+	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) DATABRICKS_HOST=$(or $(DATABRICKS_HOST),$(WS_HOST)) CATALOG=$(CATALOG) SCHEMA=$(SCHEMA) DATABRICKS_WAREHOUSE_ID=$(DATABRICKS_WAREHOUSE_ID) \
 		uv run --with databricks-sdk python onboarding/databricks/deploy_zerobus_app_from_github.py --grant-only
 	@echo "✔ App SP grants done"
 
@@ -476,7 +514,7 @@ db-bundle: db-bundle-deploy db-app-start ## Deploy + start app via Asset Bundle
 .PHONY: db-repo-sync
 db-repo-sync: ## Pull latest from $(REPO_BRANCH) into workspace repo
 	@echo "▸ Syncing workspace repo $(REPO_PATH) to branch $(REPO_BRANCH)..."
-	@DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
+	@DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) DATABRICKS_HOST=$(or $(DATABRICKS_HOST),$(WS_HOST)) \
 		uv run --with databricks-sdk python -c "\
 from databricks.sdk import WorkspaceClient; \
 w = WorkspaceClient(); \
