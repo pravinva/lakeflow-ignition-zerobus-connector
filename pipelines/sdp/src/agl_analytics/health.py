@@ -5,6 +5,7 @@ Implements FR-201 from APP-PRD.md: Z-score based anomaly detection per asset.
 
 # Key monitoring tags per asset type (from APP-PRD.md FR-105)
 # These map to signal_name in silver_signal_mapping
+# Include both mapping-style (short) and simulator path-style (e.g. subsystem/signal) names.
 WIND_KEY_TAGS = [
     "nacelle/temperature_c",
     "generator/power_kw",
@@ -13,11 +14,17 @@ WIND_KEY_TAGS = [
 ]
 
 # AGL BESS key tags (match silver_signal_mapping signal_name values)
+# Also include simulator path-style names (demo/simulator profiles) so derived signal_name matches.
 BATTERY_KEY_TAGS = [
     "max_rack_temp_c",       # Battery rack temperature
     "soc_pct",               # State of charge
     "ambient_temp_c",        # Ambient temperature
     "bess_active_power_mw",  # Active power output
+    # Simulator profile (battery-bess.json) path-style names
+    "battery/soc_pct",
+    "battery/temperature_c",
+    "thermal/ambient_temp_c",
+    "inverter/power_kw",
 ]
 
 # Alternative tag names for PRD-schema compatibility (when using raw_tags directly)

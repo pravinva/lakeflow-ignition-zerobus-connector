@@ -177,6 +177,8 @@ def enriched_tags():
     """Materialized view: joins aggregated_tags with signal mapping in schema ot.
 
     Resolves tag_path -> asset_id, signal_name, unit, source_domain.
+    When silver_signal_mapping has no row, derives asset_id and signal_name from
+    simulator-style tag_path [sim]asset_id/subsystem/signal (e.g. [sim]bess_site01_u01/battery/soc_pct).
     """
     agg = spark.read.table(table("aggregated_tags"))  # noqa: F821
 
@@ -186,16 +188,36 @@ def enriched_tags():
         .select("tag_path", "asset_id", "signal_name", "unit", "source_domain")
     )
 
+    joined = agg.join(mappings, agg.tag_name == mappings.tag_path, "left")
+
+    # Derive asset_id and signal_name from [sim]asset_id/rest when mapping is missing
+    stripped = F.regexp_replace(F.col("tag_name"), r"^\[sim\]", "")
+    derived_asset_id = F.when(
+        F.col("tag_name").rlike(r"^\[sim\]"),
+        F.element_at(F.split(stripped, "/"), 1),
+    ).otherwise(F.lit(None))
+    derived_signal_name = F.when(
+        F.col("tag_name").rlike(r"^\[sim\]"),
+        F.array_join(F.slice(F.split(stripped, "/"), 2, 100), "/"),
+    ).otherwise(F.lit(None))
+
     return (
-        agg.join(mappings, agg.tag_name == mappings.tag_path, "left")
+        joined.withColumn("_derived_asset_id", derived_asset_id)
+        .withColumn("_derived_signal_name", derived_signal_name)
         .select(
             "window_start",
             "window_end",
             "tag_name",
             "source_system",
             "tag_provider",
-            F.coalesce(mappings.asset_id, F.lit("unknown")).alias("asset_id"),
-            F.coalesce(mappings.signal_name, agg.tag_name).alias("signal_name"),
+            F.coalesce(
+                mappings.asset_id, F.col("_derived_asset_id"), F.lit("unknown")
+            ).alias("asset_id"),
+            F.coalesce(
+                mappings.signal_name,
+                F.col("_derived_signal_name"),
+                F.col("tag_name"),
+            ).alias("signal_name"),
             "unit",
             "source_domain",
             "avg_value",

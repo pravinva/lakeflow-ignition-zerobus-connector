@@ -30,21 +30,21 @@ class TestBronzeSilverTransform:
         assert "source_timestamp" not in source, "Should not use source_timestamp"
 
     def test_outputs_correct_columns(self):
-        """Verify bronze_silver outputs aggregated_tags schema."""
+        """Verify bronze_silver outputs aggregated_tags schema (streaming table columns)."""
         source = _read_file("pipelines/sdp/transformations/bronze_silver.py")
 
-        # Should output required columns
+        # aggregated_tags streaming table outputs (asset_id comes from enriched_tags via mapping)
         required_outputs = [
             "window_start",
             "window_end",
-            "asset_id",
             "tag_name",
+            "source_system",
+            "tag_provider",
             "avg_value",
             "min_value",
             "max_value",
             "stddev_value",
             "sample_count",
-            "compressed_count",
         ]
         for col in required_outputs:
             assert col in source, f"Should output {col}"
@@ -206,6 +206,43 @@ class TestEndToEndPipeline:
         """Verify silver_analytics reads from enriched_tags (MV built from aggregated_tags)."""
         source = _read_file("pipelines/sdp/transformations/silver_analytics.py")
         assert "enriched_tags" in source, "silver_analytics should read from enriched_tags"
+
+    def test_enriched_tags_derives_sim_tag_path(self):
+        """With empty silver_signal_mapping, enriched_tags derives asset_id/signal_name from [sim] tag_path."""
+        source = _read_file("pipelines/sdp/transformations/bronze_silver.py")
+        assert "[sim]" in source or '"[sim]"' in source or "'[sim]'" in source, (
+            "enriched_tags should parse simulator tag_path [sim]asset_id/rest"
+        )
+        assert "derived_asset_id" in source or "_derived_asset_id" in source, (
+            "enriched_tags should derive asset_id when mapping is missing"
+        )
+        assert "derived_signal_name" in source or "_derived_signal_name" in source, (
+            "enriched_tags should derive signal_name when mapping is missing"
+        )
+
+    def test_health_scores_left_join_and_infers_asset_type(self):
+        """health_scores uses left join to silver_asset_registry and infers asset_type when registry is empty."""
+        source = _read_file("pipelines/sdp/transformations/silver_analytics.py")
+        assert "left" in source and "how=" in source, (
+            "health_scores should left join to silver_asset_registry"
+        )
+        assert "coalesce" in source.lower(), (
+            "health_scores should coalesce asset_type (infer when null)"
+        )
+        assert "wind_" in source or "wind_turbine" in source, (
+            "health_scores should infer asset_type from asset_id (e.g. wind_ -> wind_turbine)"
+        )
+
+    def test_battery_key_tags_include_simulator_path_names(self):
+        """BATTERY_KEY_TAGS include simulator path-style names so derived signal_name matches."""
+        from agl_analytics.health import BATTERY_KEY_TAGS
+
+        assert "battery/soc_pct" in BATTERY_KEY_TAGS, (
+            "BATTERY_KEY_TAGS should include simulator path-style battery/soc_pct"
+        )
+        assert "battery/temperature_c" in BATTERY_KEY_TAGS, (
+            "BATTERY_KEY_TAGS should include simulator path-style battery/temperature_c"
+        )
 
     def test_revenue_risk_joins_health_and_forecast(self):
         """Verify revenue_risk joins health_scores with price_forecast."""

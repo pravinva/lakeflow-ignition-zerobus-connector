@@ -39,8 +39,18 @@ def health_scores():
         F.last("avg_value").alias("current_value"),
     )
 
+    # Left join so rows without a registry entry (e.g. simulator) still get scored
     with_assets = tag_stats.join(
-        assets.select("asset_id", "asset_type"), on="asset_id", how="inner"
+        assets.select("asset_id", "asset_type"), on="asset_id", how="left"
+    )
+    # Infer asset_type from asset_id when registry has no row (e.g. bess_* -> battery_bess, wind_* -> wind_turbine)
+    with_assets = with_assets.withColumn(
+        "asset_type",
+        F.coalesce(
+            F.col("asset_type"),
+            F.when(F.col("asset_id").rlike("^wind_"), F.lit("wind_turbine"))
+            .otherwise(F.lit("battery_bess")),
+        ),
     )
 
     wind_tags = F.array([F.lit(t) for t in WIND_KEY_TAGS])
