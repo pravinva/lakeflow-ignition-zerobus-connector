@@ -839,9 +839,10 @@ async def execute(name: str, **kwargs: Any) -> list[dict[str, Any]]:
         return []
 
     # Extract column names and types for proper type conversion
+    # type_name is an enum (ColumnInfoTypeName), use .value to get string like "INT"
     schema_cols = response.manifest.schema.columns
     columns = [col.name for col in schema_cols]
-    col_types = [col.type_name for col in schema_cols]
+    col_types = [col.type_name.value if hasattr(col.type_name, "value") else str(col.type_name) for col in schema_cols]
 
     def convert_value(val: Any, type_name: str) -> Any:
         """Convert string values from data_array to proper Python types."""
