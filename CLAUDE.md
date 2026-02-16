@@ -112,6 +112,9 @@ cd pipelines/sdp && uv run pytest tests/test_health.py -v
 
 # With coverage
 cd pipelines/sdp && uv run pytest --cov=src --cov-report=term-missing
+
+# Lint with ruff
+cd pipelines/sdp && uv run ruff check src/ tests/
 ```
 
 ## Build commands (Gradle, manual)
@@ -135,7 +138,7 @@ Gradle uses conditional source exclusion for version-specific artifacts:
 - 8.1 builds exclude `ZerobusGatewayHook83.java`, `ZerobusSettings83.java` (React-based)
 - Separate build directories (`build-user-8.1/`, `build-user-8.3/`) prevent cross-contamination
 
-### Event pipeline (mapper - buffer - sink)
+### Event pipeline (compression - mapper - buffer - sink)
 
 Code under `module/src/main/java/com/example/ignition/zerobus/`:
 
@@ -143,11 +146,13 @@ Code under `module/src/main/java/com/example/ignition/zerobus/`:
    - `TagSubscriptionService` - in-JVM tag change callbacks (direct subscriptions mode)
    - HTTP POST to `/system/zerobus/ingest[/batch]` - external JSON producers (Event Streams mode)
 
-2. **Mapper** (`pipeline/OtEventMapper`) - converts `TagEvent` to protobuf `OTEvent` (schema: `src/main/proto/ot_event.proto`)
+2. **Compression** (`compression/SwingDoorCompressor`) - Swinging Door Trending (SDT) algorithm reduces data volume by filtering redundant points within a configurable deviation band. Stateful per-tag compressor with max archive interval.
 
-3. **Buffer** (`pipeline/StoreAndForwardBuffer`) - memory or disk-backed (`saf/DiskSpool`) with high/low watermark backpressure
+3. **Mapper** (`pipeline/OtEventMapper`) - converts `TagEvent` to protobuf `OTEvent` (schema: `src/main/proto/ot_event.proto`)
 
-4. **Sink** (`pipeline/ZerobusEventSink` -> `ZerobusClientManager`) - gRPC stream to Databricks Zerobus
+4. **Buffer** (`pipeline/StoreAndForwardBuffer`) - memory or disk-backed (`saf/DiskSpool`) with high/low watermark backpressure
+
+5. **Sink** (`pipeline/ZerobusEventSink` -> `ZerobusClientManager`) - gRPC stream to Databricks Zerobus
 
 ### Servlet compatibility layer
 
@@ -162,7 +167,7 @@ Code under `module/src/main/java/com/example/ignition/zerobus/`:
 ## Repository layout
 
 - `module/` - Ignition module source + Gradle build (the main code)
-- `demo/` - Databricks demo application
+- `demo/` - Databricks demo application (quick start: `cd demo && npm run demo:start`)
   - `frontend/` - React 18 + Vite + Tailwind dashboard
   - `backend/` - Express API server
   - `simulator/` - Tag simulator + Zerobus publisher
@@ -238,6 +243,10 @@ The dashboard shows metrics for events in the **last 5-10 minutes**:
 ```bash
 make db-check-sp   # Verify [agl-demo] profile and OAuth secret
 ```
+
+### Repo sync conflict (Conflict pulling from remote)
+
+If `make db-repo-sync` or `db-all` fails with `BadRequest: Conflict pulling from remote. Conflicting files: ...`, the workspace repo has local changes that conflict with the remote branch. Resolve in Databricks: open **Workspace → Repos** → your repo, then **Pull** (or switch branch) and choose **Take all incoming changes** to overwrite local, or resolve conflicts manually. Then re-run `make db-repo-sync`.
 
 ### Zerobus endpoint format
 
