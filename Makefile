@@ -244,6 +244,56 @@ configure-81: ## Push Databricks/Zerobus config to 8.1 gateway
 			--gateway http://localhost:$(PORT_81)
 	@echo "✔ Configuration pushed. Run: make health-81"
 
+.PHONY: configure-postgres-83
+configure-postgres-83: ## Enable PostgreSQL sink on 8.3 gateway (requires LAKEBASE_* env vars)
+	@if [ -z "$(LAKEBASE_HOST)" ] || [ -z "$(LAKEBASE_USER)" ] || [ -z "$(LAKEBASE_PASSWORD)" ]; then \
+		echo "✘ Missing Lakebase env vars. Set LAKEBASE_HOST, LAKEBASE_USER, LAKEBASE_PASSWORD in .env"; \
+		exit 1; \
+	fi
+	@echo "▸ Enabling PostgreSQL sink on 8.3 gateway (merging with existing config)..."
+	@python3 -c " \
+import json, urllib.request; \
+current = json.loads(urllib.request.urlopen('http://localhost:$(PORT_83)/system/zerobus/config').read()); \
+current.update({ \
+    'enablePostgresSink': True, \
+    'postgresHost': '$(LAKEBASE_HOST)', \
+    'postgresPort': $(or $(LAKEBASE_PORT),5432), \
+    'postgresDatabase': '$(or $(LAKEBASE_DATABASE),databricks_postgres)', \
+    'postgresUser': '$(LAKEBASE_USER)', \
+    'postgresPassword': '$(LAKEBASE_PASSWORD)', \
+    'postgresTable': '$(or $(LAKEBASE_TABLE),raw_tags)' \
+}); \
+req = urllib.request.Request('http://localhost:$(PORT_83)/system/zerobus/config', \
+    data=json.dumps(current).encode(), headers={'Content-Type': 'application/json'}); \
+resp = json.loads(urllib.request.urlopen(req).read()); \
+print('✔ PostgreSQL sink enabled' if resp.get('success') else '✘ ' + resp.get('message', 'Unknown error')) \
+"
+
+.PHONY: configure-postgres-81
+configure-postgres-81: ## Enable PostgreSQL sink on 8.1 gateway (requires LAKEBASE_* env vars)
+	@if [ -z "$(LAKEBASE_HOST)" ] || [ -z "$(LAKEBASE_USER)" ] || [ -z "$(LAKEBASE_PASSWORD)" ]; then \
+		echo "✘ Missing Lakebase env vars. Set LAKEBASE_HOST, LAKEBASE_USER, LAKEBASE_PASSWORD in .env"; \
+		exit 1; \
+	fi
+	@echo "▸ Enabling PostgreSQL sink on 8.1 gateway (merging with existing config)..."
+	@python3 -c " \
+import json, urllib.request; \
+current = json.loads(urllib.request.urlopen('http://localhost:$(PORT_81)/system/zerobus/config').read()); \
+current.update({ \
+    'enablePostgresSink': True, \
+    'postgresHost': '$(LAKEBASE_HOST)', \
+    'postgresPort': $(or $(LAKEBASE_PORT),5432), \
+    'postgresDatabase': '$(or $(LAKEBASE_DATABASE),databricks_postgres)', \
+    'postgresUser': '$(LAKEBASE_USER)', \
+    'postgresPassword': '$(LAKEBASE_PASSWORD)', \
+    'postgresTable': '$(or $(LAKEBASE_TABLE),raw_tags)' \
+}); \
+req = urllib.request.Request('http://localhost:$(PORT_81)/system/zerobus/config', \
+    data=json.dumps(current).encode(), headers={'Content-Type': 'application/json'}); \
+resp = json.loads(urllib.request.urlopen(req).read()); \
+print('✔ PostgreSQL sink enabled' if resp.get('success') else '✘ ' + resp.get('message', 'Unknown error')) \
+"
+
 # ──────────────────────────────────────────────────────────────
 # Health & diagnostics
 # ──────────────────────────────────────────────────────────────
@@ -389,6 +439,41 @@ db-setup-sql: ## Run setup SQL (catalog, schema, tables, SP grants)
 	SKIP_CATALOG_CREATE=$(SKIP_CATALOG_CREATE) \
 		uv run --with databricks-sdk python onboarding/databricks/run_setup_sql.py
 	@echo "✔ Setup SQL complete"
+
+# ──────────────────────────────────────────────────────────────
+# Lakebase (PostgreSQL) setup
+# ──────────────────────────────────────────────────────────────
+
+# Lakebase env vars: LAKEBASE_HOST, LAKEBASE_PORT, LAKEBASE_DATABASE, LAKEBASE_USER, LAKEBASE_PASSWORD
+# Set in .env and source before running Lakebase targets.
+
+.PHONY: db-lakebase-setup
+db-lakebase-setup: ## Create raw_tags table in Lakebase (requires LAKEBASE_* env vars)
+	@if [ -z "$(LAKEBASE_HOST)" ] || [ -z "$(LAKEBASE_DATABASE)" ] || [ -z "$(LAKEBASE_USER)" ] || [ -z "$(LAKEBASE_PASSWORD)" ]; then \
+		echo "✘ Missing Lakebase env vars. Set LAKEBASE_HOST, LAKEBASE_DATABASE, LAKEBASE_USER, LAKEBASE_PASSWORD in .env"; \
+		exit 1; \
+	fi
+	@echo "▸ Creating raw_tags table in Lakebase ($(LAKEBASE_HOST)/$(LAKEBASE_DATABASE))..."
+	PGPASSWORD="$(LAKEBASE_PASSWORD)" PGSSLMODE=require psql \
+		-h "$(LAKEBASE_HOST)" \
+		-p "$(or $(LAKEBASE_PORT),5432)" \
+		-U "$(LAKEBASE_USER)" \
+		-d "$(LAKEBASE_DATABASE)" \
+		-f onboarding/lakebase/create_raw_tags.sql
+	@echo "✔ Lakebase table created"
+
+.PHONY: db-lakebase-test
+db-lakebase-test: ## Test Lakebase connection (SELECT 1)
+	@if [ -z "$(LAKEBASE_HOST)" ] || [ -z "$(LAKEBASE_USER)" ] || [ -z "$(LAKEBASE_PASSWORD)" ]; then \
+		echo "✘ Missing Lakebase env vars"; exit 1; \
+	fi
+	@echo "▸ Testing Lakebase connection..."
+	@PGPASSWORD="$(LAKEBASE_PASSWORD)" PGSSLMODE=require psql \
+		-h "$(LAKEBASE_HOST)" \
+		-p "$(or $(LAKEBASE_PORT),5432)" \
+		-U "$(LAKEBASE_USER)" \
+		-d "$(or $(LAKEBASE_DATABASE),databricks_postgres)" \
+		-c "SELECT 1 AS connected" && echo "✔ Lakebase connection OK" || echo "✘ Connection failed"
 
 .PHONY: db-clean
 db-clean: ## Drop catalog CASCADE, delete pipeline and app (clean Databricks for full reset)
@@ -658,7 +743,7 @@ help: ## Show this help
 	@echo "══ Individual targets ══════════════════════"
 	@echo ""
 	@echo "── Gateway ─────────────────────────────────"
-	@grep -E '^(build|up|start|stop|clean|logs|setup-wizard|restore|configure|health|diag|test-connection|all)-[0-9]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+	@grep -E '^(build|up|start|stop|clean|logs|setup-wizard|restore|configure|configure-postgres|health|diag|test-connection|all)-[0-9]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2}'
 	@echo ""
 	@echo "── Databricks ──────────────────────────────"

@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * Responsibilities:
  * - Manage HikariCP connection pool with SSL
  * - Batch insert events to PostgreSQL
- * - Handle connection lifecycle limits (Lakebase: 2-day max, 23-hour idle)
+ * - Handle connection lifecycle limits (Lakebase: 3-day max, 24-hour idle)
  * - Provide diagnostics and metrics
  */
 public class PostgresClientManager {
@@ -42,9 +42,9 @@ public class PostgresClientManager {
     private volatile long lastSuccessfulSendTime = 0;
     private volatile String lastError = null;
 
-    // Lakebase connection limits
-    private static final long MAX_CONNECTION_LIFETIME_MS = 2L * 24 * 60 * 60 * 1000; // 2 days
-    private static final long IDLE_TIMEOUT_MS = 23L * 60 * 60 * 1000; // 23 hours
+    // Lakebase connection limits (per Databricks Lakebase docs: 3-day max, 24-hour idle)
+    private static final long MAX_CONNECTION_LIFETIME_MS = 3L * 24 * 60 * 60 * 1000; // 3 days
+    private static final long IDLE_TIMEOUT_MS = 24L * 60 * 60 * 1000; // 24 hours
 
     /**
      * INSERT statement for raw_tags table.

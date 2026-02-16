@@ -63,8 +63,9 @@ make db-clean clean-83 bootstrap-83
 |----------|---------|
 | Build | `build-83`, `build-81` |
 | Gateway | `up-83`, `start-83`, `stop-83`, `clean-83`, `logs-83` |
-| Configure | `configure-83`, `health-83`, `diag-83`, `test-connection-83` |
+| Configure | `configure-83`, `configure-postgres-83`, `health-83`, `diag-83`, `test-connection-83` |
 | Databricks | `db-create-sp`, `db-setup-sql`, `db-wheel`, `db-pipeline`, `db-app-deploy`, `db-all` |
+| Lakebase | `db-lakebase-setup`, `db-lakebase-test` |
 | Simulator | `simulate-83`, `simulate-dry-run` |
 
 Override with env vars: `SIM_SITES=5 SIM_UNITS=4 SIM_INTERVAL=500 make simulate-83`
@@ -83,6 +84,12 @@ Set in `.env` (copy from `.env.example`) and source before make: `set -a && sour
 | `CATALOG` | `agl_demo` | Unity Catalog catalog |
 | `SCHEMA` | `ot` | Unity Catalog schema |
 | `REPO_PATH` | `/Users/david.okeeffe@databricks.com/...` | Workspace path for pipeline Git folder |
+| `LAKEBASE_HOST` | - | PostgreSQL host (e.g., ep-xxx.databricks.com) |
+| `LAKEBASE_PORT` | `5432` | PostgreSQL port |
+| `LAKEBASE_DATABASE` | `databricks_postgres` | PostgreSQL database name |
+| `LAKEBASE_USER` | - | PostgreSQL role name |
+| `LAKEBASE_PASSWORD` | - | PostgreSQL password |
+| `LAKEBASE_TABLE` | `raw_tags` | PostgreSQL table name |
 
 ## Testing
 
@@ -152,7 +159,10 @@ Code under `module/src/main/java/com/example/ignition/zerobus/`:
 
 4. **Buffer** (`pipeline/StoreAndForwardBuffer`) - memory or disk-backed (`saf/DiskSpool`) with high/low watermark backpressure
 
-5. **Sink** (`pipeline/ZerobusEventSink` -> `ZerobusClientManager`) - gRPC stream to Databricks Zerobus
+5. **Sink** - dual-sink support via `CompositeSink`:
+   - `ZerobusEventSink` -> `ZerobusClientManager` - gRPC stream to Databricks Zerobus (Delta Lake)
+   - `PostgresEventSink` -> `PostgresClientManager` - JDBC to Databricks Lakebase (PostgreSQL)
+   - Both sinks can run in parallel; toggle via `enableZerobusSink` and `enablePostgresSink` config flags
 
 ### Servlet compatibility layer
 
@@ -203,6 +213,27 @@ make diag-83              # Full diagnostics (JSON)
 ### Full config push
 
 **IMPORTANT**: `POST /system/zerobus/config` REPLACES the entire config - it does NOT merge. Always send complete config or use `setup_gateway()` which does GET-then-merge.
+
+### PostgreSQL (Lakebase) dual-sink setup
+
+To enable both Zerobus (Delta Lake) and PostgreSQL (Lakebase) sinks:
+
+1. Create Lakebase instance with native password enabled:
+   ```bash
+   databricks database create-database-instance my-lakebase --capacity=CU_1 --enable-pg-native-login -p PROFILE
+   ```
+
+2. Create the raw_tags table:
+   ```bash
+   make db-lakebase-setup   # Requires LAKEBASE_* env vars
+   ```
+
+3. Enable PostgreSQL sink on the gateway:
+   ```bash
+   make configure-postgres-83   # Requires LAKEBASE_* env vars
+   ```
+
+The dashboard app has a dedicated PostgreSQL page at `/postgres` showing Lakebase-specific metrics.
 
 ## Common pitfalls
 
