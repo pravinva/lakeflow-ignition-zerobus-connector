@@ -25,6 +25,11 @@ BATTERY_KEY_TAGS = [
     "battery/temperature_c",
     "thermal/ambient_temp_c",
     "inverter/power_kw",
+    # AGL Fleet simulator [agl_bess] style (lowercased from enriched_tags derivation)
+    "telemetry/soc_pct",
+    "telemetry/activepower_mw",
+    "thermal/maxracktemp_c",
+    "thermal/ambienttemp_c",
 ]
 
 # Alternative tag names for PRD-schema compatibility (when using raw_tags directly)

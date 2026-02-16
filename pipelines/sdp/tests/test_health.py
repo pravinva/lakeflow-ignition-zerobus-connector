@@ -140,14 +140,22 @@ class TestKeyTags:
         assert "rotor/wind_speed_ms" in tags
 
     def test_key_tags_battery(self):
-        """Battery asset type returns 4 expected AGL BESS monitoring tags."""
+        """Battery asset type returns expected AGL BESS monitoring tags (mapping + simulator styles)."""
         tags = get_key_tags("battery")
-        assert len(tags) == 4
-        # These match the AGL BESS silver_signal_mapping signal_name values
+        assert len(tags) == 12
+        # Signal mapping style (from silver_signal_mapping)
         assert "max_rack_temp_c" in tags
         assert "soc_pct" in tags
         assert "ambient_temp_c" in tags
         assert "bess_active_power_mw" in tags
+        # Simulator [sim] style
+        assert "battery/soc_pct" in tags
+        assert "battery/temperature_c" in tags
+        # AGL Fleet simulator [agl_bess] style (lowercased)
+        assert "telemetry/soc_pct" in tags
+        assert "telemetry/activepower_mw" in tags
+        assert "thermal/maxracktemp_c" in tags
+        assert "thermal/ambienttemp_c" in tags
 
     def test_key_tags_unknown_type(self):
         """Unknown asset type returns empty list."""

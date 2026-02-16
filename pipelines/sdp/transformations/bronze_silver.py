@@ -190,16 +190,39 @@ def enriched_tags():
 
     joined = agg.join(mappings, agg.tag_name == mappings.tag_path, "left")
 
-    # Derive asset_id and signal_name from [sim]asset_id/rest when mapping is missing
-    stripped = F.regexp_replace(F.col("tag_name"), r"^\[sim\]", "")
-    derived_asset_id = F.when(
+    # Derive asset_id and signal_name from tag paths when mapping is missing.
+    # Supports two formats:
+    # 1. [sim]asset_id/subsystem/signal (e.g., [sim]bess_site01_u01/battery/soc_pct)
+    # 2. [agl_*]AGL/Australia/{State}/{Location}/Site01/{Asset}/{Subsystem}/{Signal}
+    #    (e.g., [agl_bess]AGL/Australia/NSW/Tomago/Site01/BESS01/Telemetry/SoC_pct)
+
+    # Parse [sim] format
+    sim_stripped = F.regexp_replace(F.col("tag_name"), r"^\[sim\]", "")
+    sim_asset_id = F.when(
         F.col("tag_name").rlike(r"^\[sim\]"),
-        F.element_at(F.split(stripped, "/"), 1),
-    ).otherwise(F.lit(None))
-    derived_signal_name = F.when(
+        F.element_at(F.split(sim_stripped, "/"), 1),
+    )
+    sim_signal_name = F.when(
         F.col("tag_name").rlike(r"^\[sim\]"),
-        F.array_join(F.slice(F.split(stripped, "/"), 2, 100), "/"),
-    ).otherwise(F.lit(None))
+        F.array_join(F.slice(F.split(sim_stripped, "/"), 2, 100), "/"),
+    )
+
+    # Parse [agl_*] format: strip provider, split by /
+    # Parts (1-indexed): 1=AGL, 2=Australia, 3=State, 4=Location, 5=Site01, 6=Asset, 7=Subsystem, 8+=Signal
+    strip_provider = r"^\[[^\]]+\]"
+    agl_parts = F.split(F.regexp_replace(F.col("tag_name"), strip_provider, ""), "/")
+    agl_asset_id = F.when(
+        F.col("tag_name").rlike(r"^\[agl_"),
+        F.lower(F.concat_ws("_", F.element_at(agl_parts, 4), F.element_at(agl_parts, 6))),
+    )
+    agl_signal_name = F.when(
+        F.col("tag_name").rlike(r"^\[agl_"),
+        F.lower(F.array_join(F.slice(agl_parts, 7, 100), "/")),
+    )
+
+    # Coalesce: agl first (more specific), then sim fallback
+    derived_asset_id = F.coalesce(agl_asset_id, sim_asset_id)
+    derived_signal_name = F.coalesce(agl_signal_name, sim_signal_name)
 
     return (
         joined.withColumn("_derived_asset_id", derived_asset_id)
