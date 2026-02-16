@@ -163,6 +163,37 @@ public class ConfigModel implements Serializable {
     /** Maximum seconds between transmitted points (heartbeat). */
     private int sdtMaxIntervalSeconds = 300;
 
+    // === Sink Selection ===
+
+    /** Enable Zerobus (Delta Lake) sink. Default true for backwards compatibility. */
+    private boolean enableZerobusSink = true;
+
+    /** Enable PostgreSQL (Lakebase) sink. When true, events are also written to PostgreSQL. */
+    private boolean enablePostgresSink = false;
+
+    // === PostgreSQL (Lakebase) Settings ===
+
+    /** PostgreSQL host (e.g., ep-xxx.databricks.com) */
+    private String postgresHost = "";
+
+    /** PostgreSQL port (default 5432) */
+    private int postgresPort = 5432;
+
+    /** PostgreSQL database name */
+    private String postgresDatabase = "";
+
+    /** PostgreSQL username (role name) */
+    private String postgresUser = "";
+
+    /** PostgreSQL password */
+    private String postgresPassword = "";
+
+    /** PostgreSQL table name (default raw_tags) */
+    private String postgresTable = "raw_tags";
+
+    /** PostgreSQL connection pool size (default 5) */
+    private int postgresPoolSize = 5;
+
     // === API Security ===
 
     /** Optional API key for authenticating POST requests to /system/zerobus/* endpoints.
@@ -506,7 +537,79 @@ public class ConfigModel implements Serializable {
     public void setDebugLogging(boolean debugLogging) {
         this.debugLogging = debugLogging;
     }
-    
+
+    public boolean isEnableZerobusSink() {
+        return enableZerobusSink;
+    }
+
+    public void setEnableZerobusSink(boolean enableZerobusSink) {
+        this.enableZerobusSink = enableZerobusSink;
+    }
+
+    public boolean isEnablePostgresSink() {
+        return enablePostgresSink;
+    }
+
+    public void setEnablePostgresSink(boolean enablePostgresSink) {
+        this.enablePostgresSink = enablePostgresSink;
+    }
+
+    public String getPostgresHost() {
+        return postgresHost;
+    }
+
+    public void setPostgresHost(String postgresHost) {
+        this.postgresHost = postgresHost;
+    }
+
+    public int getPostgresPort() {
+        return postgresPort;
+    }
+
+    public void setPostgresPort(int postgresPort) {
+        this.postgresPort = postgresPort;
+    }
+
+    public String getPostgresDatabase() {
+        return postgresDatabase;
+    }
+
+    public void setPostgresDatabase(String postgresDatabase) {
+        this.postgresDatabase = postgresDatabase;
+    }
+
+    public String getPostgresUser() {
+        return postgresUser;
+    }
+
+    public void setPostgresUser(String postgresUser) {
+        this.postgresUser = postgresUser;
+    }
+
+    public String getPostgresPassword() {
+        return postgresPassword;
+    }
+
+    public void setPostgresPassword(String postgresPassword) {
+        this.postgresPassword = postgresPassword;
+    }
+
+    public String getPostgresTable() {
+        return postgresTable;
+    }
+
+    public void setPostgresTable(String postgresTable) {
+        this.postgresTable = postgresTable;
+    }
+
+    public int getPostgresPoolSize() {
+        return postgresPoolSize;
+    }
+
+    public void setPostgresPoolSize(int postgresPoolSize) {
+        this.postgresPoolSize = postgresPoolSize;
+    }
+
     // === Helper Methods ===
     
     /**
@@ -662,6 +765,36 @@ public class ConfigModel implements Serializable {
             }
         }
 
+        // Validate PostgreSQL settings when enabled
+        if (enablePostgresSink && enabled) {
+            if (postgresHost == null || postgresHost.isEmpty()) {
+                errors.add("PostgreSQL host is required when PostgreSQL sink is enabled");
+            }
+            if (postgresPort <= 0 || postgresPort > 65535) {
+                errors.add("PostgreSQL port must be between 1 and 65535");
+            }
+            if (postgresDatabase == null || postgresDatabase.isEmpty()) {
+                errors.add("PostgreSQL database is required when PostgreSQL sink is enabled");
+            }
+            if (postgresUser == null || postgresUser.isEmpty()) {
+                errors.add("PostgreSQL user is required when PostgreSQL sink is enabled");
+            }
+            if (postgresPassword == null || postgresPassword.isEmpty()) {
+                errors.add("PostgreSQL password is required when PostgreSQL sink is enabled");
+            }
+            if (postgresTable == null || postgresTable.isEmpty()) {
+                errors.add("PostgreSQL table is required when PostgreSQL sink is enabled");
+            }
+            if (postgresPoolSize < 1 || postgresPoolSize > 100) {
+                errors.add("PostgreSQL pool size must be between 1 and 100");
+            }
+        }
+
+        // At least one sink must be enabled when module is enabled
+        if (enabled && !enableZerobusSink && !enablePostgresSink) {
+            errors.add("At least one sink (Zerobus or PostgreSQL) must be enabled");
+        }
+
         return errors;
     }
 
@@ -809,7 +942,16 @@ public class ConfigModel implements Serializable {
             || Double.compare(this.sdtDeviation, newConfig.sdtDeviation) != 0
             || this.sdtMaxIntervalSeconds != newConfig.sdtMaxIntervalSeconds
             || this.enabled != newConfig.enabled
-            || this.debugLogging != newConfig.debugLogging;
+            || this.debugLogging != newConfig.debugLogging
+            || this.enableZerobusSink != newConfig.enableZerobusSink
+            || this.enablePostgresSink != newConfig.enablePostgresSink
+            || !Objects.equals(this.postgresHost, newConfig.postgresHost)
+            || this.postgresPort != newConfig.postgresPort
+            || !Objects.equals(this.postgresDatabase, newConfig.postgresDatabase)
+            || !Objects.equals(this.postgresUser, newConfig.postgresUser)
+            || !Objects.equals(this.postgresPassword, newConfig.postgresPassword)
+            || !Objects.equals(this.postgresTable, newConfig.postgresTable)
+            || this.postgresPoolSize != newConfig.postgresPoolSize;
     }
     
     /**
@@ -855,6 +997,15 @@ public class ConfigModel implements Serializable {
         this.enabled = other.enabled;
         this.debugLogging = other.debugLogging;
         this.ingestApiKey = other.ingestApiKey;
+        this.enableZerobusSink = other.enableZerobusSink;
+        this.enablePostgresSink = other.enablePostgresSink;
+        this.postgresHost = other.postgresHost;
+        this.postgresPort = other.postgresPort;
+        this.postgresDatabase = other.postgresDatabase;
+        this.postgresUser = other.postgresUser;
+        this.postgresPassword = other.postgresPassword;
+        this.postgresTable = other.postgresTable;
+        this.postgresPoolSize = other.postgresPoolSize;
     }
     
     @Override

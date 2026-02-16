@@ -5,6 +5,7 @@ import databricksLogo from '../default/databricks-full.png';
 const mainLinks = [
   { to: '/', label: 'Talk Track' },
   { to: '/dashboard', label: 'Dashboard' },
+  { to: '/postgres', label: 'PostgreSQL (Lakebase)' },
   { to: '/analytics', label: 'Fleet health & revenue risk' },
   { to: '/assets', label: 'Assets' },
   { to: '/assets/detail', label: 'Asset Detail' },

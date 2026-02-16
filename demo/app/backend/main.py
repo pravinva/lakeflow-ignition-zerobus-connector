@@ -10,8 +10,9 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .config import AppConfig
-from .routes import admin, analytics, asset_framework, assets, compression, config, events, health, metrics
+from .routes import admin, analytics, asset_framework, assets, compression, config, events, health, metrics, postgres_metrics
 from .services import query as query_service
+from .services import postgres_query
 from .services.query import QueryError
 
 _logger = logging.getLogger(__name__)
@@ -23,6 +24,26 @@ def create_app(static_dir: str | None = None) -> FastAPI:
     @app.on_event("startup")
     async def _log_startup() -> None:
         _logger.warning("AGL OT Lakehouse Demo app startup complete; serving requests.")
+
+    @app.on_event("startup")
+    async def _init_postgres_pool() -> None:
+        """Initialize PostgreSQL connection pool if configured."""
+        if postgres_query.is_configured():
+            try:
+                await postgres_query.get_pool()
+                _logger.warning("PostgreSQL (Lakebase) connection pool initialized")
+            except Exception as e:
+                _logger.warning("Failed to initialize PostgreSQL pool (non-fatal): %s", e)
+        else:
+            _logger.info("PostgreSQL (Lakebase) not configured - skipping pool initialization")
+
+    @app.on_event("shutdown")
+    async def _close_postgres_pool() -> None:
+        """Close PostgreSQL connection pool."""
+        try:
+            await postgres_query.close_pool()
+        except Exception as e:
+            _logger.warning("Error closing PostgreSQL pool: %s", e)
 
     # Initialise query service with configured catalog/schema so all SQL
     # uses fully-qualified table names from one source of truth.
@@ -66,6 +87,7 @@ def create_app(static_dir: str | None = None) -> FastAPI:
     app.include_router(admin.router)
     app.include_router(analytics.router)
     app.include_router(asset_framework.router)
+    app.include_router(postgres_metrics.router)
 
     # In production, serve frontend static assets with SPA fallback
     resolved_static = static_dir or os.environ.get("STATIC_DIR")

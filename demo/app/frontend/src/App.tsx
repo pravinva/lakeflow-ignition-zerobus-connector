@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
+import PostgresDashboard from './pages/PostgresDashboard';
 import Analytics from './pages/Analytics';
 import Assets from './pages/Assets';
 import AssetDetail from './pages/AssetDetail';
@@ -20,6 +21,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/postgres" element={<PostgresDashboard />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/assets" element={<Assets />} />
           <Route path="/assets/:id" element={<AssetDetail />} />

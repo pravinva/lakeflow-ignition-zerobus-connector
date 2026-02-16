@@ -215,6 +215,28 @@ export interface DiagnosticData {
   warehouse_now: string;
 }
 
+export interface PostgresDiagnosticData {
+  configured: boolean;
+  total_rows?: number;
+  rows_last_10_min?: number;
+  oldest_event?: string | null;
+  newest_event?: string | null;
+  db_now?: string | null;
+  message?: string;
+  error?: string;
+}
+
+export interface PostgresHealthData {
+  status: string;
+  host?: string;
+  database?: string;
+  table?: string;
+  pool_size?: number;
+  pool_free?: number;
+  message?: string;
+  error?: string;
+}
+
 export const api = {
   getThroughput: (source: 'raw_tags' | 'raw_throughput' = 'raw_tags', minutes = 5) =>
     fetchJson<ThroughputMetric[]>(`/api/metrics/throughput?source=${source}&minutes=${minutes}`),
@@ -295,5 +317,17 @@ export const api = {
     }) => putJson<TemplateDetailRow[]>(`/api/asset-framework/templates/${templateId}/attributes/${attrId}`, body),
     deleteAttribute: (templateId: string, attrId: string) =>
       deleteJson<TemplateDetailRow[]>(`/api/asset-framework/templates/${templateId}/attributes/${attrId}`),
+  },
+
+  // PostgreSQL (Lakebase) metrics
+  postgres: {
+    getHealth: () => fetchJson<PostgresHealthData>('/api/postgres-metrics/health'),
+    getThroughput: (minutes = 5) =>
+      fetchJson<ThroughputMetric[]>(`/api/postgres-metrics/throughput?minutes=${minutes}`),
+    getLatency: (minutes = 5) =>
+      fetchJson<LatencyMetric[]>(`/api/postgres-metrics/latency?minutes=${minutes}`),
+    getEventsLatest: (limit = 50) =>
+      fetchJson<TagEvent[]>(`/api/postgres-metrics/events/latest?limit=${limit}`),
+    getDiagnostic: () => fetchJson<PostgresDiagnosticData>('/api/postgres-metrics/diagnostic'),
   },
 };
