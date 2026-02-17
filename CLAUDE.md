@@ -41,7 +41,7 @@ make db-train-health-model  # Step 8 (optional): Train health model, register in
 | 2 | `db-setup-sql` | Create catalog, schema, `raw_tags` table, asset framework tables, UC volume, SP grants |
 | | `db-wheel` | Build + upload `agl_analytics` wheel to UC volume |
 | | `db-pipeline` | Create/update the SDP ETL pipeline via SDK (Git-backed) |
-| | `db-app-deploy` | Deploy the Databricks App from GitHub via SDK |
+| | `db-app-deploy-direct` | Deploy the Databricks App via DAB direct engine + Lakebase app resource |
 | 3 | `build-83` | Docker-build the Ignition 8.3 `.modl` with Zerobus module baked in |
 | 4 | `up-83` | Start the Ignition gateway container (fresh volume) |
 | 4b | `setup-wizard-83` | **Manual**: complete Ignition first-time setup in browser (EULA, admin user, trial) |
@@ -64,7 +64,7 @@ make db-clean clean-83 bootstrap-83
 | Build | `build-83`, `build-81` |
 | Gateway | `up-83`, `start-83`, `stop-83`, `clean-83`, `logs-83` |
 | Configure | `configure-83`, `configure-zerobus-83`, `configure-lakebase-83`, `configure-lakebase-83-direct`, `configure-postgres-83`, `health-83`, `diag-83`, `test-connection-83` |
-| Databricks | `db-create-sp`, `db-setup-sql`, `db-wheel`, `db-pipeline`, `db-app-deploy`, `db-all` |
+| Databricks | `db-create-sp`, `db-setup-sql`, `db-wheel`, `db-pipeline`, `db-bundle-migrate-direct`, `db-app-deploy-direct`, `db-all-direct` |
 | Lakebase | `db-lakebase-setup`, `db-lakebase-test`, `db-lakebase-provision-direct` |
 | Simulator | `simulate-83`, `simulate-dry-run` |
 
@@ -242,6 +242,7 @@ Use exclusive mode to compare throughput/latency between Zerobus and Lakebase.
 For the direct deployment path (provision Lakebase + app resource + connector role):
 
 ```bash
+make db-bundle-migrate-direct # one-time for existing terraform-engine deployments
 make db-lakebase-provision-direct
 make db-app-deploy-direct
 make configure-lakebase-83-direct
@@ -250,6 +251,9 @@ make configure-lakebase-83-direct
 This flow creates/uses the Lakebase instance, applies idempotent PostgreSQL grants, emits
 connector credentials to `.lakebase-connector.env`, deploys the app using a Lakebase app
 resource (`value_from`), and configures the gateway for Lakebase sink mode.
+
+The Make targets enforce `DATABRICKS_BUNDLE_ENGINE=direct`. For new bundles this is enough;
+for existing terraform-engine state, run `make db-bundle-migrate-direct` once before deploy.
 
 The dashboard app has a dedicated PostgreSQL page at `/postgres` showing Lakebase-specific metrics.
 
@@ -315,7 +319,7 @@ Extract workspace ID from URL: `adb-7405617163765305` -> `7405617163765305`
    DATABRICKS_WAREHOUSE_ID=<id> make db-setup-sql
    make db-wheel
    REPO_PATH=/Repos/... make db-pipeline
-   make db-app-deploy
+   make db-app-deploy-direct
    make build-83 up-83
    # then: make setup-wizard-83 configure-83 simulate-83 links-83
    ```

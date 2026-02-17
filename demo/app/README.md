@@ -11,10 +11,18 @@ The app is managed by a **Databricks Asset Bundle** at the repo root. Deploy wit
 From the **repo root** with the desired target and variables:
 
 ```bash
-databricks bundle deploy -t dev
+DATABRICKS_BUNDLE_ENGINE=direct databricks bundle deploy -t dev
 ```
 
 Uses the bundle target in `databricks.yml`. Override variables with `--var` as needed.
+
+If this bundle was previously deployed with the Terraform engine, run a one-time
+state migration first:
+
+```bash
+DATABRICKS_BUNDLE_ENGINE=direct databricks bundle deployment migrate -t dev
+DATABRICKS_BUNDLE_ENGINE=direct databricks bundle plan -t dev
+```
 
 **Build:** Git will build the frontend (e.g. in CI run `databricks bundle run build -t dev` before deploy, or run `cd demo/app && npm ci && npm run build` in your pipeline). The bundle defines a `build` script you can run from the repo root: `databricks bundle run build -t dev`.
 
@@ -23,7 +31,7 @@ Uses the bundle target in `databricks.yml`. Override variables with `--var` as n
 In the workspace UI or:
 
 ```bash
-databricks bundle run zerobus_ignition_agl -t dev
+DATABRICKS_BUNDLE_ENGINE=direct databricks bundle run zerobus_ignition_agl -t dev
 ```
 
 ### Bundle configuration
@@ -37,6 +45,7 @@ databricks bundle run zerobus_ignition_agl -t dev
 From repo root:
 
 ```bash
+make db-bundle-migrate-direct   # one-time, for existing terraform-engine state
 make db-lakebase-provision-direct
 make db-app-deploy-direct
 ```
@@ -76,4 +85,4 @@ If you see **"Failed to load resource: 503"** (e.g. on `dashboard` or the main d
 1. **Cold start** – The app container may still be starting. Wait 10–20 seconds and refresh the page.
 2. **Check app status** – In the Apps UI, confirm the app is **Running** (not Starting or Error).
 3. **Check application logs** – On the app’s **Logs** tab (or append `/logz` to the app URL), look for Python tracebacks or "Application startup complete". Crashes after startup will show there.
-4. **Redeploy** – If the app is in Error, redeploy and start again: `databricks bundle deploy -t production` then start the app from the UI or `databricks bundle run zerobus_ignition_agl -t production`.
+4. **Redeploy** – If the app is in Error, redeploy and start again: `DATABRICKS_BUNDLE_ENGINE=direct databricks bundle deploy -t production` then start the app from the UI or `DATABRICKS_BUNDLE_ENGINE=direct databricks bundle run zerobus_ignition_agl -t production`.

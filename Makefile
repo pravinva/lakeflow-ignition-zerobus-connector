@@ -8,7 +8,7 @@
 #     Step 2  db-setup-sql     Create catalog/schema/tables, deploy app + pipeline
 #             db-wheel
 #             db-pipeline
-#             db-app-deploy
+#             db-app-deploy-direct
 #     Step 3  build-83         Build Ignition + Zerobus module (.modl)
 #     Step 4  up-83            Start Ignition gateway (opens setup wizard)
 #
@@ -69,6 +69,10 @@ REPO_BRANCH   ?= main
 LAKEBASE_INSTANCE_NAME ?= agl-demo-lakebase
 LAKEBASE_INSTANCE_CAPACITY ?= CU_1
 LAKEBASE_CONNECTOR_ARTIFACT ?= .lakebase-connector.env
+
+# ── Databricks bundle direct engine ───────────────────────────
+BUNDLE_ENGINE ?= direct
+MIN_DATABRICKS_CLI_MINOR ?= 279
 
 # ── Service principal ────────────────────────────────────────
 SP_NAME         ?= ignition-zerobus-agl
@@ -679,10 +683,11 @@ db-app-deploy: ## Deploy Databricks App from GitHub (SDK) + UC grants for app SP
 	@echo "✔ App deployed (and UC grants applied for app SP)"
 
 .PHONY: db-app-deploy-direct
-db-app-deploy-direct: db-lakebase-provision-direct ## Deploy app via DAB direct deployment with Lakebase app resource
+db-app-deploy-direct: db-bundle-preflight-direct db-lakebase-provision-direct ## Deploy app via DAB direct deployment with Lakebase app resource
 	@echo "▸ Deploying app with DAB direct deployment (Lakebase resource enabled)..."
 	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
 	DATABRICKS_HOST=$(or $(DATABRICKS_HOST),$(WS_HOST)) \
+	DATABRICKS_BUNDLE_ENGINE=$(BUNDLE_ENGINE) \
 		databricks bundle deploy -t production \
 			--var="catalog=$(CATALOG)" \
 			--var="schema=$(SCHEMA)" \
@@ -692,6 +697,7 @@ db-app-deploy-direct: db-lakebase-provision-direct ## Deploy app via DAB direct 
 			--var="connector_role_name=$(or $(CONNECTOR_ROLE_NAME),zerobus_connector)"
 	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
 	DATABRICKS_HOST=$(or $(DATABRICKS_HOST),$(WS_HOST)) \
+	DATABRICKS_BUNDLE_ENGINE=$(BUNDLE_ENGINE) \
 		databricks bundle run zerobus_ignition_agl -t production \
 			--var="catalog=$(CATALOG)" \
 			--var="schema=$(SCHEMA)" \
@@ -702,6 +708,41 @@ db-app-deploy-direct: db-lakebase-provision-direct ## Deploy app via DAB direct 
 	@echo "▸ Re-applying Lakebase grants after app deploy to capture app SP role..."
 	$(MAKE) db-lakebase-provision-direct
 	@echo "✔ App direct deployment and run complete"
+
+.PHONY: db-bundle-preflight-direct
+db-bundle-preflight-direct: ## Validate Databricks CLI supports DAB direct engine (>= 0.279.0)
+	@if ! command -v databricks >/dev/null 2>&1; then \
+		echo "✘ Databricks CLI not found in PATH"; \
+		exit 1; \
+	fi
+	@ver="$$(databricks version 2>/dev/null | sed -E 's/.*([0-9]+\.[0-9]+\.[0-9]+).*/\1/' | awk 'NR==1{print $$1}')"; \
+	if [ -z "$$ver" ]; then \
+		echo "✘ Could not parse Databricks CLI version"; \
+		echo "  Install/upgrade CLI to >= 0.$(MIN_DATABRICKS_CLI_MINOR).0"; \
+		exit 1; \
+	fi; \
+	major="$$(echo $$ver | cut -d. -f1)"; \
+	minor="$$(echo $$ver | cut -d. -f2)"; \
+	if [ "$$major" -eq 0 ] && [ "$$minor" -lt "$(MIN_DATABRICKS_CLI_MINOR)" ]; then \
+		echo "✘ Databricks CLI $$ver is too old for direct deployment engine"; \
+		echo "  Upgrade to >= 0.$(MIN_DATABRICKS_CLI_MINOR).0"; \
+		exit 1; \
+	fi; \
+	echo "✔ Databricks CLI $$ver supports direct deployment engine"
+
+.PHONY: db-bundle-migrate-direct
+db-bundle-migrate-direct: db-bundle-preflight-direct ## One-time migrate bundle state from terraform to direct engine
+	@echo "▸ Migrating bundle deployment state to direct engine (production target)..."
+	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
+	DATABRICKS_HOST=$(or $(DATABRICKS_HOST),$(WS_HOST)) \
+	DATABRICKS_BUNDLE_ENGINE=$(BUNDLE_ENGINE) \
+		databricks bundle deployment migrate -t production
+	@echo "▸ Verifying migrated state with bundle plan..."
+	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
+	DATABRICKS_HOST=$(or $(DATABRICKS_HOST),$(WS_HOST)) \
+	DATABRICKS_BUNDLE_ENGINE=$(BUNDLE_ENGINE) \
+		databricks bundle plan -t production
+	@echo "✔ Bundle state migration verified"
 
 .PHONY: db-app-grant
 db-app-grant: ## Run UC grants for the app's service principal only (no deploy)
@@ -801,8 +842,11 @@ all-81: build-81 up-81 ## Build + start 8.1 (still need configure)
 .PHONY: db-all
 db-all: db-create-sp db-setup-sql db-wheel db-repo-sync db-pipeline db-app-deploy ## Full Databricks setup (SP + SQL + wheel + repo sync + pipeline + app)
 
+.PHONY: db-all-direct
+db-all-direct: db-create-sp db-setup-sql db-wheel db-repo-sync db-pipeline db-app-deploy-direct ## Full Databricks setup with DAB direct app deployment
+
 .PHONY: bootstrap-83
-bootstrap-83: db-all build-83 up-83 ## Everything from scratch (steps 1-4, then manual 4b-7)
+bootstrap-83: db-all-direct build-83 up-83 ## Everything from scratch using DAB direct app deploy (steps 1-4, then manual 4b-7)
 	@echo ""
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo " Bootstrap complete! (Steps 1-4 done)"
@@ -842,7 +886,7 @@ redeploy: ## Print steps to redeploy to a new workspace (see CLAUDE.md)
 	@echo "  5. DATABRICKS_WAREHOUSE_ID=<id> make db-setup-sql"
 	@echo "  6. make db-wheel"
 	@echo "  7. REPO_PATH=/Repos/... make db-pipeline"
-	@echo "  8. make db-app-deploy"
+	@echo "  8. make db-app-deploy-direct"
 	@echo "  9. make build-83 up-83 && make setup-wizard-83 && make configure-83"
 	@echo "  Set WORKSPACE_ID and DATABRICKS_REGION (or ZEROBUS_ENDPOINT) in env or .env; Make derives endpoint if unset."
 
