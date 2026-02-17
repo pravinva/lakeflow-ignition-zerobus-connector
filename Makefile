@@ -325,6 +325,11 @@ configure-lakebase-83: configure-postgres-83 ## Force Lakebase-only mode on 8.3 
 .PHONY: configure-lakebase-83-direct
 configure-lakebase-83-direct: db-lakebase-provision-direct ## Provision Lakebase + configure 8.3 gateway in Lakebase mode
 	@echo "▸ Applying direct-provisioned Lakebase connector credentials to 8.3 gateway..."
+	@if [ ! -f "$(LAKEBASE_CONNECTOR_ARTIFACT)" ]; then \
+		echo "✘ Connector artifact not found: $(LAKEBASE_CONNECTOR_ARTIFACT)"; \
+		echo "  Run: make db-lakebase-provision-direct"; \
+		exit 1; \
+	fi
 	@set -a && source "$(LAKEBASE_CONNECTOR_ARTIFACT)" && set +a && \
 		$(MAKE) configure-postgres-83 \
 			LAKEBASE_HOST="$$LAKEBASE_HOST" \
@@ -358,6 +363,11 @@ configure-lakebase-81: configure-postgres-81 ## Force Lakebase-only mode on 8.1 
 .PHONY: configure-lakebase-81-direct
 configure-lakebase-81-direct: db-lakebase-provision-direct ## Provision Lakebase + configure 8.1 gateway in Lakebase mode
 	@echo "▸ Applying direct-provisioned Lakebase connector credentials to 8.1 gateway..."
+	@if [ ! -f "$(LAKEBASE_CONNECTOR_ARTIFACT)" ]; then \
+		echo "✘ Connector artifact not found: $(LAKEBASE_CONNECTOR_ARTIFACT)"; \
+		echo "  Run: make db-lakebase-provision-direct"; \
+		exit 1; \
+	fi
 	@set -a && source "$(LAKEBASE_CONNECTOR_ARTIFACT)" && set +a && \
 		$(MAKE) configure-postgres-81 \
 			LAKEBASE_HOST="$$LAKEBASE_HOST" \
@@ -689,6 +699,8 @@ db-app-deploy-direct: db-lakebase-provision-direct ## Deploy app via DAB direct 
 			--var="lakebase_instance_capacity=$(LAKEBASE_INSTANCE_CAPACITY)" \
 			--var="lakebase_database_name=$(or $(LAKEBASE_DATABASE),databricks_postgres)" \
 			--var="connector_role_name=$(or $(CONNECTOR_ROLE_NAME),zerobus_connector)"
+	@echo "▸ Re-applying Lakebase grants after app deploy to capture app SP role..."
+	$(MAKE) db-lakebase-provision-direct
 	@echo "✔ App direct deployment and run complete"
 
 .PHONY: db-app-grant
