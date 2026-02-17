@@ -475,22 +475,21 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook implements Zer
     /**
      * Test connection to Zerobus with current configuration.
      * Used by the config UI to validate settings.
+     *
+     * @return empty on success, or the error message on failure
      */
-    public boolean testConnection() {
+    public java.util.Optional<String> testConnection() {
         logger.info("Testing Zerobus connection...");
-        
         try {
             ZerobusClientManager testClient = new ZerobusClientManager(configModel);
             testClient.initialize();
-            boolean success = testClient.testConnection();
+            java.util.Optional<String> err = testClient.testConnection();
             testClient.shutdown();
-            
-            logger.info("Connection test " + (success ? "succeeded" : "failed"));
-            return success;
-            
+            logger.info("Connection test " + (err.isEmpty() ? "succeeded" : "failed"));
+            return err;
         } catch (Exception e) {
             logger.error("Connection test failed", e);
-            return false;
+            return java.util.Optional.ofNullable(e.getMessage()).or(() -> java.util.Optional.of(e.getClass().getSimpleName()));
         }
     }
 
@@ -596,9 +595,36 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook implements Zer
         return info.toString();
     }
     
+    @Override
+    public String getSdtValidationReportJson(int maxTags, int samplePoints) {
+        if (tagSubscriptionService == null) {
+            return "{\"enabled\":false,\"error\":\"service_not_initialized\"}";
+        }
+        return new com.google.gson.Gson().toJson(
+                tagSubscriptionService.getSdtValidationReport(maxTags, samplePoints));
+    }
+
+    @Override
+    public String getMetricsJson() {
+        if (zerobusClientManager == null) {
+            long backlog = (tagSubscriptionService != null) ? tagSubscriptionService.getBufferBacklogBytes() : 0L;
+            return String.format(
+                    "{\"events_sent\":0,\"batches_sent\":0,\"bytes_sent\":0,\"total_failures\":0,\"buffer_backlog_bytes\":%d}",
+                    backlog);
+        }
+        long backlog = (tagSubscriptionService != null) ? tagSubscriptionService.getBufferBacklogBytes() : 0L;
+        return String.format(
+                "{\"events_sent\":%d,\"batches_sent\":%d,\"bytes_sent\":%d,\"total_failures\":%d,\"buffer_backlog_bytes\":%d}",
+                zerobusClientManager.getTotalEventsSent(),
+                zerobusClientManager.getTotalBatchesSent(),
+                zerobusClientManager.getTotalBytesSent(),
+                zerobusClientManager.getTotalFailures(),
+                backlog);
+    }
+
     /**
      * Ingest a single tag event from Event Streams.
-     * 
+     *
      * @param payload Tag event payload from Event Streams
      * @return true if event was accepted, false if queue is full
      */

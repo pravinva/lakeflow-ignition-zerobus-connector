@@ -1,5 +1,7 @@
 package com.example.ignition.zerobus;
 
+import java.util.Optional;
+
 /**
  * Minimal interface shared by the HTTP servlet layer for both Ignition 8.1 and 8.3.
  *
@@ -14,7 +16,8 @@ public interface ZerobusRuntime {
 
     void saveConfiguration(ConfigModel newConfig);
 
-    boolean testConnection();
+    /** @return empty on success, or the error message on failure */
+    Optional<String> testConnection();
 
     /**
      * Force the runtime services (buffer/flusher + Zerobus client) to restart.
@@ -31,6 +34,22 @@ public interface ZerobusRuntime {
     boolean ingestTagEvent(com.example.ignition.zerobus.web.TagEventPayload payload);
 
     int ingestTagEventBatch(com.example.ignition.zerobus.web.TagEventPayload[] payloads);
+
+    /**
+     * Return the SDT validation report as a JSON string.
+     *
+     * @param maxTags      max number of tags to include
+     * @param samplePoints max number of point details per tag
+     * @return JSON string
+     */
+    default String getSdtValidationReportJson(int maxTags, int samplePoints) {
+        return "{\"error\":\"not_implemented\"}";
+    }
+
+    /**
+     * Return metrics (events_sent, batches_sent, bytes_sent) as JSON for observability/demo.
+     */
+    String getMetricsJson();
 }
 
 

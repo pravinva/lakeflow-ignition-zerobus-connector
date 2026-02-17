@@ -220,6 +220,24 @@ public class ZerobusGatewayHook83 extends AbstractGatewayModuleHook implements Z
     }
 
     @Override
+    public String getMetricsJson() {
+        if (zerobusClientManager == null) {
+            long backlog = (tagSubscriptionService != null) ? tagSubscriptionService.getBufferBacklogBytes() : 0L;
+            return String.format(
+                    "{\"events_sent\":0,\"batches_sent\":0,\"bytes_sent\":0,\"total_failures\":0,\"buffer_backlog_bytes\":%d}",
+                    backlog);
+        }
+        long backlog = (tagSubscriptionService != null) ? tagSubscriptionService.getBufferBacklogBytes() : 0L;
+        return String.format(
+                "{\"events_sent\":%d,\"batches_sent\":%d,\"bytes_sent\":%d,\"total_failures\":%d,\"buffer_backlog_bytes\":%d}",
+                zerobusClientManager.getTotalEventsSent(),
+                zerobusClientManager.getTotalBatchesSent(),
+                zerobusClientManager.getTotalBytesSent(),
+                zerobusClientManager.getTotalFailures(),
+                backlog);
+    }
+
+    @Override
     public void saveConfiguration(ConfigModel newConfig) {
         logger.info("Saving configuration to persistent storage (8.3)...");
         try {
@@ -297,16 +315,16 @@ public class ZerobusGatewayHook83 extends AbstractGatewayModuleHook implements Z
     }
 
     @Override
-    public boolean testConnection() {
+    public java.util.Optional<String> testConnection() {
         try {
             ZerobusClientManager testClient = new ZerobusClientManager(configModel);
             testClient.initialize();
-            boolean success = testClient.testConnection();
+            java.util.Optional<String> err = testClient.testConnection();
             testClient.shutdown();
-            return success;
+            return err;
         } catch (Exception e) {
             logger.error("Connection test failed (8.3)", e);
-            return false;
+            return java.util.Optional.ofNullable(e.getMessage()).or(() -> java.util.Optional.of(e.getClass().getSimpleName()));
         }
     }
 
@@ -345,6 +363,15 @@ public class ZerobusGatewayHook83 extends AbstractGatewayModuleHook implements Z
         t.start();
 
         return true;
+    }
+
+    @Override
+    public String getSdtValidationReportJson(int maxTags, int samplePoints) {
+        if (tagSubscriptionService == null) {
+            return "{\"enabled\":false,\"error\":\"service_not_initialized\"}";
+        }
+        return new com.google.gson.Gson().toJson(
+                tagSubscriptionService.getSdtValidationReport(maxTags, samplePoints));
     }
 
     @Override

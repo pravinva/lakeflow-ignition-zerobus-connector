@@ -521,16 +521,34 @@
                             <small class="form-help">Zerobus ingest endpoint</small>
                         </div>
                         <div class="form-group">
-                            <label for="oauthClientId" class="required">OAuth Client ID</label>
-                            <input type="text" class="form-control" id="oauthClientId" name="oauthClientId" required
-                                   autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
-                            <small class="form-help">Service principal client ID for authentication</small>
+                            <label for="authMode">Authentication Mode</label>
+                            <select class="form-control" id="authMode" name="authMode" onchange="toggleAuthFields()">
+                                <option value="service_principal">Service Principal (M2M OAuth)</option>
+                                <option value="bearer_token">Bearer Token (PAT / U2M)</option>
+                            </select>
+                            <small class="form-help">Service Principal uses client ID + secret. Bearer Token uses a pre-obtained token (PAT, etc.)</small>
                         </div>
-                        <div class="form-group">
-                            <label for="oauthClientSecret" class="required">OAuth Client Secret</label>
-                            <input type="password" class="form-control" id="oauthClientSecret" name="oauthClientSecret" required
-                                   autocomplete="new-password">
-                            <small class="form-help">Service principal client secret (encrypted)</small>
+                        <div id="spAuthFields">
+                            <div class="form-group">
+                                <label for="oauthClientId" class="required">OAuth Client ID</label>
+                                <input type="text" class="form-control" id="oauthClientId" name="oauthClientId"
+                                       autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+                                <small class="form-help">Service principal client ID for authentication</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="oauthClientSecret" class="required">OAuth Client Secret</label>
+                                <input type="password" class="form-control" id="oauthClientSecret" name="oauthClientSecret"
+                                       autocomplete="new-password">
+                                <small class="form-help">Service principal client secret (encrypted)</small>
+                            </div>
+                        </div>
+                        <div id="bearerAuthFields" style="display:none;">
+                            <div class="form-group">
+                                <label for="bearerToken" class="required">Bearer Token</label>
+                                <input type="password" class="form-control" id="bearerToken" name="bearerToken"
+                                       autocomplete="new-password">
+                                <small class="form-help">Personal Access Token (PAT) or pre-obtained OAuth access token</small>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -768,6 +786,38 @@
                                 <small class="form-help">Minimum change threshold for numeric values (0 = send all)</small>
                             </div>
                         </div>
+
+                        <hr style="margin: 20px 0; border: none; border-top: 1px solid #e1e4e8;">
+
+                        <div class="info-card">
+                            <div class="info-card-title">Swinging Door Trending (SDT) Compression</div>
+                            <div class="info-card-content">
+                                Industry-standard algorithm (OSIsoft PI, Honeywell PHD) that suppresses numeric points
+                                falling within a linear interpolation corridor. Typically achieves 80-95% compression on
+                                slowly-changing analog signals. Non-numeric tags (booleans, strings) pass through unchanged.
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="enableSdtCompression" name="enableSdtCompression">
+                                <label for="enableSdtCompression">Enable SDT Compression</label>
+                            </div>
+                            <small class="form-help">Enable Swinging Door Trending compression for numeric tags</small>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="sdtDeviation">SDT Deviation</label>
+                                <input type="number" class="form-control" id="sdtDeviation" name="sdtDeviation" value="1.0" min="0.001" step="0.1">
+                                <small class="form-help">Absolute deviation band (+/-) in engineering units. Smaller = more points transmitted.</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="sdtMaxIntervalSeconds">SDT Heartbeat Interval (seconds)</label>
+                                <input type="number" class="form-control" id="sdtMaxIntervalSeconds" name="sdtMaxIntervalSeconds" value="300" min="1" step="1">
+                                <small class="form-help">Maximum seconds between transmitted points (forces periodic emission even if value is stable)</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -868,6 +918,12 @@
                 safToggle.addEventListener('change', updateSafUI);
             }
 
+            // SDT compression toggle
+            const sdtToggle = document.getElementById('enableSdtCompression');
+            if (sdtToggle) {
+                sdtToggle.addEventListener('change', updateSdtUI);
+            }
+
             // Tag input handler
             const tagInput = document.getElementById('explicitTagPathsInput');
             tagInput.addEventListener('keypress', function(e) {
@@ -890,6 +946,19 @@
             const icon = header.querySelector('.toggle-icon');
             content.classList.toggle('active');
             icon.classList.toggle('rotated');
+        }
+
+        function toggleAuthFields() {
+            const mode = document.getElementById('authMode').value;
+            const spFields = document.getElementById('spAuthFields');
+            const bearerFields = document.getElementById('bearerAuthFields');
+            if (mode === 'bearer_token') {
+                spFields.style.display = 'none';
+                bearerFields.style.display = 'block';
+            } else {
+                spFields.style.display = 'block';
+                bearerFields.style.display = 'none';
+            }
         }
 
         function updateTagSelectionUI() {
@@ -917,6 +986,18 @@
                 'spoolLowWatermarkPct',
                 'spoolReadMaxBytes'
             ];
+            for (const id of ids) {
+                const el = document.getElementById(id);
+                if (el) el.disabled = !enabled;
+            }
+        }
+
+        function updateSdtUI() {
+            const enabled = document.getElementById('enableSdtCompression')
+                ? document.getElementById('enableSdtCompression').checked
+                : false;
+
+            const ids = ['sdtDeviation', 'sdtMaxIntervalSeconds'];
             for (const id of ids) {
                 const el = document.getElementById(id);
                 if (el) el.disabled = !enabled;
@@ -1054,8 +1135,11 @@
             // Databricks connection
             document.getElementById('workspaceUrl').value = config.workspaceUrl || '';
             document.getElementById('zerobusEndpoint').value = config.zerobusEndpoint || '';
+            document.getElementById('authMode').value = config.authMode || 'service_principal';
             document.getElementById('oauthClientId').value = config.oauthClientId || '';
             document.getElementById('oauthClientSecret').value = config.oauthClientSecret || '';
+            document.getElementById('bearerToken').value = config.bearerToken || '';
+            toggleAuthFields();
 
             // Unity Catalog
             document.getElementById('targetTable').value = config.targetTable || '';
@@ -1097,6 +1181,12 @@
             document.getElementById('includeQuality').checked = config.includeQuality !== false;
             document.getElementById('onlyOnChange').checked = config.onlyOnChange !== false;
             document.getElementById('numericDeadband').value = config.numericDeadband || 0.0;
+
+            // SDT Compression
+            document.getElementById('enableSdtCompression').checked = config.enableSdtCompression || false;
+            document.getElementById('sdtDeviation').value = (config.sdtDeviation !== undefined && config.sdtDeviation !== null) ? config.sdtDeviation : 1.0;
+            document.getElementById('sdtMaxIntervalSeconds').value = (config.sdtMaxIntervalSeconds !== undefined && config.sdtMaxIntervalSeconds !== null) ? config.sdtMaxIntervalSeconds : 300;
+            updateSdtUI();
         }
 
         function getFormData() {
@@ -1105,8 +1195,10 @@
                 debugLogging: document.getElementById('debugLogging').checked,
                 workspaceUrl: document.getElementById('workspaceUrl').value,
                 zerobusEndpoint: document.getElementById('zerobusEndpoint').value,
+                authMode: document.getElementById('authMode').value,
                 oauthClientId: document.getElementById('oauthClientId').value,
                 oauthClientSecret: document.getElementById('oauthClientSecret').value,
+                bearerToken: document.getElementById('bearerToken').value,
                 targetTable: document.getElementById('targetTable').value,
                 sourceSystemId: document.getElementById('sourceSystemId').value,
                 enableDirectSubscriptions: document.getElementById('enableDirectSubscriptions') ? document.getElementById('enableDirectSubscriptions').checked : true,
@@ -1131,7 +1223,10 @@
                 requestTimeoutMs: parseInt(document.getElementById('requestTimeoutMs').value),
                 includeQuality: document.getElementById('includeQuality').checked,
                 onlyOnChange: document.getElementById('onlyOnChange').checked,
-                numericDeadband: parseFloat(document.getElementById('numericDeadband').value)
+                numericDeadband: parseFloat(document.getElementById('numericDeadband').value),
+                enableSdtCompression: document.getElementById('enableSdtCompression').checked,
+                sdtDeviation: parseFloat(document.getElementById('sdtDeviation').value),
+                sdtMaxIntervalSeconds: parseInt(document.getElementById('sdtMaxIntervalSeconds').value)
             };
         }
 

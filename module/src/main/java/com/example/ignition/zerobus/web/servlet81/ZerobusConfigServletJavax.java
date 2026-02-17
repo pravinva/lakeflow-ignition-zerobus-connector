@@ -33,10 +33,27 @@ public class ZerobusConfigServletJavax extends HttpServlet {
         respond(resp, out);
     }
 
+    /** Maximum request body size (bytes) to read. Prevents OOM from oversized payloads. */
+    private static final int MAX_REQUEST_BODY_BYTES = 10 * 1024 * 1024; // 10 MB
+
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        String body = new String(req.getInputStream().readAllBytes(), pickCharset(req.getCharacterEncoding()));
-        ZerobusServletHandler.Response out = ZerobusServletHandler.handle("POST", extractSubPath(req), body);
+        // Check Content-Length header before reading to prevent allocating huge byte arrays
+        int contentLength = req.getContentLength();
+        if (contentLength > MAX_REQUEST_BODY_BYTES) {
+            respond(resp, ZerobusServletHandler.Response.json(413, "{\"error\":\"payload_too_large\"}"));
+            return;
+        }
+
+        byte[] bytes = req.getInputStream().readNBytes(MAX_REQUEST_BODY_BYTES + 1);
+        if (bytes.length > MAX_REQUEST_BODY_BYTES) {
+            respond(resp, ZerobusServletHandler.Response.json(413, "{\"error\":\"payload_too_large\"}"));
+            return;
+        }
+
+        String body = new String(bytes, pickCharset(req.getCharacterEncoding()));
+        String authHeader = req.getHeader("Authorization");
+        ZerobusServletHandler.Response out = ZerobusServletHandler.handle("POST", extractSubPath(req), body, authHeader);
         respond(resp, out);
     }
 

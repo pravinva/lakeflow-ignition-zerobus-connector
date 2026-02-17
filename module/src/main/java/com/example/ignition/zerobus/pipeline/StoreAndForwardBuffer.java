@@ -73,6 +73,8 @@ public final class StoreAndForwardBuffer {
             }
         } catch (Exception e) {
             // If we can't read spool metrics, do not pause; we still want to attempt draining.
+            // But log the error so operators can diagnose I/O issues.
+            logger.warn("Failed reading spool backlog metrics; backpressure may be inaccurate", e);
             paused = false;
         }
     }
@@ -80,7 +82,9 @@ public final class StoreAndForwardBuffer {
     public long backlogBytes() {
         try {
             if (spool != null) return spool.backlogBytes();
-        } catch (Exception ignored) { }
+        } catch (Exception e) {
+            logger.warn("Failed reading spool backlog bytes", e);
+        }
         if (memQueue != null) return memQueueSize();
         return 0L;
     }

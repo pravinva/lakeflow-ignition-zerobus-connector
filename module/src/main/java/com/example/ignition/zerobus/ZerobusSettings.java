@@ -42,11 +42,17 @@ public class ZerobusSettings extends PersistentRecord {
 
     public static final StringField ZerobusEndpoint = new StringField(META, "ZerobusEndpoint", SFieldFlags.SMANDATORY);
 
-    public static final StringField OauthClientId = new StringField(META, "OauthClientId", SFieldFlags.SMANDATORY);
+    public static final StringField AuthMode = new StringField(META, "AuthMode");
+
+    public static final StringField OauthClientId = new StringField(META, "OauthClientId");
 
     // NOTE: Do NOT mark as SMANDATORY in the UI, because we want to allow "leave blank to keep existing secret"
     // on edit. We enforce "required on create" in ZerobusSettingsPage.onBeforeCommit().
     public static final EncodedStringField OauthClientSecret = new EncodedStringField(META, "OauthClientSecret");
+
+    public static final EncodedStringField BearerToken = new EncodedStringField(META, "BearerToken");
+
+    public static final StringField AccountId = new StringField(META, "AccountId");
 
     // === Unity Catalog Settings ===
 
@@ -105,6 +111,14 @@ public class ZerobusSettings extends PersistentRecord {
 
     public static final DoubleField NumericDeadband = new DoubleField(META, "NumericDeadband");
 
+    // === SDT Compression ===
+
+    public static final BooleanField EnableSdtCompression = new BooleanField(META, "EnableSdtCompression");
+
+    public static final DoubleField SdtDeviation = new DoubleField(META, "SdtDeviation");
+
+    public static final IntField SdtMaxIntervalSeconds = new IntField(META, "SdtMaxIntervalSeconds");
+
     // === Category Definitions for UI Grouping ===
 
     static {
@@ -124,6 +138,9 @@ public class ZerobusSettings extends PersistentRecord {
         ZerobusEndpoint.getFormMeta()
             .setFieldNameKey("ZerobusSettings.ZerobusEndpoint.Name")
             .setFieldDescriptionKey("ZerobusSettings.ZerobusEndpoint.desc");
+        AuthMode.getFormMeta()
+            .setFieldNameKey("ZerobusSettings.AuthMode.Name")
+            .setFieldDescriptionKey("ZerobusSettings.AuthMode.desc");
         OauthClientId.getFormMeta()
             .setFieldNameKey("ZerobusSettings.OauthClientId.Name")
             .setFieldDescriptionKey("ZerobusSettings.OauthClientId.desc");
@@ -131,6 +148,13 @@ public class ZerobusSettings extends PersistentRecord {
             .setFieldNameKey("ZerobusSettings.OauthClientSecret.Name")
             .setFieldDescriptionKey("ZerobusSettings.OauthClientSecret.desc")
             .setEditorSource(new MaskedPasswordEditorSource(55));
+        BearerToken.getFormMeta()
+            .setFieldNameKey("ZerobusSettings.BearerToken.Name")
+            .setFieldDescriptionKey("ZerobusSettings.BearerToken.desc")
+            .setEditorSource(new MaskedPasswordEditorSource(55));
+        AccountId.getFormMeta()
+            .setFieldNameKey("ZerobusSettings.AccountId.Name")
+            .setFieldDescriptionKey("ZerobusSettings.AccountId.desc");
 
         // Unity Catalog
         TargetTable.getFormMeta()
@@ -219,6 +243,17 @@ public class ZerobusSettings extends PersistentRecord {
             .setFieldNameKey("ZerobusSettings.NumericDeadband.Name")
             .setFieldDescriptionKey("ZerobusSettings.NumericDeadband.desc");
 
+        // SDT Compression
+        EnableSdtCompression.getFormMeta()
+            .setFieldNameKey("ZerobusSettings.EnableSdtCompression.Name")
+            .setFieldDescriptionKey("ZerobusSettings.EnableSdtCompression.desc");
+        SdtDeviation.getFormMeta()
+            .setFieldNameKey("ZerobusSettings.SdtDeviation.Name")
+            .setFieldDescriptionKey("ZerobusSettings.SdtDeviation.desc");
+        SdtMaxIntervalSeconds.getFormMeta()
+            .setFieldNameKey("ZerobusSettings.SdtMaxIntervalSeconds.Name")
+            .setFieldDescriptionKey("ZerobusSettings.SdtMaxIntervalSeconds.desc");
+
         // Set default values
         // Module Control Category
         Enabled.setDefault(false);
@@ -227,8 +262,11 @@ public class ZerobusSettings extends PersistentRecord {
         // Databricks Connection Category
         WorkspaceUrl.setDefault("");
         ZerobusEndpoint.setDefault("");
+        AuthMode.setDefault("service_principal");
         OauthClientId.setDefault("");
         OauthClientSecret.setDefault("");
+        BearerToken.setDefault("");
+        AccountId.setDefault("");
 
         // Unity Catalog Category
         TargetTable.setDefault("");
@@ -265,6 +303,11 @@ public class ZerobusSettings extends PersistentRecord {
         IncludeQuality.setDefault(true);
         OnlyOnChange.setDefault(true);
         NumericDeadband.setDefault(0.0);
+
+        // SDT Compression defaults
+        EnableSdtCompression.setDefault(false);
+        SdtDeviation.setDefault(1.0);
+        SdtMaxIntervalSeconds.setDefault(300);
     }
 
     // Note: Category grouping can be added later with a custom StatusPageHook
@@ -290,8 +333,11 @@ public class ZerobusSettings extends PersistentRecord {
         // Databricks Connection
         config.setWorkspaceUrl(getString(WorkspaceUrl));
         config.setZerobusEndpoint(getString(ZerobusEndpoint));
+        config.setAuthMode(getString(AuthMode));
         config.setOauthClientId(getString(OauthClientId));
         config.setOauthClientSecret(getString(OauthClientSecret));
+        config.setBearerToken(getString(BearerToken));
+        config.setAccountId(getString(AccountId));
 
         // Unity Catalog
         config.setTargetTable(getString(TargetTable));
@@ -337,6 +383,11 @@ public class ZerobusSettings extends PersistentRecord {
         config.setOnlyOnChange(getBoolean(OnlyOnChange));
         config.setNumericDeadband(getDouble(NumericDeadband));
 
+        // SDT Compression
+        config.setEnableSdtCompression(getBoolean(EnableSdtCompression));
+        config.setSdtDeviation(getDouble(SdtDeviation));
+        config.setSdtMaxIntervalSeconds(getInt(SdtMaxIntervalSeconds));
+
         return config;
     }
 
@@ -353,8 +404,11 @@ public class ZerobusSettings extends PersistentRecord {
         // Databricks Connection
         setString(WorkspaceUrl, config.getWorkspaceUrl());
         setString(ZerobusEndpoint, config.getZerobusEndpoint());
+        setString(AuthMode, config.getAuthMode());
         setString(OauthClientId, config.getOauthClientId());
         setString(OauthClientSecret, config.getOauthClientSecret());
+        setString(BearerToken, config.getBearerToken());
+        setString(AccountId, config.getAccountId());
 
         // Unity Catalog
         setString(TargetTable, config.getTargetTable());
@@ -395,6 +449,11 @@ public class ZerobusSettings extends PersistentRecord {
         setBoolean(IncludeQuality, config.isIncludeQuality());
         setBoolean(OnlyOnChange, config.isOnlyOnChange());
         setDouble(NumericDeadband, config.getNumericDeadband());
+
+        // SDT Compression
+        setBoolean(EnableSdtCompression, config.isEnableSdtCompression());
+        setDouble(SdtDeviation, config.getSdtDeviation());
+        setInt(SdtMaxIntervalSeconds, config.getSdtMaxIntervalSeconds());
     }
 
 }

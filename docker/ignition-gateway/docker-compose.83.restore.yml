@@ -11,11 +11,15 @@ services:
       - ignition83-data:/usr/local/bin/ignition/data
       # Place your 8.3 gateway backup at docker/ignition-gateway/restore83/restore.gwbk
       - ./restore83/restore.gwbk:/restore.gwbk:ro
+      # Auto-load Zerobus module on startup (no manual install needed)
+      - ../../releases/zerobus-connector-1.0.10-ignition-8.3.modl:/usr/local/bin/ignition/user-lib/modules/zerobus-connector.modl:ro
     command:
       - "-r"
       - "/restore.gwbk"
       - "--"
       - "-Dignition.allowunsignedmodules=${IGNITION_ALLOW_UNSIGNED_MODULES:-false}"
+      - "-Xms512m"
+      - "-Xmx2g"
 
 volumes:
   ignition83-data:

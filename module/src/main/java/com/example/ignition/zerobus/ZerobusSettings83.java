@@ -33,8 +33,11 @@ public class ZerobusSettings83 extends PersistentRecord {
     // Databricks Connection
     public static final StringField WorkspaceUrl = new StringField(META, "WorkspaceUrl", SFieldFlags.SMANDATORY);
     public static final StringField ZerobusEndpoint = new StringField(META, "ZerobusEndpoint", SFieldFlags.SMANDATORY);
-    public static final StringField OauthClientId = new StringField(META, "OauthClientId", SFieldFlags.SMANDATORY);
+    public static final StringField AuthMode = new StringField(META, "AuthMode");
+    public static final StringField OauthClientId = new StringField(META, "OauthClientId");
     public static final EncodedStringField OauthClientSecret = new EncodedStringField(META, "OauthClientSecret");
+    public static final EncodedStringField BearerToken = new EncodedStringField(META, "BearerToken");
+    public static final StringField AccountId = new StringField(META, "AccountId");
 
     // Unity Catalog / Mapping
     public static final StringField TargetTable = new StringField(META, "TargetTable", SFieldFlags.SMANDATORY);
@@ -73,14 +76,22 @@ public class ZerobusSettings83 extends PersistentRecord {
     public static final BooleanField OnlyOnChange = new BooleanField(META, "OnlyOnChange");
     public static final DoubleField NumericDeadband = new DoubleField(META, "NumericDeadband");
 
+    // SDT Compression
+    public static final BooleanField EnableSdtCompression = new BooleanField(META, "EnableSdtCompression");
+    public static final DoubleField SdtDeviation = new DoubleField(META, "SdtDeviation");
+    public static final IntField SdtMaxIntervalSeconds = new IntField(META, "SdtMaxIntervalSeconds");
+
     static {
         // Defaults aligned with ConfigModel defaults
         Enabled.setDefault(false);
         DebugLogging.setDefault(false);
         WorkspaceUrl.setDefault("");
         ZerobusEndpoint.setDefault("");
+        AuthMode.setDefault("service_principal");
         OauthClientId.setDefault("");
         OauthClientSecret.setDefault("");
+        BearerToken.setDefault("");
+        AccountId.setDefault("");
         TargetTable.setDefault("");
         SourceSystemId.setDefault("ignition-gateway");
         EnableDirectSubscriptions.setDefault(true);
@@ -105,6 +116,9 @@ public class ZerobusSettings83 extends PersistentRecord {
         IncludeQuality.setDefault(true);
         OnlyOnChange.setDefault(true);
         NumericDeadband.setDefault(0.0);
+        EnableSdtCompression.setDefault(false);
+        SdtDeviation.setDefault(1.0);
+        SdtMaxIntervalSeconds.setDefault(300);
     }
 
     @Override
@@ -118,8 +132,11 @@ public class ZerobusSettings83 extends PersistentRecord {
         config.setDebugLogging(getBoolean(DebugLogging));
         config.setWorkspaceUrl(getString(WorkspaceUrl));
         config.setZerobusEndpoint(getString(ZerobusEndpoint));
+        config.setAuthMode(getString(AuthMode));
         config.setOauthClientId(getString(OauthClientId));
         config.setOauthClientSecret(getString(OauthClientSecret));
+        config.setBearerToken(getString(BearerToken));
+        config.setAccountId(getString(AccountId));
         config.setTargetTable(getString(TargetTable));
         config.setSourceSystemId(getString(SourceSystemId));
         config.setEnableDirectSubscriptions(getBoolean(EnableDirectSubscriptions));
@@ -152,6 +169,9 @@ public class ZerobusSettings83 extends PersistentRecord {
         config.setIncludeQuality(getBoolean(IncludeQuality));
         config.setOnlyOnChange(getBoolean(OnlyOnChange));
         config.setNumericDeadband(getDouble(NumericDeadband));
+        config.setEnableSdtCompression(getBoolean(EnableSdtCompression));
+        config.setSdtDeviation(getDouble(SdtDeviation));
+        config.setSdtMaxIntervalSeconds(getInt(SdtMaxIntervalSeconds));
         return config;
     }
 
@@ -160,8 +180,11 @@ public class ZerobusSettings83 extends PersistentRecord {
         setBoolean(DebugLogging, config.isDebugLogging());
         setString(WorkspaceUrl, config.getWorkspaceUrl());
         setString(ZerobusEndpoint, config.getZerobusEndpoint());
+        setString(AuthMode, config.getAuthMode());
         setString(OauthClientId, config.getOauthClientId());
         setString(OauthClientSecret, config.getOauthClientSecret());
+        setString(BearerToken, config.getBearerToken());
+        setString(AccountId, config.getAccountId());
         setString(TargetTable, config.getTargetTable());
         setString(SourceSystemId, config.getSourceSystemId());
         setBoolean(EnableDirectSubscriptions, config.isEnableDirectSubscriptions());
@@ -188,6 +211,9 @@ public class ZerobusSettings83 extends PersistentRecord {
         setBoolean(IncludeQuality, config.isIncludeQuality());
         setBoolean(OnlyOnChange, config.isOnlyOnChange());
         setDouble(NumericDeadband, config.getNumericDeadband());
+        setBoolean(EnableSdtCompression, config.isEnableSdtCompression());
+        setDouble(SdtDeviation, config.getSdtDeviation());
+        setInt(SdtMaxIntervalSeconds, config.getSdtMaxIntervalSeconds());
     }
 }
 
