@@ -63,9 +63,9 @@ make db-clean clean-83 bootstrap-83
 |----------|---------|
 | Build | `build-83`, `build-81` |
 | Gateway | `up-83`, `start-83`, `stop-83`, `clean-83`, `logs-83` |
-| Configure | `configure-83`, `configure-postgres-83`, `health-83`, `diag-83`, `test-connection-83` |
+| Configure | `configure-83`, `configure-zerobus-83`, `configure-lakebase-83`, `configure-lakebase-83-direct`, `configure-postgres-83`, `health-83`, `diag-83`, `test-connection-83` |
 | Databricks | `db-create-sp`, `db-setup-sql`, `db-wheel`, `db-pipeline`, `db-app-deploy`, `db-all` |
-| Lakebase | `db-lakebase-setup`, `db-lakebase-test` |
+| Lakebase | `db-lakebase-setup`, `db-lakebase-test`, `db-lakebase-provision-direct` |
 | Simulator | `simulate-83`, `simulate-dry-run` |
 
 Override with env vars: `SIM_SITES=5 SIM_UNITS=4 SIM_INTERVAL=500 make simulate-83`
@@ -159,10 +159,10 @@ Code under `module/src/main/java/com/example/ignition/zerobus/`:
 
 4. **Buffer** (`pipeline/StoreAndForwardBuffer`) - memory or disk-backed (`saf/DiskSpool`) with high/low watermark backpressure
 
-5. **Sink** - dual-sink support via `CompositeSink`:
+5. **Sink** - exclusive sink mode (`sinkMode`):
    - `ZerobusEventSink` -> `ZerobusClientManager` - gRPC stream to Databricks Zerobus (Delta Lake)
    - `PostgresEventSink` -> `PostgresClientManager` - JDBC to Databricks Lakebase (PostgreSQL)
-   - Both sinks can run in parallel; toggle via `enableZerobusSink` and `enablePostgresSink` config flags
+   - Use one sink at a time for demo comparison: `sinkMode=zerobus` or `sinkMode=lakebase`
 
 ### Servlet compatibility layer
 
@@ -214,9 +214,9 @@ make diag-83              # Full diagnostics (JSON)
 
 **IMPORTANT**: `POST /system/zerobus/config` REPLACES the entire config - it does NOT merge. Always send complete config or use `setup_gateway()` which does GET-then-merge.
 
-### PostgreSQL (Lakebase) dual-sink setup
+### Sink mode setup for demo comparison
 
-To enable both Zerobus (Delta Lake) and PostgreSQL (Lakebase) sinks:
+Use exclusive mode to compare throughput/latency between Zerobus and Lakebase.
 
 1. Create Lakebase instance with native password enabled:
    ```bash
@@ -228,10 +228,28 @@ To enable both Zerobus (Delta Lake) and PostgreSQL (Lakebase) sinks:
    make db-lakebase-setup   # Requires LAKEBASE_* env vars
    ```
 
-3. Enable PostgreSQL sink on the gateway:
+3. Switch gateway sink mode:
    ```bash
-   make configure-postgres-83   # Requires LAKEBASE_* env vars
+   # Zerobus mode
+   make configure-zerobus-83
+
+   # Lakebase mode (requires LAKEBASE_* env vars)
+   make configure-lakebase-83
    ```
+
+### Direct deployment with DAB + Lakebase resources
+
+For the direct deployment path (provision Lakebase + app resource + connector role):
+
+```bash
+make db-lakebase-provision-direct
+make db-app-deploy-direct
+make configure-lakebase-83-direct
+```
+
+This flow creates/uses the Lakebase instance, applies idempotent PostgreSQL grants, emits
+connector credentials to `.lakebase-connector.env`, deploys the app using a Lakebase app
+resource (`value_from`), and configures the gateway for Lakebase sink mode.
 
 The dashboard app has a dedicated PostgreSQL page at `/postgres` showing Lakebase-specific metrics.
 

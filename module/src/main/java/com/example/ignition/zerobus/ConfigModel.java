@@ -165,10 +165,13 @@ public class ConfigModel implements Serializable {
 
     // === Sink Selection ===
 
-    /** Enable Zerobus (Delta Lake) sink. Default true for backwards compatibility. */
+    /** Sink mode: "zerobus" or "lakebase". */
+    private String sinkMode = "zerobus";
+
+    /** Enable Zerobus (Delta Lake) sink. Kept for backward compatibility. */
     private boolean enableZerobusSink = true;
 
-    /** Enable PostgreSQL (Lakebase) sink. When true, events are also written to PostgreSQL. */
+    /** Enable PostgreSQL (Lakebase) sink. Kept for backward compatibility. */
     private boolean enablePostgresSink = false;
 
     // === PostgreSQL (Lakebase) Settings ===
@@ -544,6 +547,10 @@ public class ConfigModel implements Serializable {
 
     public void setEnableZerobusSink(boolean enableZerobusSink) {
         this.enableZerobusSink = enableZerobusSink;
+        if (enableZerobusSink) {
+            this.enablePostgresSink = false;
+            this.sinkMode = "zerobus";
+        }
     }
 
     public boolean isEnablePostgresSink() {
@@ -552,6 +559,19 @@ public class ConfigModel implements Serializable {
 
     public void setEnablePostgresSink(boolean enablePostgresSink) {
         this.enablePostgresSink = enablePostgresSink;
+        if (enablePostgresSink) {
+            this.enableZerobusSink = false;
+            this.sinkMode = "lakebase";
+        }
+    }
+
+    public String getSinkMode() {
+        return sinkMode;
+    }
+
+    public void setSinkMode(String sinkMode) {
+        this.sinkMode = sinkMode;
+        normalizeSinkConfiguration();
     }
 
     public String getPostgresHost() {
@@ -638,6 +658,7 @@ public class ConfigModel implements Serializable {
         // Auto-correct common path issues (especially in Docker restores) before validating.
         // This mutates the in-memory ConfigModel and is intentionally best-effort.
         autoCorrectPaths();
+        normalizeSinkConfiguration();
 
         // Gson deserialization sets fields directly (it does not call setters),
         // so catalog/schema/table may be empty even when targetTable is present.
@@ -652,40 +673,42 @@ public class ConfigModel implements Serializable {
         // When the module is disabled, allow saving partial configs so users can incrementally configure.
         // When enabled, enforce required fields.
         if (enabled) {
-            if (workspaceUrl == null || workspaceUrl.isEmpty()) {
-                errors.add("Workspace URL is required");
-            }
-
-            if (zerobusEndpoint == null || zerobusEndpoint.isEmpty()) {
-                errors.add("Zerobus endpoint is required");
-            } else {
-                // Workspace URL and Zerobus endpoint must refer to the same workspace (same ID).
-                String urlId = extractWorkspaceIdFromWorkspaceUrl(workspaceUrl);
-                String endpointId = extractWorkspaceIdFromEndpoint(zerobusEndpoint);
-                if (urlId != null && endpointId != null && !urlId.equals(endpointId)) {
-                    errors.add("Workspace URL and Zerobus endpoint must be for the same workspace (workspace ID mismatch: " + urlId + " vs " + endpointId + ")");
-                }
-            }
-
-            if (isBearerTokenMode()) {
-                if (bearerToken == null || bearerToken.isEmpty()) {
-                    errors.add("Bearer token is required when using bearer token auth mode");
-                }
-            } else {
-                // service_principal mode (default)
-                if (oauthClientId == null || oauthClientId.isEmpty()) {
-                    errors.add("OAuth client ID is required");
+            if (enableZerobusSink) {
+                if (workspaceUrl == null || workspaceUrl.isEmpty()) {
+                    errors.add("Workspace URL is required");
                 }
 
-                if (oauthClientSecret == null || oauthClientSecret.isEmpty()) {
-                    errors.add("OAuth client secret is required");
+                if (zerobusEndpoint == null || zerobusEndpoint.isEmpty()) {
+                    errors.add("Zerobus endpoint is required");
+                } else {
+                    // Workspace URL and Zerobus endpoint must refer to the same workspace (same ID).
+                    String urlId = extractWorkspaceIdFromWorkspaceUrl(workspaceUrl);
+                    String endpointId = extractWorkspaceIdFromEndpoint(zerobusEndpoint);
+                    if (urlId != null && endpointId != null && !urlId.equals(endpointId)) {
+                        errors.add("Workspace URL and Zerobus endpoint must be for the same workspace (workspace ID mismatch: " + urlId + " vs " + endpointId + ")");
+                    }
                 }
-            }
 
-            if (targetTable == null || targetTable.isEmpty()) {
-                errors.add("Target table is required");
-            } else if (catalogName.isEmpty() || schemaName.isEmpty() || tableName.isEmpty()) {
-                errors.add("Target table must be in format: catalog.schema.table");
+                if (isBearerTokenMode()) {
+                    if (bearerToken == null || bearerToken.isEmpty()) {
+                        errors.add("Bearer token is required when using bearer token auth mode");
+                    }
+                } else {
+                    // service_principal mode (default)
+                    if (oauthClientId == null || oauthClientId.isEmpty()) {
+                        errors.add("OAuth client ID is required");
+                    }
+
+                    if (oauthClientSecret == null || oauthClientSecret.isEmpty()) {
+                        errors.add("OAuth client secret is required");
+                    }
+                }
+
+                if (targetTable == null || targetTable.isEmpty()) {
+                    errors.add("Target table is required");
+                } else if (catalogName.isEmpty() || schemaName.isEmpty() || tableName.isEmpty()) {
+                    errors.add("Target table must be in format: catalog.schema.table");
+                }
             }
 
             // Only validate tag selection when direct subscriptions are enabled.
@@ -790,12 +813,51 @@ public class ConfigModel implements Serializable {
             }
         }
 
-        // At least one sink must be enabled when module is enabled
-        if (enabled && !enableZerobusSink && !enablePostgresSink) {
-            errors.add("At least one sink (Zerobus or PostgreSQL) must be enabled");
+        if (!"zerobus".equals(sinkMode) && !"lakebase".equals(sinkMode)) {
+            errors.add("Sink mode must be either 'zerobus' or 'lakebase'");
         }
 
         return errors;
+    }
+
+    /**
+     * Normalize sink mode + legacy boolean flags.
+     *
+     * Backward-compatibility behavior:
+     * - If sinkMode is missing/blank (older config), infer mode from booleans.
+     * - Once mode is known, force booleans to an exclusive configuration.
+     */
+    public void normalizeSinkConfiguration() {
+        String normalizedMode = sinkMode == null ? "" : sinkMode.trim().toLowerCase();
+
+        if (normalizedMode.isEmpty()) {
+            // Legacy config migration path (no sinkMode set yet)
+            if (enablePostgresSink && !enableZerobusSink) {
+                normalizedMode = "lakebase";
+            } else {
+                // Default and tie-breaker: zerobus
+                normalizedMode = "zerobus";
+            }
+        }
+
+        if ("lakebase".equals(normalizedMode)) {
+            sinkMode = "lakebase";
+            enableZerobusSink = false;
+            enablePostgresSink = true;
+            return;
+        }
+
+        if ("zerobus".equals(normalizedMode)) {
+            sinkMode = "zerobus";
+            enableZerobusSink = true;
+            enablePostgresSink = false;
+            return;
+        }
+
+        // Preserve unknown value for validation error, but keep a safe default behavior.
+        sinkMode = normalizedMode;
+        enableZerobusSink = true;
+        enablePostgresSink = false;
     }
 
     /**
@@ -943,6 +1005,7 @@ public class ConfigModel implements Serializable {
             || this.sdtMaxIntervalSeconds != newConfig.sdtMaxIntervalSeconds
             || this.enabled != newConfig.enabled
             || this.debugLogging != newConfig.debugLogging
+            || !Objects.equals(this.sinkMode, newConfig.sinkMode)
             || this.enableZerobusSink != newConfig.enableZerobusSink
             || this.enablePostgresSink != newConfig.enablePostgresSink
             || !Objects.equals(this.postgresHost, newConfig.postgresHost)
@@ -996,6 +1059,7 @@ public class ConfigModel implements Serializable {
         this.sdtMaxIntervalSeconds = other.sdtMaxIntervalSeconds;
         this.enabled = other.enabled;
         this.debugLogging = other.debugLogging;
+        this.sinkMode = other.sinkMode;
         this.ingestApiKey = other.ingestApiKey;
         this.enableZerobusSink = other.enableZerobusSink;
         this.enablePostgresSink = other.enablePostgresSink;
@@ -1006,6 +1070,7 @@ public class ConfigModel implements Serializable {
         this.postgresPassword = other.postgresPassword;
         this.postgresTable = other.postgresTable;
         this.postgresPoolSize = other.postgresPoolSize;
+        normalizeSinkConfiguration();
     }
     
     @Override

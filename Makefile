@@ -66,6 +66,9 @@ endif
 REPO_PATH     ?= /Users/david.okeeffe@databricks.com/lakeflow-ignition-zerobus-connector
 PIPELINE_NAME ?= [production] agl-etl
 REPO_BRANCH   ?= main
+LAKEBASE_INSTANCE_NAME ?= agl-demo-lakebase
+LAKEBASE_INSTANCE_CAPACITY ?= CU_1
+LAKEBASE_CONNECTOR_ARTIFACT ?= .lakebase-connector.env
 
 # ── Service principal ────────────────────────────────────────
 SP_NAME         ?= ignition-zerobus-agl
@@ -255,6 +258,8 @@ configure-postgres-83: ## Enable PostgreSQL sink on 8.3 gateway (requires LAKEBA
 import json, urllib.request; \
 current = json.loads(urllib.request.urlopen('http://localhost:$(PORT_83)/system/zerobus/config').read()); \
 current.update({ \
+    'sinkMode': 'lakebase', \
+    'enableZerobusSink': False, \
     'enablePostgresSink': True, \
     'postgresHost': '$(LAKEBASE_HOST)', \
     'postgresPort': $(or $(LAKEBASE_PORT),5432), \
@@ -280,6 +285,8 @@ configure-postgres-81: ## Enable PostgreSQL sink on 8.1 gateway (requires LAKEBA
 import json, urllib.request; \
 current = json.loads(urllib.request.urlopen('http://localhost:$(PORT_81)/system/zerobus/config').read()); \
 current.update({ \
+    'sinkMode': 'lakebase', \
+    'enableZerobusSink': False, \
     'enablePostgresSink': True, \
     'postgresHost': '$(LAKEBASE_HOST)', \
     'postgresPort': $(or $(LAKEBASE_PORT),5432), \
@@ -293,6 +300,72 @@ req = urllib.request.Request('http://localhost:$(PORT_81)/system/zerobus/config'
 resp = json.loads(urllib.request.urlopen(req).read()); \
 print('✔ PostgreSQL sink enabled' if resp.get('success') else '✘ ' + resp.get('message', 'Unknown error')) \
 "
+
+.PHONY: configure-zerobus-83
+configure-zerobus-83: configure-83 ## Force Zerobus-only mode on 8.3 gateway
+	@echo "▸ Forcing Zerobus-only sink mode on 8.3 gateway..."
+	@python3 -c " \
+import json, urllib.request; \
+current = json.loads(urllib.request.urlopen('http://localhost:$(PORT_83)/system/zerobus/config').read()); \
+current.update({ \
+    'sinkMode': 'zerobus', \
+    'enableZerobusSink': True, \
+    'enablePostgresSink': False \
+}); \
+req = urllib.request.Request('http://localhost:$(PORT_83)/system/zerobus/config', \
+    data=json.dumps(current).encode(), headers={'Content-Type': 'application/json'}); \
+resp = json.loads(urllib.request.urlopen(req).read()); \
+print('✔ Zerobus-only mode enabled' if resp.get('success') else '✘ ' + resp.get('message', 'Unknown error')) \
+"
+
+.PHONY: configure-lakebase-83
+configure-lakebase-83: configure-postgres-83 ## Force Lakebase-only mode on 8.3 gateway
+	@echo "✔ Lakebase-only mode configured on 8.3 gateway"
+
+.PHONY: configure-lakebase-83-direct
+configure-lakebase-83-direct: db-lakebase-provision-direct ## Provision Lakebase + configure 8.3 gateway in Lakebase mode
+	@echo "▸ Applying direct-provisioned Lakebase connector credentials to 8.3 gateway..."
+	@set -a && source "$(LAKEBASE_CONNECTOR_ARTIFACT)" && set +a && \
+		$(MAKE) configure-postgres-83 \
+			LAKEBASE_HOST="$$LAKEBASE_HOST" \
+			LAKEBASE_PORT="$$LAKEBASE_PORT" \
+			LAKEBASE_DATABASE="$$LAKEBASE_DATABASE" \
+			LAKEBASE_USER="$$LAKEBASE_USER" \
+			LAKEBASE_PASSWORD="$$LAKEBASE_PASSWORD" \
+			LAKEBASE_TABLE="$$LAKEBASE_TABLE"
+
+.PHONY: configure-zerobus-81
+configure-zerobus-81: configure-81 ## Force Zerobus-only mode on 8.1 gateway
+	@echo "▸ Forcing Zerobus-only sink mode on 8.1 gateway..."
+	@python3 -c " \
+import json, urllib.request; \
+current = json.loads(urllib.request.urlopen('http://localhost:$(PORT_81)/system/zerobus/config').read()); \
+current.update({ \
+    'sinkMode': 'zerobus', \
+    'enableZerobusSink': True, \
+    'enablePostgresSink': False \
+}); \
+req = urllib.request.Request('http://localhost:$(PORT_81)/system/zerobus/config', \
+    data=json.dumps(current).encode(), headers={'Content-Type': 'application/json'}); \
+resp = json.loads(urllib.request.urlopen(req).read()); \
+print('✔ Zerobus-only mode enabled' if resp.get('success') else '✘ ' + resp.get('message', 'Unknown error')) \
+"
+
+.PHONY: configure-lakebase-81
+configure-lakebase-81: configure-postgres-81 ## Force Lakebase-only mode on 8.1 gateway
+	@echo "✔ Lakebase-only mode configured on 8.1 gateway"
+
+.PHONY: configure-lakebase-81-direct
+configure-lakebase-81-direct: db-lakebase-provision-direct ## Provision Lakebase + configure 8.1 gateway in Lakebase mode
+	@echo "▸ Applying direct-provisioned Lakebase connector credentials to 8.1 gateway..."
+	@set -a && source "$(LAKEBASE_CONNECTOR_ARTIFACT)" && set +a && \
+		$(MAKE) configure-postgres-81 \
+			LAKEBASE_HOST="$$LAKEBASE_HOST" \
+			LAKEBASE_PORT="$$LAKEBASE_PORT" \
+			LAKEBASE_DATABASE="$$LAKEBASE_DATABASE" \
+			LAKEBASE_USER="$$LAKEBASE_USER" \
+			LAKEBASE_PASSWORD="$$LAKEBASE_PASSWORD" \
+			LAKEBASE_TABLE="$$LAKEBASE_TABLE"
 
 # ──────────────────────────────────────────────────────────────
 # Health & diagnostics
@@ -475,6 +548,32 @@ db-lakebase-test: ## Test Lakebase connection (SELECT 1)
 		-d "$(or $(LAKEBASE_DATABASE),databricks_postgres)" \
 		-c "SELECT 1 AS connected" && echo "✔ Lakebase connection OK" || echo "✘ Connection failed"
 
+.PHONY: db-lakebase-provision-direct
+db-lakebase-provision-direct: ## Provision Lakebase via SDK/CLI + create connector role + grants + connector artifact
+	@if [ -z "$(LAKEBASE_USER)" ] || [ -z "$(LAKEBASE_PASSWORD)" ]; then \
+		echo "✘ Missing Lakebase admin credentials. Set LAKEBASE_USER and LAKEBASE_PASSWORD in .env"; \
+		exit 1; \
+	fi
+	@echo "▸ Provisioning Lakebase direct deployment artifacts..."
+	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
+	DATABRICKS_HOST=$(or $(DATABRICKS_HOST),$(WS_HOST)) \
+	CATALOG=$(CATALOG) \
+	SCHEMA=$(SCHEMA) \
+	DATABRICKS_WAREHOUSE_ID=$(DATABRICKS_WAREHOUSE_ID) \
+	SP_PROFILE_NAME=$(SP_PROFILE_NAME) \
+	SP_APPLICATION_ID=$(SP_APPLICATION_ID) \
+	LAKEBASE_INSTANCE_NAME=$(LAKEBASE_INSTANCE_NAME) \
+	LAKEBASE_INSTANCE_CAPACITY=$(LAKEBASE_INSTANCE_CAPACITY) \
+	LAKEBASE_DATABASE=$(or $(LAKEBASE_DATABASE),databricks_postgres) \
+	LAKEBASE_PORT=$(or $(LAKEBASE_PORT),5432) \
+	LAKEBASE_USER=$(LAKEBASE_USER) \
+	LAKEBASE_PASSWORD=$(LAKEBASE_PASSWORD) \
+	LAKEBASE_TABLE=$(or $(LAKEBASE_TABLE),raw_tags) \
+	CONNECTOR_ROLE_NAME=$(or $(CONNECTOR_ROLE_NAME),zerobus_connector) \
+	LAKEBASE_CONNECTOR_ARTIFACT=$(LAKEBASE_CONNECTOR_ARTIFACT) \
+		uv run --with databricks-sdk --with psycopg[binary] python onboarding/databricks/provision_lakebase_direct.py
+	@echo "✔ Direct Lakebase provisioning complete"
+
 .PHONY: db-clean
 db-clean: ## Drop catalog CASCADE, delete pipeline and app (clean Databricks for full reset)
 	@echo "▸ Cleaning Databricks (catalog=$(CATALOG), pipeline=$(PIPELINE_NAME), app=zerobus-ignition-agl)..."
@@ -568,6 +667,29 @@ db-app-deploy: ## Deploy Databricks App from GitHub (SDK) + UC grants for app SP
 	DATABRICKS_HOST=$(or $(DATABRICKS_HOST),$(WS_HOST)) \
 		uv run --with databricks-sdk python onboarding/databricks/deploy_zerobus_app_from_github.py
 	@echo "✔ App deployed (and UC grants applied for app SP)"
+
+.PHONY: db-app-deploy-direct
+db-app-deploy-direct: db-lakebase-provision-direct ## Deploy app via DAB direct deployment with Lakebase app resource
+	@echo "▸ Deploying app with DAB direct deployment (Lakebase resource enabled)..."
+	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
+	DATABRICKS_HOST=$(or $(DATABRICKS_HOST),$(WS_HOST)) \
+		databricks bundle deploy -t production \
+			--var="catalog=$(CATALOG)" \
+			--var="schema=$(SCHEMA)" \
+			--var="lakebase_instance_name=$(LAKEBASE_INSTANCE_NAME)" \
+			--var="lakebase_instance_capacity=$(LAKEBASE_INSTANCE_CAPACITY)" \
+			--var="lakebase_database_name=$(or $(LAKEBASE_DATABASE),databricks_postgres)" \
+			--var="connector_role_name=$(or $(CONNECTOR_ROLE_NAME),zerobus_connector)"
+	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
+	DATABRICKS_HOST=$(or $(DATABRICKS_HOST),$(WS_HOST)) \
+		databricks bundle run zerobus_ignition_agl -t production \
+			--var="catalog=$(CATALOG)" \
+			--var="schema=$(SCHEMA)" \
+			--var="lakebase_instance_name=$(LAKEBASE_INSTANCE_NAME)" \
+			--var="lakebase_instance_capacity=$(LAKEBASE_INSTANCE_CAPACITY)" \
+			--var="lakebase_database_name=$(or $(LAKEBASE_DATABASE),databricks_postgres)" \
+			--var="connector_role_name=$(or $(CONNECTOR_ROLE_NAME),zerobus_connector)"
+	@echo "✔ App direct deployment and run complete"
 
 .PHONY: db-app-grant
 db-app-grant: ## Run UC grants for the app's service principal only (no deploy)
@@ -743,7 +865,7 @@ help: ## Show this help
 	@echo "══ Individual targets ══════════════════════"
 	@echo ""
 	@echo "── Gateway ─────────────────────────────────"
-	@grep -E '^(build|up|start|stop|clean|logs|setup-wizard|restore|configure|configure-postgres|health|diag|test-connection|all)-[0-9]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+	@grep -E '^(build|up|start|stop|clean|logs|setup-wizard|restore|configure|configure-postgres|configure-zerobus|configure-lakebase|health|diag|test-connection|all)-[0-9]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2}'
 	@echo ""
 	@echo "── Databricks ──────────────────────────────"

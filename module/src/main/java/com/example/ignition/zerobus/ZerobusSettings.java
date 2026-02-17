@@ -119,6 +119,20 @@ public class ZerobusSettings extends PersistentRecord {
 
     public static final IntField SdtMaxIntervalSeconds = new IntField(META, "SdtMaxIntervalSeconds");
 
+    // === Sink Selection ===
+    public static final StringField SinkMode = new StringField(META, "SinkMode");
+    public static final BooleanField EnableZerobusSink = new BooleanField(META, "EnableZerobusSink");
+    public static final BooleanField EnablePostgresSink = new BooleanField(META, "EnablePostgresSink");
+
+    // === PostgreSQL (Lakebase) Settings ===
+    public static final StringField PostgresHost = new StringField(META, "PostgresHost");
+    public static final IntField PostgresPort = new IntField(META, "PostgresPort");
+    public static final StringField PostgresDatabase = new StringField(META, "PostgresDatabase");
+    public static final StringField PostgresUser = new StringField(META, "PostgresUser");
+    public static final EncodedStringField PostgresPassword = new EncodedStringField(META, "PostgresPassword");
+    public static final StringField PostgresTable = new StringField(META, "PostgresTable");
+    public static final IntField PostgresPoolSize = new IntField(META, "PostgresPoolSize");
+
     // === Category Definitions for UI Grouping ===
 
     static {
@@ -308,6 +322,16 @@ public class ZerobusSettings extends PersistentRecord {
         EnableSdtCompression.setDefault(false);
         SdtDeviation.setDefault(1.0);
         SdtMaxIntervalSeconds.setDefault(300);
+        SinkMode.setDefault("zerobus");
+        EnableZerobusSink.setDefault(true);
+        EnablePostgresSink.setDefault(false);
+        PostgresHost.setDefault("");
+        PostgresPort.setDefault(5432);
+        PostgresDatabase.setDefault("");
+        PostgresUser.setDefault("");
+        PostgresPassword.setDefault("");
+        PostgresTable.setDefault("raw_tags");
+        PostgresPoolSize.setDefault(5);
     }
 
     // Note: Category grouping can be added later with a custom StatusPageHook
@@ -387,6 +411,17 @@ public class ZerobusSettings extends PersistentRecord {
         config.setEnableSdtCompression(getBoolean(EnableSdtCompression));
         config.setSdtDeviation(getDouble(SdtDeviation));
         config.setSdtMaxIntervalSeconds(getInt(SdtMaxIntervalSeconds));
+        config.setSinkMode(getString(SinkMode));
+        config.setEnableZerobusSink(getBoolean(EnableZerobusSink));
+        config.setEnablePostgresSink(getBoolean(EnablePostgresSink));
+        config.setPostgresHost(getString(PostgresHost));
+        config.setPostgresPort(getInt(PostgresPort));
+        config.setPostgresDatabase(getString(PostgresDatabase));
+        config.setPostgresUser(getString(PostgresUser));
+        config.setPostgresPassword(getString(PostgresPassword));
+        config.setPostgresTable(getString(PostgresTable));
+        config.setPostgresPoolSize(getInt(PostgresPoolSize));
+        config.normalizeSinkConfiguration();
 
         return config;
     }
@@ -454,6 +489,16 @@ public class ZerobusSettings extends PersistentRecord {
         setBoolean(EnableSdtCompression, config.isEnableSdtCompression());
         setDouble(SdtDeviation, config.getSdtDeviation());
         setInt(SdtMaxIntervalSeconds, config.getSdtMaxIntervalSeconds());
+        setString(SinkMode, config.getSinkMode());
+        setBoolean(EnableZerobusSink, config.isEnableZerobusSink());
+        setBoolean(EnablePostgresSink, config.isEnablePostgresSink());
+        setString(PostgresHost, config.getPostgresHost());
+        setInt(PostgresPort, config.getPostgresPort());
+        setString(PostgresDatabase, config.getPostgresDatabase());
+        setString(PostgresUser, config.getPostgresUser());
+        setString(PostgresPassword, config.getPostgresPassword());
+        setString(PostgresTable, config.getPostgresTable());
+        setInt(PostgresPoolSize, config.getPostgresPoolSize());
     }
 
 }

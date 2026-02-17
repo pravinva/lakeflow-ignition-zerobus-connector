@@ -574,6 +574,54 @@
                     </div>
                 </div>
 
+                <!-- Sink Selection -->
+                <div class="section">
+                    <div class="section-header">
+                        <h2>Sink Selection</h2>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="sinkMode">Sink Mode</label>
+                            <select class="form-control" id="sinkMode" name="sinkMode">
+                                <option value="zerobus">Zerobus (Delta Lake)</option>
+                                <option value="lakebase">Lakebase (PostgreSQL)</option>
+                            </select>
+                            <small class="form-help">Exclusive mode for demo comparison (one sink active at a time)</small>
+                        </div>
+                    </div>
+                    <div id="postgresFields" class="form-grid" style="display:none; margin-top: 12px;">
+                        <div class="form-group">
+                            <label for="postgresHost">PostgreSQL Host</label>
+                            <input type="text" class="form-control" id="postgresHost" name="postgresHost"
+                                   placeholder="ep-xxxx.australiaeast.databricks.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="postgresPort">PostgreSQL Port</label>
+                            <input type="number" class="form-control" id="postgresPort" name="postgresPort" value="5432" min="1" max="65535">
+                        </div>
+                        <div class="form-group">
+                            <label for="postgresDatabase">Database</label>
+                            <input type="text" class="form-control" id="postgresDatabase" name="postgresDatabase" value="databricks_postgres">
+                        </div>
+                        <div class="form-group">
+                            <label for="postgresUser">User</label>
+                            <input type="text" class="form-control" id="postgresUser" name="postgresUser">
+                        </div>
+                        <div class="form-group">
+                            <label for="postgresPassword">Password</label>
+                            <input type="password" class="form-control" id="postgresPassword" name="postgresPassword" autocomplete="new-password">
+                        </div>
+                        <div class="form-group">
+                            <label for="postgresTable">Table</label>
+                            <input type="text" class="form-control" id="postgresTable" name="postgresTable" value="raw_tags">
+                        </div>
+                        <div class="form-group">
+                            <label for="postgresPoolSize">Connection Pool Size</label>
+                            <input type="number" class="form-control" id="postgresPoolSize" name="postgresPoolSize" value="5" min="1" max="100">
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Tag Selection -->
                 <div class="collapsible-section">
                     <div class="collapsible-header" onclick="toggleSection(this)">
@@ -870,6 +918,7 @@
                                 <div class="k">Workspace URL</div><div class="v mono" id="cfgWorkspaceUrl">—</div>
                                 <div class="k">Zerobus Endpoint</div><div class="v mono" id="cfgZerobusEndpoint">—</div>
                                 <div class="k">Target Table</div><div class="v mono" id="cfgTargetTable">—</div>
+                                <div class="k">Sink Mode</div><div class="v" id="cfgSinkMode">—</div>
                                 <div class="k">Tag Mode</div><div class="v" id="cfgTagMode">—</div>
                                 <div class="k">Explicit Tags</div><div class="v" id="cfgExplicitCount">—</div>
                                 <div class="k">Include Subfolders</div><div class="v" id="cfgIncludeSubfolders">—</div>
@@ -922,6 +971,11 @@
             const sdtToggle = document.getElementById('enableSdtCompression');
             if (sdtToggle) {
                 sdtToggle.addEventListener('change', updateSdtUI);
+            }
+
+            const sinkModeEl = document.getElementById('sinkMode');
+            if (sinkModeEl) {
+                sinkModeEl.addEventListener('change', updateSinkUI);
             }
 
             // Tag input handler
@@ -1001,6 +1055,16 @@
             for (const id of ids) {
                 const el = document.getElementById(id);
                 if (el) el.disabled = !enabled;
+            }
+        }
+
+        function updateSinkUI() {
+            const sinkMode = document.getElementById('sinkMode')
+                ? document.getElementById('sinkMode').value
+                : 'zerobus';
+            const postgresFields = document.getElementById('postgresFields');
+            if (postgresFields) {
+                postgresFields.style.display = sinkMode === 'lakebase' ? 'grid' : 'none';
             }
         }
 
@@ -1086,6 +1150,7 @@
                 safeText('cfgWorkspaceUrl', cfg ? cfg.workspaceUrl : '—');
                 safeText('cfgZerobusEndpoint', cfg ? cfg.zerobusEndpoint : '—');
                 safeText('cfgTargetTable', cfg ? cfg.targetTable : '—');
+                safeText('cfgSinkMode', cfg ? (cfg.sinkMode || 'zerobus') : '—');
                 safeText('cfgTagMode', cfg ? cfg.tagSelectionMode : '—');
                 const tagCount = cfg && Array.isArray(cfg.explicitTagPaths) ? cfg.explicitTagPaths.length : 0;
                 safeText('cfgExplicitCount', cfg ? `${tagCount} tag(s)` : '—');
@@ -1187,6 +1252,17 @@
             document.getElementById('sdtDeviation').value = (config.sdtDeviation !== undefined && config.sdtDeviation !== null) ? config.sdtDeviation : 1.0;
             document.getElementById('sdtMaxIntervalSeconds').value = (config.sdtMaxIntervalSeconds !== undefined && config.sdtMaxIntervalSeconds !== null) ? config.sdtMaxIntervalSeconds : 300;
             updateSdtUI();
+
+            // Sink mode + PostgreSQL settings
+            document.getElementById('sinkMode').value = config.sinkMode || (config.enablePostgresSink ? 'lakebase' : 'zerobus');
+            document.getElementById('postgresHost').value = config.postgresHost || '';
+            document.getElementById('postgresPort').value = (config.postgresPort !== undefined && config.postgresPort !== null) ? config.postgresPort : 5432;
+            document.getElementById('postgresDatabase').value = config.postgresDatabase || 'databricks_postgres';
+            document.getElementById('postgresUser').value = config.postgresUser || '';
+            document.getElementById('postgresPassword').value = config.postgresPassword || '';
+            document.getElementById('postgresTable').value = config.postgresTable || 'raw_tags';
+            document.getElementById('postgresPoolSize').value = (config.postgresPoolSize !== undefined && config.postgresPoolSize !== null) ? config.postgresPoolSize : 5;
+            updateSinkUI();
         }
 
         function getFormData() {
@@ -1226,7 +1302,17 @@
                 numericDeadband: parseFloat(document.getElementById('numericDeadband').value),
                 enableSdtCompression: document.getElementById('enableSdtCompression').checked,
                 sdtDeviation: parseFloat(document.getElementById('sdtDeviation').value),
-                sdtMaxIntervalSeconds: parseInt(document.getElementById('sdtMaxIntervalSeconds').value)
+                sdtMaxIntervalSeconds: parseInt(document.getElementById('sdtMaxIntervalSeconds').value),
+                sinkMode: document.getElementById('sinkMode').value,
+                enableZerobusSink: document.getElementById('sinkMode').value === 'zerobus',
+                enablePostgresSink: document.getElementById('sinkMode').value === 'lakebase',
+                postgresHost: document.getElementById('postgresHost').value,
+                postgresPort: parseInt(document.getElementById('postgresPort').value),
+                postgresDatabase: document.getElementById('postgresDatabase').value,
+                postgresUser: document.getElementById('postgresUser').value,
+                postgresPassword: document.getElementById('postgresPassword').value,
+                postgresTable: document.getElementById('postgresTable').value,
+                postgresPoolSize: parseInt(document.getElementById('postgresPoolSize').value)
             };
         }
 

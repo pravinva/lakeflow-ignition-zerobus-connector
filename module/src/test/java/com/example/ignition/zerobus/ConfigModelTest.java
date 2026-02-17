@@ -119,6 +119,61 @@ public class ConfigModelTest {
         assertFalse(config.isEnableSdtCompression(), "SDT should be disabled by default");
         assertEquals(1.0, config.getSdtDeviation());
         assertEquals(300, config.getSdtMaxIntervalSeconds());
+        assertEquals("zerobus", config.getSinkMode());
+        assertTrue(config.isEnableZerobusSink());
+        assertFalse(config.isEnablePostgresSink());
+    }
+
+    @Test
+    public void testSinkModeSetterEnforcesExclusiveFlags() {
+        config.setSinkMode("lakebase");
+        assertEquals("lakebase", config.getSinkMode());
+        assertTrue(config.isEnablePostgresSink());
+        assertFalse(config.isEnableZerobusSink());
+
+        config.setSinkMode("zerobus");
+        assertEquals("zerobus", config.getSinkMode());
+        assertTrue(config.isEnableZerobusSink());
+        assertFalse(config.isEnablePostgresSink());
+    }
+
+    @Test
+    public void testLegacyFlagsNormalizeToLakebaseWhenModeMissing() {
+        config.setSinkMode("");
+        config.setEnableZerobusSink(false);
+        config.setEnablePostgresSink(true);
+
+        config.normalizeSinkConfiguration();
+
+        assertEquals("lakebase", config.getSinkMode());
+        assertTrue(config.isEnablePostgresSink());
+        assertFalse(config.isEnableZerobusSink());
+    }
+
+    @Test
+    public void testLakebaseModeValidationDoesNotRequireZerobusFields() {
+        config.setEnabled(true);
+        config.setSinkMode("lakebase");
+        config.setPostgresHost("ep-example.databricks.com");
+        config.setPostgresPort(5432);
+        config.setPostgresDatabase("databricks_postgres");
+        config.setPostgresUser("postgres_user");
+        config.setPostgresPassword("postgres_secret");
+        config.setPostgresTable("raw_tags");
+        config.setPostgresPoolSize(5);
+        config.setEnableDirectSubscriptions(false);
+
+        List<String> errors = config.validate();
+        assertFalse(errors.stream().anyMatch(e -> e.contains("Workspace URL")));
+        assertFalse(errors.stream().anyMatch(e -> e.contains("Zerobus endpoint")));
+        assertFalse(errors.stream().anyMatch(e -> e.contains("OAuth client")));
+    }
+
+    @Test
+    public void testInvalidSinkModeValidation() {
+        config.setSinkMode("invalid_mode");
+        List<String> errors = config.validate();
+        assertTrue(errors.stream().anyMatch(e -> e.contains("Sink mode must be either")));
     }
 
     @Test

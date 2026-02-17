@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from urllib.parse import urlparse
 from typing import Any
 
 _logger = logging.getLogger(__name__)
@@ -28,6 +29,40 @@ _database: str = os.environ.get("LAKEBASE_DATABASE", "")
 _user: str = os.environ.get("LAKEBASE_USER", "")
 _password: str = os.environ.get("LAKEBASE_PASSWORD", "")
 _table: str = os.environ.get("LAKEBASE_TABLE", "raw_tags")
+_resource: str = os.environ.get("LAKEBASE_RESOURCE", "")
+
+
+def _apply_resource_overrides() -> None:
+    """Best-effort parsing for app resource values.
+
+    Databricks app resources can surface either host-like values or full Postgres URLs.
+    If a URL is provided, we use embedded components as defaults.
+    """
+    global _host, _port, _database, _user, _password
+    if not _resource:
+        return
+
+    # If resource is a URL, parse as DSN-like input.
+    if "://" in _resource:
+        parsed = urlparse(_resource)
+        if parsed.hostname and not _host:
+            _host = parsed.hostname
+        if parsed.port and (_port == 5432):
+            _port = parsed.port
+        if parsed.path and parsed.path != "/" and not _database:
+            _database = parsed.path.lstrip("/")
+        if parsed.username and not _user:
+            _user = parsed.username
+        if parsed.password and not _password:
+            _password = parsed.password
+        return
+
+    # Otherwise treat resource as hostname.
+    if not _host:
+        _host = _resource.strip()
+
+
+_apply_resource_overrides()
 
 # Connection pool (lazily initialized)
 _pool = None

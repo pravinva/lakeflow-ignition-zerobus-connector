@@ -14,6 +14,21 @@ variables:
   schema:
     description: Schema for OT tables (e.g. raw_tags, asset framework)
     default: "ot"
+  lakebase_instance_name:
+    description: Lakebase database instance name for app + connector
+    default: "agl-demo-lakebase"
+  lakebase_instance_capacity:
+    description: Lakebase instance capacity SKU
+    default: "CU_1"
+  lakebase_database_name:
+    description: Lakebase database name
+    default: "databricks_postgres"
+  app_database_resource_key:
+    description: App resource key for Lakebase database
+    default: "lakebase-database"
+  connector_role_name:
+    description: Dedicated PostgreSQL role for Zerobus connector
+    default: "zerobus_connector"
   DATABRICKS_WAREHOUSE_ID:
     description: SQL warehouse ID for the app (lookup by name or set per target)
     lookup:
@@ -29,8 +44,19 @@ targets:
     variables:
       catalog: "agl_demo"
       schema: "ot"
+      lakebase_instance_name: "agl-demo-lakebase"
+      lakebase_instance_capacity: "CU_1"
+      lakebase_database_name: "databricks_postgres"
+      app_database_resource_key: "lakebase-database"
+      connector_role_name: "zerobus_connector"
 
 resources:
+  database_instances:
+    app_lakebase:
+      name: ${var.lakebase_instance_name}
+      capacity: ${var.lakebase_instance_capacity}
+      enable_pg_native_login: true
+
   apps:
     zerobus_ignition_agl:
       name: zerobus-ignition-agl
@@ -47,6 +73,12 @@ resources:
         env:
           - name: DATABRICKS_WAREHOUSE_ID
             value_from: sql-warehouse
+          - name: LAKEBASE_RESOURCE
+            value_from: ${var.app_database_resource_key}
+          - name: LAKEBASE_HOST
+            value_from: ${var.app_database_resource_key}
+          - name: LAKEBASE_DATABASE
+            value: ${var.lakebase_database_name}
           - name: APP_TARGET_CATALOG
             value: ${var.catalog}
           - name: APP_TARGET_SCHEMA
@@ -60,3 +92,8 @@ resources:
           sql_warehouse:
             id: ${var.DATABRICKS_WAREHOUSE_ID}
             permission: CAN_USE
+        - name: ${var.app_database_resource_key}
+          database:
+            instance_name: ${resources.database_instances.app_lakebase.name}
+            database_name: ${var.lakebase_database_name}
+            permission: CAN_CONNECT_AND_CREATE

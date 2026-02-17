@@ -14,7 +14,7 @@ From the **repo root** with the desired target and variables:
 databricks bundle deploy -t dev
 ```
 
-Uses the `dev` target in `databricks.yml` (profile `agl-demo`, catalog `agl_demo`, schema `ot`). Override variables per target or with `--var` if needed.
+Uses the bundle target in `databricks.yml`. Override variables with `--var` as needed.
 
 **Build:** Git will build the frontend (e.g. in CI run `databricks bundle run build -t dev` before deploy, or run `cd demo/app && npm ci && npm run build` in your pipeline). The bundle defines a `build` script you can run from the repo root: `databricks bundle run build -t dev`.
 
@@ -29,7 +29,19 @@ databricks bundle run zerobus_ignition_agl -t dev
 ### Bundle configuration
 
 - **Bundle:** `databricks.yml` at repo root.
-- **Variables:** `catalog`, `schema`, `DATABRICKS_WAREHOUSE_ID` (lookup: "Serverless Starter Warehouse"). Override in a target or via `--var`.
+- **Variables:** `catalog`, `schema`, `DATABRICKS_WAREHOUSE_ID`, `lakebase_instance_name`, `lakebase_database_name`.
+- **Lakebase app auth:** the app uses an app database resource (`resources.apps.*.resources[].database`) and reads it via `value_from` env binding. Avoid hardcoding app DB passwords.
+
+### Direct deployment flow (recommended)
+
+From repo root:
+
+```bash
+make db-lakebase-provision-direct
+make db-app-deploy-direct
+```
+
+This provisions Lakebase, applies PostgreSQL grants, deploys the app via DAB, and runs the app resource-backed deployment.
 
 ### Local development
 
