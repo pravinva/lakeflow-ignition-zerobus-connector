@@ -66,6 +66,9 @@ export interface LatencyMetric {
   /** E2E: tag time → Delta commit (from CDF _commit_timestamp), when available. */
   avg_e2e_latency_ms?: number;
   p99_e2e_latency_ms?: number;
+  /** Time from Delta commit visibility to app query-time (freshness proxy). */
+  avg_delta_to_app_ms?: number;
+  p99_delta_to_app_ms?: number;
 }
 
 export interface TagEvent {

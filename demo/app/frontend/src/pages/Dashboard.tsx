@@ -236,19 +236,19 @@ export default function Dashboard() {
           subtitle={latest?.sdt_enabled != null ? (latest.sdt_enabled ? 'Gateway: SDT on' : 'Gateway: SDT off') : undefined}
           colorClass="text-brand-green"
         />
-        {/* Primary: Time to insight (Ignition → Delta) when E2E available */}
+        {/* Primary: Time to insight (Ignition → Delta commit) when CDF commit timestamps are available */}
         {latestLatency?.avg_e2e_latency_ms != null ? (
           <>
             <BigNumberCard
               label="Avg time to insight"
               value={`${formatNumber(latestLatency.avg_e2e_latency_ms, 0)}ms`}
-              subtitle="Ignition → Delta"
+              subtitle="Ignition → Delta commit"
               colorClass={latencyColor(latestLatency.avg_e2e_latency_ms)}
             />
             <BigNumberCard
               label="P99 time to insight"
               value={`${formatNumber(latestLatency.p99_e2e_latency_ms ?? 0, 0)}ms`}
-              subtitle="Ignition → Delta"
+              subtitle="Ignition → Delta commit"
             />
           </>
         ) : (
@@ -256,34 +256,49 @@ export default function Dashboard() {
             <BigNumberCard
               label="Avg time to insight"
               value="-"
-              subtitle="E2E when pipeline has CDF"
+              subtitle="Needs CDF commit timestamps"
             />
             <BigNumberCard
               label="P99 time to insight"
               value="-"
-              subtitle="E2E when pipeline has CDF"
+              subtitle="Needs CDF commit timestamps"
             />
           </>
         )}
         <BigNumberCard
-          label="Tag → connector"
+          label="Tag → gateway ingest"
           value={
             latestLatency
               ? `${formatNumber(latestLatency.avg_latency_ms, 0)}ms`
               : '-'
           }
-          subtitle="In-process only"
+          subtitle="Inside connector path only"
           colorClass={
             latestLatency
               ? latencyColor(latestLatency.avg_latency_ms)
               : 'text-databricks-primary'
           }
         />
+        <BigNumberCard
+          label="Delta → app read"
+          value={
+            latestLatency?.avg_delta_to_app_ms != null
+              ? `${formatNumber(latestLatency.avg_delta_to_app_ms, 0)}ms`
+              : '-'
+          }
+          subtitle="Commit visibility freshness"
+          colorClass={
+            latestLatency?.avg_delta_to_app_ms != null
+              ? latencyColor(latestLatency.avg_delta_to_app_ms)
+              : 'text-databricks-primary'
+          }
+        />
       </div>
       <p className="text-gray-500 text-sm mb-6">
-        <strong>Time to insight</strong> = full path from tag event in Ignition to row committed in Delta
-        (from <code>raw_throughput</code> CDF <code>_commit_timestamp</code>). Use <strong>raw_throughput</strong> for
-        deduped metrics. "Tag → connector" is in-process only (no network/Zerobus/Delta).
+        <strong>Time to insight</strong> = full path from tag event in Ignition to Delta commit
+        (from <code>raw_throughput</code> CDF <code>_commit_timestamp</code>). <strong>Tag → gateway ingest</strong>
+        is only connector-side timestamping (excludes Zerobus and Delta commit). <strong>Delta → app read</strong>
+        is commit-to-query freshness at dashboard read time.
       </p>
 
       {/* Throughput chart */}

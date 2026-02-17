@@ -142,6 +142,10 @@ async def get_throughput(minutes: int = 5) -> list[dict[str, Any]]:
             FALSE AS sdt_enabled
         FROM {_table}
         WHERE to_timestamp(event_time / 1000000.0) >= NOW() - INTERVAL '{minutes * 2} minutes'
+          AND event_time IS NOT NULL
+          AND ingestion_timestamp IS NOT NULL
+          AND event_time <= EXTRACT(EPOCH FROM (NOW() + INTERVAL '5 minutes')) * 1000000
+          AND (ingestion_timestamp - event_time) BETWEEN 0 AND 3600000000
         GROUP BY 1, 2
         HAVING to_timestamp(floor(event_time / 5000000.0) * 5) >= NOW() - INTERVAL '{minutes} minutes'
         ORDER BY window_start
@@ -159,6 +163,10 @@ async def get_latency(minutes: int = 5) -> list[dict[str, Any]]:
             PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY (ingestion_timestamp - event_time)::float / 1000.0) AS p99_latency_ms
         FROM {_table}
         WHERE to_timestamp(event_time / 1000000.0) >= NOW() - INTERVAL '{minutes * 2} minutes'
+          AND event_time IS NOT NULL
+          AND ingestion_timestamp IS NOT NULL
+          AND event_time <= EXTRACT(EPOCH FROM (NOW() + INTERVAL '5 minutes')) * 1000000
+          AND (ingestion_timestamp - event_time) BETWEEN 0 AND 3600000000
         GROUP BY 1, 2
         HAVING to_timestamp(floor(event_time / 5000000.0) * 5) >= NOW() - INTERVAL '{minutes} minutes'
         ORDER BY window_start
@@ -196,6 +204,10 @@ async def get_diagnostic() -> dict[str, Any]:
         SELECT
             COUNT(*) AS total_rows,
             COUNT(*) FILTER (WHERE to_timestamp(event_time / 1000000.0) >= NOW() - INTERVAL '10 minutes') AS rows_last_10_min,
+            COUNT(*) FILTER (WHERE ingestion_timestamp IS NOT NULL AND event_time IS NOT NULL AND ingestion_timestamp < event_time) AS negative_latency_rows,
+            COUNT(*) FILTER (
+                WHERE event_time > EXTRACT(EPOCH FROM (NOW() + INTERVAL '5 minutes')) * 1000000
+            ) AS future_event_rows,
             MIN(to_timestamp(event_time / 1000000.0))::text AS oldest_event,
             MAX(to_timestamp(event_time / 1000000.0))::text AS newest_event,
             NOW()::text AS db_now

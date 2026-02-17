@@ -130,6 +130,10 @@ def _metrics_cte(lookback_minutes: int = 60, source: str = "raw_tags") -> str:
     network (e.g. Australia → US), Zerobus, or Delta commit. Use E2E latency for that.
     """
     table = source if source in ("raw_tags", "raw_throughput") else "raw_tags"
+    # Guardrails:
+    # - Ignore negative latency rows (ingestion before event_time), usually from source clock skew.
+    # - Ignore extreme outliers (>1h) so a few bad rows do not distort dashboard KPIs.
+    # - Ignore future event timestamps beyond a small tolerance window.
     return (
         "WITH metrics AS ("
         "  SELECT"
@@ -145,6 +149,10 @@ def _metrics_cte(lookback_minutes: int = 60, source: str = "raw_tags") -> str:
         "    FALSE AS sdt_enabled"
         f"  FROM {_t(table)}"
         f"  WHERE TIMESTAMP_MICROS(event_time) >= TIMESTAMPADD(MINUTE, -{lookback_minutes}, CURRENT_TIMESTAMP())"
+        "    AND event_time IS NOT NULL"
+        "    AND ingestion_timestamp IS NOT NULL"
+        "    AND event_time <= UNIX_MICROS(TIMESTAMPADD(MINUTE, 5, CURRENT_TIMESTAMP()))"
+        "    AND (CAST(ingestion_timestamp - event_time AS DOUBLE) BETWEEN 0 AND 3600000000)"
         "  GROUP BY 1, 2"
         ")"
     )
@@ -184,19 +192,29 @@ def _latency_e2e(minutes: int = 5) -> tuple[str, list[Any]]:
     uses ingestion_timestamp so the query runs in environments where CDF columns
     are not exposed on the AUTO CDC target.
     """
+    table_name = _t("raw_throughput")
     return (
-        "WITH e2e_metrics AS ("
+        "WITH cdf AS ("
+        "  SELECT event_time, _commit_timestamp"
+        f"  FROM table_changes('{table_name}', TIMESTAMPADD(MINUTE, -:p_lookback, CURRENT_TIMESTAMP()), CURRENT_TIMESTAMP())"
+        "  WHERE _change_type != 'update_preimage'"
+        "    AND event_time IS NOT NULL"
+        "    AND _commit_timestamp IS NOT NULL"
+        "), e2e_metrics AS ("
         "  SELECT"
         "    TIMESTAMP_MICROS(CAST(FLOOR(event_time / 5000000) * 5000000 AS BIGINT)) AS window_start,"
         "    TIMESTAMP_MICROS(CAST(FLOOR(event_time / 5000000) * 5000000 + 5000000 AS BIGINT)) AS window_end,"
-        "    AVG(CAST(ingestion_timestamp - event_time AS DOUBLE) / 1000.0) AS avg_e2e_latency_ms,"
-        "    PERCENTILE_APPROX(CAST(ingestion_timestamp - event_time AS DOUBLE) / 1000.0, 0.99) AS p99_e2e_latency_ms"
-        f"  FROM {_t('raw_throughput')}"
-        "  WHERE ingestion_timestamp IS NOT NULL AND event_time IS NOT NULL"
-        "    AND event_time >= (UNIX_MICROS(TIMESTAMPADD(MINUTE, -:p_lookback, CURRENT_TIMESTAMP())))"
+        "    AVG(CAST(UNIX_MICROS(_commit_timestamp) - event_time AS DOUBLE) / 1000.0) AS avg_e2e_latency_ms,"
+        "    PERCENTILE_APPROX(CAST(UNIX_MICROS(_commit_timestamp) - event_time AS DOUBLE) / 1000.0, 0.99) AS p99_e2e_latency_ms,"
+        "    AVG(CAST(UNIX_MICROS(CURRENT_TIMESTAMP()) - UNIX_MICROS(_commit_timestamp) AS DOUBLE) / 1000.0) AS avg_delta_to_app_ms,"
+        "    PERCENTILE_APPROX(CAST(UNIX_MICROS(CURRENT_TIMESTAMP()) - UNIX_MICROS(_commit_timestamp) AS DOUBLE) / 1000.0, 0.99) AS p99_delta_to_app_ms"
+        "  FROM cdf"
+        "  WHERE event_time <= UNIX_MICROS(TIMESTAMPADD(MINUTE, 5, CURRENT_TIMESTAMP()))"
+        "    AND (CAST(UNIX_MICROS(_commit_timestamp) - event_time AS DOUBLE) BETWEEN 0 AND 3600000000)"
+        "    AND (CAST(UNIX_MICROS(CURRENT_TIMESTAMP()) - UNIX_MICROS(_commit_timestamp) AS DOUBLE) BETWEEN 0 AND 3600000000)"
         "  GROUP BY 1, 2"
         ") "
-        "SELECT window_start, window_end, avg_e2e_latency_ms, p99_e2e_latency_ms "
+        "SELECT window_start, window_end, avg_e2e_latency_ms, p99_e2e_latency_ms, avg_delta_to_app_ms, p99_delta_to_app_ms "
         "FROM e2e_metrics "
         "WHERE window_start >= TIMESTAMPADD(MINUTE, -:p_minutes, CURRENT_TIMESTAMP()) "
         "ORDER BY window_start",
@@ -720,6 +738,13 @@ def _diagnostic() -> tuple[str, list[Any]]:
         "  COUNT(*) FILTER ("
         "    WHERE TIMESTAMP_MICROS(event_time) >= TIMESTAMPADD(MINUTE, -10, CURRENT_TIMESTAMP())"
         "  ) AS rows_last_10_min,"
+        "  COUNT(*) FILTER ("
+        "    WHERE ingestion_timestamp IS NOT NULL AND event_time IS NOT NULL"
+        "      AND ingestion_timestamp < event_time"
+        "  ) AS negative_latency_rows,"
+        "  COUNT(*) FILTER ("
+        "    WHERE event_time > UNIX_MICROS(TIMESTAMPADD(MINUTE, 5, CURRENT_TIMESTAMP()))"
+        "  ) AS future_event_rows,"
         "  CAST(MIN(TIMESTAMP_MICROS(event_time)) AS STRING) AS oldest_event,"
         "  CAST(MAX(TIMESTAMP_MICROS(event_time)) AS STRING) AS newest_event,"
         "  CAST(CURRENT_TIMESTAMP() AS STRING) AS warehouse_now"

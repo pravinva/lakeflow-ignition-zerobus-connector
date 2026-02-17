@@ -62,6 +62,8 @@ async def latency(
             if key in by_window:
                 by_window[key]["avg_e2e_latency_ms"] = r.get("avg_e2e_latency_ms")
                 by_window[key]["p99_e2e_latency_ms"] = r.get("p99_e2e_latency_ms")
+                by_window[key]["avg_delta_to_app_ms"] = r.get("avg_delta_to_app_ms")
+                by_window[key]["p99_delta_to_app_ms"] = r.get("p99_delta_to_app_ms")
         data = list(by_window.values())
         data.sort(key=lambda x: x["window_start"])
     except Exception:
