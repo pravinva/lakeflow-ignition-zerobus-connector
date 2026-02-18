@@ -6,9 +6,13 @@ interface AssetCardProps {
   asset: Asset;
 }
 
-function statusFromAlarmCode(code?: number): { label: string; color: string } {
-  if (code === undefined || code === null || code === 0)
+function statusFromAlarmCode(code?: number | string): { label: string; color: string } {
+  if (code === undefined || code === null || code === 0 || code === 'OK')
     return { label: 'OK', color: 'text-brand-green' };
+  if (typeof code === 'string') {
+    if (code === 'CRITICAL') return { label: 'Alarm', color: 'text-brand-red' };
+    return { label: 'Warning', color: 'text-brand-amber' };
+  }
   if (code < 100) return { label: 'Warning', color: 'text-brand-amber' };
   return { label: 'Alarm', color: 'text-brand-red' };
 }
@@ -39,7 +43,7 @@ export default function AssetCard({ asset }: AssetCardProps) {
         <p>
           Status: <span className={status.color}>{status.label}</span>
         </p>
-        {asset.compression_ratio && (
+        {asset.compression_ratio != null && asset.compression_ratio > 0 && (
           <p className="text-gray-600">
             Compression: {formatNumber(asset.compression_ratio, 1)}:1
           </p>

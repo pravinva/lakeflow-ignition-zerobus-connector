@@ -12,7 +12,7 @@ describe('Theme', () => {
     );
 
     const root = container.firstElementChild as HTMLElement;
-    expect(root.className).toMatch(/bg-gray-50/);
+    expect(root.className).toMatch(/bg-surface-canvas/);
     expect(root.className).toMatch(/text-gray-900/);
   });
 });

@@ -177,7 +177,22 @@ def _sdt_config_update(
     )
 
 
+def _diagnostic() -> tuple[str, list[Any]]:
+    return (
+        "SELECT COUNT(*) AS total_rows,"
+        "  COUNT(*) FILTER ("
+        "    WHERE event_timestamp >= TIMESTAMPADD(MINUTE, -10, CURRENT_TIMESTAMP())"
+        "  ) AS rows_last_10_min,"
+        "  CAST(MIN(event_timestamp) AS STRING) AS oldest_event,"
+        "  CAST(MAX(event_timestamp) AS STRING) AS newest_event,"
+        "  CAST(CURRENT_TIMESTAMP() AS STRING) AS warehouse_now"
+        f" FROM {_t('raw_tags')}",
+        [],
+    )
+
+
 QUERY_BUILDERS: dict[str, Any] = {
+    "diagnostic": _diagnostic,
     "throughput": _throughput,
     "latency": _latency,
     "compression": _compression,

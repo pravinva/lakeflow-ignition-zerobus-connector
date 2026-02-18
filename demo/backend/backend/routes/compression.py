@@ -27,11 +27,30 @@ class SdtConfigUpdate(BaseModel):
     comp_min_seconds: int | None = None
 
 
+BYTES_PER_ROW_RAW = 150
+
+
 @router.get("/comparison")
 async def compression_comparison() -> dict:
     start = time.monotonic()
     data = await query_service.execute("compressionComparison")
-    return _wrap(data, start)
+
+    # Transform flat summary row into CompressionLayer[] array
+    row = data[0] if data else {}
+    total_raw = row.get("total_raw", 0) or 0
+    total_after_sdt = row.get("total_after_sdt", 0) or 0
+    total_bytes = row.get("total_bytes", 0) or 0
+    avg_ratio = row.get("avg_sdt_ratio", 0) or 0
+
+    raw_bytes = total_bytes * max(avg_ratio, 1)  # estimate raw bytes from ratio
+    sdt_bytes = total_bytes  # post-SDT bytes estimate
+
+    layers = [
+        {"layer_name": "raw", "event_count": int(total_raw), "size_bytes": int(raw_bytes), "ratio_vs_raw": 1.0},
+        {"layer_name": "after_sdt", "event_count": int(total_after_sdt), "size_bytes": int(sdt_bytes), "ratio_vs_raw": round(raw_bytes / sdt_bytes, 2) if sdt_bytes > 0 else 1.0},
+    ]
+
+    return _wrap(layers, start)
 
 
 @router.get("/sdt-config")

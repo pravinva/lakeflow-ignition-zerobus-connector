@@ -231,7 +231,7 @@ def _compression() -> tuple[str, list[Any]]:
         "  WHERE TIMESTAMP_MICROS(event_time) >= TIMESTAMPADD(MINUTE, -:p_minutes, CURRENT_TIMESTAMP())"
         ") "
         "SELECT LOWER(CONCAT(_p[3], '_', _p[5])) AS asset_id,"
-        "  1.0 AS compression_ratio "
+        "  AVG(COALESCE(compression_ratio, 0)) AS compression_ratio "
         "FROM _paths "
         "WHERE SIZE(_p) >= 6 "
         "GROUP BY 1",

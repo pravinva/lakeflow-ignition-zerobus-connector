@@ -69,7 +69,7 @@ export default function Performance() {
           label="Throughput"
           value={
             latest
-              ? `${formatNumber(latest.records_raw, 0)}/sec`
+              ? `${formatNumber((Number(latest.records_after_sdt) || 0) / 5, 0)}/sec`
               : '-'
           }
           subtitle="Spec: 15,000/sec"

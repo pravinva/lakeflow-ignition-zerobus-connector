@@ -84,7 +84,7 @@ export default function Analytics() {
         <BigNumberCard
           label="Assets at risk"
           value={assetsAtRisk}
-          subtitle="With revenue at risk &gt; 0"
+          subtitle="With revenue at risk > 0"
         />
         <BigNumberCard
           label="Avg fleet health"
