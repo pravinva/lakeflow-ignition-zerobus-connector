@@ -32,7 +32,7 @@ describe('CompressionWaterfall', () => {
 
     expect(screen.getByText('Raw')).toBeInTheDocument();
     expect(screen.getByText('After SDT')).toBeInTheDocument();
-    expect(screen.getByText('After Delta')).toBeInTheDocument();
+    expect(screen.getByText('Delta Lake (ZSTD)')).toBeInTheDocument();
     expect(screen.getByText('Combined')).toBeInTheDocument();
     expect(screen.getByTestId('bar-chart')).toBeInTheDocument();
   });

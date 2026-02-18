@@ -182,6 +182,11 @@ async def get_events_latest(limit: int = 50) -> list[dict[str, Any]]:
             to_timestamp(ingestion_timestamp / 1000000.0) AS ingest_timestamp,
             tag_path,
             tag_provider,
+            CASE
+                WHEN tag_path LIKE '%%/%%/%%/%%/%%/%%/%%'
+                THEN LOWER(SPLIT_PART(REGEXP_REPLACE(tag_path, '^\[.*?\]', ''), '/', 4) || '_' || SPLIT_PART(REGEXP_REPLACE(tag_path, '^\[.*?\]', ''), '/', 6))
+                ELSE COALESCE(LOWER(tag_provider), 'unknown')
+            END AS asset_id,
             COALESCE(tag_provider, 'unknown') AS asset_type,
             CASE
                 WHEN tag_path LIKE '%%/%%' THEN LOWER(SPLIT_PART(tag_path, '/', -1))

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import AssetDetail from '../../pages/AssetDetail';
 
@@ -49,7 +49,7 @@ describe('AssetDetail page', () => {
       </MemoryRouter>,
     );
 
-    // Time range controls
+    // Time range controls are always present
     expect(screen.getByText('5 min')).toBeInTheDocument();
     expect(screen.getByText('15 min')).toBeInTheDocument();
     expect(screen.getByText('1 hour')).toBeInTheDocument();
@@ -57,11 +57,14 @@ describe('AssetDetail page', () => {
     // Raw vs compressed toggle
     expect(screen.getByText('Show raw vs compressed')).toBeInTheDocument();
 
-    // Tag table header
-    expect(screen.getByText('All tags')).toBeInTheDocument();
+    // Wait for async data to load
+    await waitFor(() => {
+      expect(screen.getByText('All tags')).toBeInTheDocument();
+    });
 
-    // Trend chart tags (wind turbine defaults)
-    expect(screen.getByText('generator/power_kw')).toBeInTheDocument();
-    expect(screen.getByText('rotor/wind_speed_ms')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('generator/power_kw')).toBeInTheDocument();
+      expect(screen.getByText('rotor/wind_speed_ms')).toBeInTheDocument();
+    });
   });
 });

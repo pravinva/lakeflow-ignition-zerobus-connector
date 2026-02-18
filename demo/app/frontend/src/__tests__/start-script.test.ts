@@ -7,11 +7,11 @@ describe('Root package.json', () => {
     readFileSync(resolve(import.meta.dirname, '../../../package.json'), 'utf-8'),
   );
 
-  it('contains demo:start script', () => {
-    expect(rootPkg.scripts).toHaveProperty('demo:start');
+  it('contains dev script', () => {
+    expect(rootPkg.scripts).toHaveProperty('dev');
   });
 
-  it('lists concurrently as devDependency', () => {
-    expect(rootPkg.devDependencies).toHaveProperty('concurrently');
+  it('contains build script', () => {
+    expect(rootPkg.scripts).toHaveProperty('build');
   });
 });

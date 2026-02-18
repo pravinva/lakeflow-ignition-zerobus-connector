@@ -93,7 +93,7 @@ export interface Asset {
   latitude?: number;
   longitude?: number;
   operational_state?: string;
-  alarm_code?: number;
+  alarm_code?: number | string;
   last_update?: string;
   compression_ratio?: number;
   commissioned_date?: string;

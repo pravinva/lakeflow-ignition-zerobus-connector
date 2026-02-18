@@ -142,7 +142,7 @@ export default function AssetDetail() {
             {asset && (
               <div className="flex gap-4 text-sm text-gray-600 mt-1">
                 <span>Type: {asset.asset_type}</span>
-                {asset.capacity_mw && (
+                {asset.capacity_mw != null && (
                   <span>Capacity: {formatNumber(asset.capacity_mw, 1)} MW</span>
                 )}
                 <span>{asset.tag_count} tags</span>
