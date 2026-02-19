@@ -1,6 +1,7 @@
 package com.example.ignition.zerobus;
 
 import com.example.ignition.zerobus.compression.CompressionMetrics;
+import com.example.ignition.zerobus.compression.SdtOverride;
 import com.example.ignition.zerobus.compression.SdtValidationManager;
 import com.example.ignition.zerobus.compression.SdtValidationReport;
 import com.example.ignition.zerobus.compression.SwingDoorCompressor;
@@ -753,9 +754,12 @@ public class TagSubscriptionService {
             long timestampMs = te.getTimestamp() != null ? te.getTimestamp().getTime() : System.currentTimeMillis();
             String quality = te.getQuality() != null ? te.getQuality() : "UNKNOWN";
 
-            SwingDoorCompressor compressor = compressorsByTag.computeIfAbsent(tagPathStr, k ->
-                new SwingDoorCompressor(config.getSdtDeviation(), config.getSdtMaxIntervalSeconds() * 1000L)
-            );
+            SwingDoorCompressor compressor = compressorsByTag.computeIfAbsent(tagPathStr, k -> {
+                SdtOverride override = config.findMatchingOverride(k);
+                double dev = override != null ? override.getDeviation() : config.getSdtDeviation();
+                long maxMs = (override != null ? override.getMaxIntervalSeconds() : config.getSdtMaxIntervalSeconds()) * 1000L;
+                return new SwingDoorCompressor(dev, maxMs);
+            });
 
             sdtValidationManager.recordRawPoint(tagPathStr, timestampMs, value);
 
@@ -877,8 +881,7 @@ public class TagSubscriptionService {
             return report;
         }
         return sdtValidationManager.generateReport(
-                config.getSdtDeviation(),
-                config.getSdtMaxIntervalSeconds(),
+                config,
                 maxTags,
                 samplePoints
         );
@@ -923,6 +926,8 @@ public class TagSubscriptionService {
             sb.append("\n=== SDT Compression ===\n");
             sb.append(compressionMetrics.toDiagnosticString()).append("\n");
             sb.append("Active Compressors: ").append(compressorsByTag.size()).append(" tags\n");
+            int overrideCount = config.getSdtOverrides() != null ? config.getSdtOverrides().size() : 0;
+            sb.append("Override Rules: ").append(overrideCount).append("\n");
         }
 
         return sb.toString();

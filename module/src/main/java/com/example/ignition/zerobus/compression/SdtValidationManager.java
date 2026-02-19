@@ -1,5 +1,7 @@
 package com.example.ignition.zerobus.compression;
 
+import com.example.ignition.zerobus.ConfigModel;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -60,18 +62,19 @@ public class SdtValidationManager {
     /**
      * Generate a validation report across all tracked tags.
      *
-     * @param deviation              configured SDT deviation band
-     * @param sdtMaxIntervalSeconds  configured SDT max interval
-     * @param maxTags                max number of tags to include (sorted by rawPointCount desc)
-     * @param samplePoints           max number of PointDetail entries per tag
+     * @param config       the current ConfigModel (used to resolve per-tag deviation via overrides)
+     * @param maxTags      max number of tags to include (sorted by rawPointCount desc)
+     * @param samplePoints max number of PointDetail entries per tag
      * @return the validation report
      */
-    public SdtValidationReport generateReport(double deviation, int sdtMaxIntervalSeconds,
-                                               int maxTags, int samplePoints) {
+    public SdtValidationReport generateReport(ConfigModel config, int maxTags, int samplePoints) {
+        double globalDeviation = config.getSdtDeviation();
+        int globalMaxInterval = config.getSdtMaxIntervalSeconds();
+
         SdtValidationReport report = new SdtValidationReport();
         report.enabled = true;
-        report.deviationConfigured = deviation;
-        report.sdtMaxIntervalSeconds = sdtMaxIntervalSeconds;
+        report.deviationConfigured = globalDeviation;
+        report.sdtMaxIntervalSeconds = globalMaxInterval;
         report.trackedTags = buffers.size();
 
         List<SdtValidationReport.TagValidation> tagValidations = new ArrayList<>();
@@ -81,11 +84,19 @@ public class SdtValidationManager {
             String tagPath = entry.getKey();
             SdtValidationBuffer buf = entry.getValue();
 
+            // Resolve effective deviation for this tag
+            SdtOverride override = config.findMatchingOverride(tagPath);
+            double effectiveDeviation = override != null ? override.getDeviation() : globalDeviation;
+            int effectiveMaxInterval = override != null ? override.getMaxIntervalSeconds() : globalMaxInterval;
+
             List<SdtValidationBuffer.DataPoint> allPoints = buf.getPoints();
             List<SdtValidationBuffer.DataPoint> pivots = buf.getPivots();
 
             SdtValidationReport.TagValidation tv = new SdtValidationReport.TagValidation();
             tv.tagPath = tagPath;
+            tv.matchedOverridePattern = override != null ? override.getPattern() : null;
+            tv.effectiveDeviation = effectiveDeviation;
+            tv.effectiveMaxIntervalSeconds = effectiveMaxInterval;
             tv.rawPointCount = allPoints.size();
             tv.pivotCount = pivots.size();
             tv.compressionRatioPct = allPoints.isEmpty() ? 0.0
@@ -116,7 +127,7 @@ public class SdtValidationManager {
                     }
                     sumErr += err;
                     errorCount++;
-                    if (err > deviation) {
+                    if (err > effectiveDeviation) {
                         tagWithinDeviation = false;
                     }
                 }

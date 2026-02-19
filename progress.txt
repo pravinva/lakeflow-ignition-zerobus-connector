@@ -312,6 +312,32 @@ The AGL Tomago BESS example is fully prepared for:
 3. PRD-compatible bridge views for demo app integration
 4. Full analytics pipeline via silver/gold views
 
+[bug-hunt] 2026-02-18 - Bug hunt PRD created
+
+## Pre-scan findings
+
+Bug inventory created from static analysis of all source files:
+- **Backend**: 15 potential bugs found (1 critical param mapping, 1 high path traversal, 1 medium-high Decimal serialization)
+- **Frontend**: 13 potential bugs found (3 high visibility/UX, 5 medium logic, 5 low)
+- **Pipeline**: 10 potential bugs found (2 high analytics correctness, 3 medium data quality, 5 low)
+
+## Baseline gate status
+
+7 of 8 gates pass. Pipeline lint FAILS (unused pytest import - Bug #19).
+
+## Priority order for fixes
+
+1. Pipeline lint (quick win, unblocks green baseline)
+2. Backend param mapping corruption (critical data bug)
+3. Backend path traversal (security)
+4. Backend Decimal serialization (crashes Postgres endpoints)
+5. Pipeline stddev NULL handling (inflates health scores)
+6. Pipeline F.last non-deterministic (inconsistent scores)
+7. Frontend visibility bugs (TreeView, button hover)
+8. Remaining medium/low bugs
+
+---
+
 [iteration 9] 2026-02-13 - Pipeline contact point verification
 
 ## Gaps found and fixed

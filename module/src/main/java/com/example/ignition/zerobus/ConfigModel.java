@@ -1,5 +1,7 @@
 package com.example.ignition.zerobus;
 
+import com.example.ignition.zerobus.compression.SdtOverride;
+
 import java.io.Serializable;
 import java.net.URI;
 import java.nio.file.Files;
@@ -7,6 +9,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 /**
  * ConfigModel - POJO for module configuration settings.
@@ -162,6 +166,9 @@ public class ConfigModel implements Serializable {
 
     /** Maximum seconds between transmitted points (heartbeat). */
     private int sdtMaxIntervalSeconds = 300;
+
+    /** Per-tag SDT override rules. Evaluated in order; first match wins. */
+    private List<SdtOverride> sdtOverrides = new ArrayList<>();
 
     // === Sink Selection ===
 
@@ -517,6 +524,32 @@ public class ConfigModel implements Serializable {
         this.sdtMaxIntervalSeconds = sdtMaxIntervalSeconds;
     }
 
+    public List<SdtOverride> getSdtOverrides() {
+        return sdtOverrides;
+    }
+
+    public void setSdtOverrides(List<SdtOverride> sdtOverrides) {
+        this.sdtOverrides = sdtOverrides != null ? sdtOverrides : new ArrayList<>();
+    }
+
+    /**
+     * Find the first SDT override rule that matches the given tag path.
+     *
+     * @param tagPath full tag path string
+     * @return the matching override, or null if no rule matches (use global defaults)
+     */
+    public SdtOverride findMatchingOverride(String tagPath) {
+        if (tagPath == null || sdtOverrides == null || sdtOverrides.isEmpty()) {
+            return null;
+        }
+        for (SdtOverride override : sdtOverrides) {
+            if (override != null && override.matches(tagPath)) {
+                return override;
+            }
+        }
+        return null;
+    }
+
     public boolean isEnabled() {
         return enabled;
     }
@@ -788,6 +821,31 @@ public class ConfigModel implements Serializable {
             }
         }
 
+        if (sdtOverrides != null) {
+            for (int i = 0; i < sdtOverrides.size(); i++) {
+                SdtOverride ov = sdtOverrides.get(i);
+                if (ov == null) {
+                    continue;
+                }
+                String prefix = "sdtOverrides[" + i + "]: ";
+                if (ov.getPattern() == null || ov.getPattern().isEmpty()) {
+                    errors.add(prefix + "pattern is required");
+                } else {
+                    try {
+                        Pattern.compile(ov.getPattern());
+                    } catch (PatternSyntaxException e) {
+                        errors.add(prefix + "invalid regex pattern: " + e.getDescription());
+                    }
+                }
+                if (ov.getDeviation() < 0) {
+                    errors.add(prefix + "deviation must be >= 0");
+                }
+                if (ov.getMaxIntervalSeconds() <= 0) {
+                    errors.add(prefix + "maxIntervalSeconds must be > 0");
+                }
+            }
+        }
+
         // Validate PostgreSQL settings when enabled
         if (enablePostgresSink && enabled) {
             if (postgresHost == null || postgresHost.isEmpty()) {
@@ -1003,6 +1061,7 @@ public class ConfigModel implements Serializable {
             || this.enableSdtCompression != newConfig.enableSdtCompression
             || Double.compare(this.sdtDeviation, newConfig.sdtDeviation) != 0
             || this.sdtMaxIntervalSeconds != newConfig.sdtMaxIntervalSeconds
+            || !Objects.equals(this.sdtOverrides, newConfig.sdtOverrides)
             || this.enabled != newConfig.enabled
             || this.debugLogging != newConfig.debugLogging
             || !Objects.equals(this.sinkMode, newConfig.sinkMode)
@@ -1057,6 +1116,7 @@ public class ConfigModel implements Serializable {
         this.enableSdtCompression = other.enableSdtCompression;
         this.sdtDeviation = other.sdtDeviation;
         this.sdtMaxIntervalSeconds = other.sdtMaxIntervalSeconds;
+        this.sdtOverrides = other.sdtOverrides != null ? new ArrayList<>(other.sdtOverrides) : new ArrayList<>();
         this.enabled = other.enabled;
         this.debugLogging = other.debugLogging;
         this.sinkMode = other.sinkMode;
