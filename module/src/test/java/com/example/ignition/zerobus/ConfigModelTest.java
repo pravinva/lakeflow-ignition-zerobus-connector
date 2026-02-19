@@ -324,5 +324,115 @@ public class ConfigModelTest {
         errors = config.validate();
         assertTrue(errors.stream().anyMatch(e -> e.contains("Max events per second")));
     }
+
+    // === SDT Override validation tests ===
+
+    @Test
+    public void testSdtOverrideValidRegex() {
+        config.setSdtOverrides(List.of(
+            new SdtOverride(".*WindSpeed.*", 0.5, 10)
+        ));
+        List<String> errors = config.validate();
+        assertFalse(errors.stream().anyMatch(e -> e.contains("sdtOverrides")),
+                "Valid override should produce no errors: " + errors);
+    }
+
+    @Test
+    public void testSdtOverrideInvalidRegex() {
+        config.setSdtOverrides(List.of(
+            new SdtOverride("[unclosed", 0.5, 10)
+        ));
+        List<String> errors = config.validate();
+        assertTrue(errors.stream().anyMatch(e -> e.contains("sdtOverrides[0]") && e.contains("invalid regex")),
+                "Invalid regex should produce an error: " + errors);
+    }
+
+    @Test
+    public void testSdtOverrideEmptyPattern() {
+        config.setSdtOverrides(List.of(
+            new SdtOverride("", 0.5, 10)
+        ));
+        List<String> errors = config.validate();
+        assertTrue(errors.stream().anyMatch(e -> e.contains("sdtOverrides[0]") && e.contains("pattern is required")),
+                "Empty pattern should produce an error: " + errors);
+    }
+
+    @Test
+    public void testSdtOverrideNegativeDeviation() {
+        config.setSdtOverrides(List.of(
+            new SdtOverride(".*Wind.*", -1.0, 10)
+        ));
+        List<String> errors = config.validate();
+        assertTrue(errors.stream().anyMatch(e -> e.contains("sdtOverrides[0]") && e.contains("deviation must be >= 0")),
+                "Negative deviation should produce an error: " + errors);
+    }
+
+    @Test
+    public void testSdtOverrideZeroDeviationAllowed() {
+        config.setSdtOverrides(List.of(
+            new SdtOverride(".*Status.*", 0.0, 600)
+        ));
+        List<String> errors = config.validate();
+        assertFalse(errors.stream().anyMatch(e -> e.contains("sdtOverrides[0]") && e.contains("deviation")),
+                "Zero deviation should be allowed: " + errors);
+    }
+
+    @Test
+    public void testSdtOverrideZeroMaxInterval() {
+        config.setSdtOverrides(List.of(
+            new SdtOverride(".*Wind.*", 0.5, 0)
+        ));
+        List<String> errors = config.validate();
+        assertTrue(errors.stream().anyMatch(e -> e.contains("sdtOverrides[0]") && e.contains("maxIntervalSeconds must be > 0")),
+                "Zero maxIntervalSeconds should produce an error: " + errors);
+    }
+
+    @Test
+    public void testSdtOverrideMultipleErrors() {
+        config.setSdtOverrides(Arrays.asList(
+            new SdtOverride(".*Valid.*", 0.5, 10),
+            new SdtOverride("[bad", -1.0, 0)
+        ));
+        List<String> errors = config.validate();
+        assertTrue(errors.stream().anyMatch(e -> e.contains("sdtOverrides[1]") && e.contains("invalid regex")));
+        assertTrue(errors.stream().anyMatch(e -> e.contains("sdtOverrides[1]") && e.contains("deviation")));
+        assertTrue(errors.stream().anyMatch(e -> e.contains("sdtOverrides[1]") && e.contains("maxIntervalSeconds")));
+        assertFalse(errors.stream().anyMatch(e -> e.contains("sdtOverrides[0]")),
+                "Valid override should not produce errors");
+    }
+
+    @Test
+    public void testSdtOverrideRequiresRestart() {
+        ConfigModel newConfig = new ConfigModel();
+        assertFalse(config.requiresRestart(newConfig));
+
+        newConfig.setSdtOverrides(List.of(
+            new SdtOverride(".*Wind.*", 0.5, 10)
+        ));
+        assertTrue(config.requiresRestart(newConfig),
+                "Changing sdtOverrides should require restart");
+    }
+
+    @Test
+    public void testSdtOverrideUpdateFrom() {
+        ConfigModel other = new ConfigModel();
+        List<SdtOverride> overrides = Arrays.asList(
+            new SdtOverride(".*Wind.*", 0.5, 10),
+            new SdtOverride(".*Temp.*", 0.2, 300)
+        );
+        other.setSdtOverrides(overrides);
+
+        config.updateFrom(other);
+
+        assertEquals(2, config.getSdtOverrides().size());
+        assertEquals(".*Wind.*", config.getSdtOverrides().get(0).getPattern());
+        assertEquals(".*Temp.*", config.getSdtOverrides().get(1).getPattern());
+    }
+
+    @Test
+    public void testSdtOverrideDefaultsEmpty() {
+        assertNotNull(config.getSdtOverrides());
+        assertTrue(config.getSdtOverrides().isEmpty());
+    }
 }
 
