@@ -16,6 +16,7 @@ import os
 import secrets
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from databricks.sdk import WorkspaceClient
@@ -52,6 +53,19 @@ def _run_json(cmd: list[str], env: dict[str, str]) -> dict:
     text = proc.stdout.strip()
     if not text:
         return {}
+
+
+def _read_env_file(path: Path) -> dict[str, str]:
+    if not path.exists():
+        return {}
+    values: dict[str, str] = {}
+    for line in path.read_text().splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        k, v = stripped.split("=", 1)
+        values[k.strip()] = v.strip()
+    return values
     try:
         return json.loads(text)
     except json.JSONDecodeError:
@@ -89,11 +103,24 @@ def _ensure_instance(*, profile: str, host: str | None, instance_name: str, capa
         env["DATABRICKS_HOST"] = host
 
     get_cmd = ["databricks", "database", "get-database-instance", instance_name, "-o", "json"]
+
+    def _wait_until_resolvable(max_attempts: int = 24, sleep_s: int = 5) -> dict:
+        last: dict = {}
+        for _ in range(max_attempts):
+            last = _run_json(get_cmd, env)
+            if last and _resolve_instance_host(last):
+                return last
+            time.sleep(sleep_s)
+        return last
+
     try:
         instance = _run_json(get_cmd, env)
         if instance:
             print(f"Using existing Lakebase instance: {instance_name}")
-            return instance
+            if _resolve_instance_host(instance):
+                return instance
+            print("Waiting for Lakebase instance endpoint to become available...")
+            return _wait_until_resolvable()
     except Exception:
         pass
 
@@ -110,8 +137,8 @@ def _ensure_instance(*, profile: str, host: str | None, instance_name: str, capa
         "json",
     ]
     _run_json(create_cmd, env)
-    # Fetch after creation for normalized output fields.
-    return _run_json(get_cmd, env)
+    print("Waiting for Lakebase instance endpoint to become available...")
+    return _wait_until_resolvable()
 
 
 def _read_profile_client_id(profile_name: str) -> str | None:
@@ -167,7 +194,14 @@ def main() -> int:
         )
         return 1
 
-    connector_password = args.connector_role_password or secrets.token_urlsafe(28)
+    artifact = Path(args.artifact_path)
+    prior_artifact = _read_env_file(artifact)
+    prior_password = ""
+    if prior_artifact.get("LAKEBASE_USER") == args.connector_role_name:
+        prior_password = prior_artifact.get("LAKEBASE_PASSWORD", "")
+
+    # Keep existing connector password across idempotent reruns unless explicitly overridden.
+    connector_password = args.connector_role_password or prior_password or secrets.token_urlsafe(28)
 
     print("▸ Resolving Lakebase instance...")
     instance = _ensure_instance(
@@ -250,7 +284,6 @@ def main() -> int:
     finally:
         db_conn.close()
 
-    artifact = Path(args.artifact_path)
     artifact.write_text(
         "\n".join(
             [
