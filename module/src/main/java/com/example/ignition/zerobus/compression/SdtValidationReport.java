@@ -20,6 +20,9 @@ public class SdtValidationReport {
 
     public static class TagValidation {
         public String tagPath;
+        public String matchedOverridePattern;  // null if using global defaults
+        public double effectiveDeviation;       // actual deviation used for this tag
+        public int effectiveMaxIntervalSeconds; // actual max interval used for this tag
         public int rawPointCount;
         public int pivotCount;
         public double compressionRatioPct;
