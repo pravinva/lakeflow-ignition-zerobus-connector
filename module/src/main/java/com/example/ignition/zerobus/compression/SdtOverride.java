@@ -1,5 +1,6 @@
 package com.example.ignition.zerobus.compression;
 
+import java.io.Serializable;
 import java.util.Objects;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -17,7 +18,9 @@ import java.util.regex.PatternSyntaxException;
  * <p>Gson serializes/deserializes this automatically as part of the
  * {@code ConfigModel.sdtOverrides} list.</p>
  */
-public class SdtOverride {
+public class SdtOverride implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private String pattern;
     private double deviation;
@@ -25,6 +28,9 @@ public class SdtOverride {
 
     /** Compiled regex - transient so Gson ignores it. */
     private transient volatile Pattern compiledPattern;
+
+    /** True once compilation has been attempted (prevents retrying invalid patterns). */
+    private transient volatile boolean compilationAttempted;
 
     public SdtOverride() {
         // Default constructor for Gson
@@ -43,6 +49,7 @@ public class SdtOverride {
     public void setPattern(String pattern) {
         this.pattern = pattern;
         this.compiledPattern = null; // invalidate cache
+        this.compilationAttempted = false;
     }
 
     public double getDeviation() {
@@ -82,7 +89,8 @@ public class SdtOverride {
      */
     Pattern getCompiledPattern() {
         Pattern p = compiledPattern;
-        if (p == null && pattern != null && !pattern.isEmpty()) {
+        if (p == null && !compilationAttempted && pattern != null && !pattern.isEmpty()) {
+            compilationAttempted = true;
             try {
                 p = Pattern.compile(pattern);
                 compiledPattern = p;

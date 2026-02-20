@@ -64,6 +64,7 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook implements Zer
 
     private GatewayContext gatewayContext;
     private ZerobusClientManager zerobusClientManager;
+    private PostgresClientManager postgresClientManager;
     private TagSubscriptionService tagSubscriptionService;
     private ConfigModel configModel;
     private ZerobusConfigResource restResource;
@@ -80,11 +81,28 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook implements Zer
             configModel = new ConfigModel();
         }
 
-        // Pipeline wiring depends on ZerobusClientManager; recreate as a unit if anything is missing.
-        if (zerobusClientManager == null || tagSubscriptionService == null) {
+        configModel.normalizeSinkConfiguration();
+
+        // Sink managers are exclusive by mode.
+        if (configModel.isEnableZerobusSink() && zerobusClientManager == null) {
             zerobusClientManager = new ZerobusClientManager(configModel);
+        }
+        if (!configModel.isEnableZerobusSink() && zerobusClientManager != null) {
+            zerobusClientManager.shutdown();
+            zerobusClientManager = null;
+        }
+        if (configModel.isEnablePostgresSink() && postgresClientManager == null) {
+            postgresClientManager = new PostgresClientManager(configModel);
+        }
+        if (!configModel.isEnablePostgresSink() && postgresClientManager != null) {
+            postgresClientManager.shutdown();
+            postgresClientManager = null;
+        }
+
+        // Recreate pipeline as a unit if service is missing.
+        if (tagSubscriptionService == null) {
             ZerobusPipelineFactory.PipelineComponents comps =
-                    ZerobusPipelineFactory.create(configModel, zerobusClientManager);
+                    ZerobusPipelineFactory.create(configModel, zerobusClientManager, postgresClientManager);
             tagSubscriptionService = new TagSubscriptionService(
                     gatewayContext, configModel, comps.mapper, comps.buffer, comps.sink
             );
@@ -163,13 +181,6 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook implements Zer
             this.configModel = new ConfigModel();
             loadConfiguration();
             
-            // Initialize Zerobus client manager
-            this.zerobusClientManager = new ZerobusClientManager(configModel);
-            
-            // Initialize tag subscription service (pipeline wiring is external)
-            ZerobusPipelineFactory.PipelineComponents comps = ZerobusPipelineFactory.create(configModel, zerobusClientManager);
-            this.tagSubscriptionService = new TagSubscriptionService(gatewayContext, configModel, comps.mapper, comps.buffer, comps.sink);
-            
             // Note: REST servlet is registered in setup() method
             
             // Only start services if module is enabled
@@ -234,6 +245,10 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook implements Zer
                 zerobusClientManager.shutdown();
                 zerobusClientManager = null;
             }
+            if (postgresClientManager != null) {
+                postgresClientManager.shutdown();
+                postgresClientManager = null;
+            }
 
             logger.info("Zerobus Gateway Module shut down successfully");
 
@@ -254,11 +269,20 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook implements Zer
         // Always start buffering/ingest service first so "sink down" does not prevent ingestion.
         tagSubscriptionService.start();
 
-        // Best-effort: try to connect the sink. Failures should not stop ingestion; events will buffer.
-        try {
-            zerobusClientManager.initialize();
-        } catch (Exception e) {
-            logger.error("Zerobus sink is unavailable during startup. Ingestion will continue and buffer until the sink recovers.", e);
+        // Best-effort: try to connect active sink. Failures should not stop ingestion; events will buffer.
+        if (configModel.isEnableZerobusSink() && zerobusClientManager != null) {
+            try {
+                zerobusClientManager.initialize();
+            } catch (Exception e) {
+                logger.error("Zerobus sink is unavailable during startup. Ingestion will continue and buffer until the sink recovers.", e);
+            }
+        }
+        if (configModel.isEnablePostgresSink() && postgresClientManager != null) {
+            try {
+                postgresClientManager.initialize();
+            } catch (Exception e) {
+                logger.error("PostgreSQL sink is unavailable during startup. Ingestion will continue and buffer until the sink recovers.", e);
+            }
         }
         
         logger.info("Zerobus services started");
@@ -284,6 +308,7 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook implements Zer
                 this.configModel = settings.toConfigModel();
                 // Auto-correct common Docker path mismatches on load so services can start immediately.
                 this.configModel.autoCorrectPaths();
+                this.configModel.normalizeSinkConfiguration();
                 logger.info("Configuration loaded from database");
             } else {
                 // No saved configuration - use defaults
@@ -329,6 +354,7 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook implements Zer
 
             // Update in-memory config
             this.configModel.updateFrom(newConfig);
+            this.configModel.normalizeSinkConfiguration();
 
             // Restart services if needed
             if (needsRestart && configModel.isEnabled()) {
@@ -340,6 +366,12 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook implements Zer
                     if (zerobusClientManager != null) {
                         zerobusClientManager.shutdown();
                     }
+                    if (postgresClientManager != null) {
+                        postgresClientManager.shutdown();
+                    }
+                    tagSubscriptionService = null;
+                    zerobusClientManager = null;
+                    postgresClientManager = null;
 
                     // Start services with new configuration
                     try {
@@ -431,6 +463,7 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook implements Zer
 
             // Update in-memory config immediately so /system/zerobus/config reflects UI changes.
             this.configModel.updateFrom(newConfig);
+            this.configModel.normalizeSinkConfiguration();
 
             // If disabled, ensure services are stopped.
             if (!configModel.isEnabled()) {
@@ -440,6 +473,12 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook implements Zer
                 if (zerobusClientManager != null) {
                     zerobusClientManager.shutdown();
                 }
+                if (postgresClientManager != null) {
+                    postgresClientManager.shutdown();
+                }
+                tagSubscriptionService = null;
+                zerobusClientManager = null;
+                postgresClientManager = null;
                 logger.info("Runtime configuration applied; services stopped (module disabled)");
                 return;
             }
@@ -457,6 +496,12 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook implements Zer
                 if (zerobusClientManager != null) {
                     zerobusClientManager.shutdown();
                 }
+                if (postgresClientManager != null) {
+                    postgresClientManager.shutdown();
+                }
+                tagSubscriptionService = null;
+                zerobusClientManager = null;
+                postgresClientManager = null;
 
                 try {
                     startServices();
@@ -475,22 +520,28 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook implements Zer
     /**
      * Test connection to Zerobus with current configuration.
      * Used by the config UI to validate settings.
+     *
+     * @return empty on success, or the error message on failure
      */
-    public boolean testConnection() {
-        logger.info("Testing Zerobus connection...");
-        
+    public java.util.Optional<String> testConnection() {
+        logger.info("Testing active sink connection...");
         try {
+            configModel.normalizeSinkConfiguration();
+            if (configModel.isEnablePostgresSink()) {
+                PostgresClientManager testClient = new PostgresClientManager(configModel);
+                java.util.Optional<String> err = testClient.testConnection();
+                logger.info("PostgreSQL connection test {}", err.isEmpty() ? "succeeded" : "failed");
+                return err;
+            }
             ZerobusClientManager testClient = new ZerobusClientManager(configModel);
             testClient.initialize();
-            boolean success = testClient.testConnection();
+            java.util.Optional<String> err = testClient.testConnection();
             testClient.shutdown();
-            
-            logger.info("Connection test " + (success ? "succeeded" : "failed"));
-            return success;
-            
+            logger.info("Connection test " + (err.isEmpty() ? "succeeded" : "failed"));
+            return err;
         } catch (Exception e) {
             logger.error("Connection test failed", e);
-            return false;
+            return java.util.Optional.ofNullable(e.getMessage()).or(() -> java.util.Optional.of(e.getClass().getSimpleName()));
         }
     }
 
@@ -509,8 +560,12 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook implements Zer
                 if (zerobusClientManager != null) {
                     zerobusClientManager.shutdown();
                 }
+                if (postgresClientManager != null) {
+                    postgresClientManager.shutdown();
+                }
                 tagSubscriptionService = null;
                 zerobusClientManager = null;
+                postgresClientManager = null;
                 startServices(); // will recreate services via ensureServicesInitialized()
                 logger.info("Zerobus services restarted successfully");
                 return true;
@@ -577,11 +632,19 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook implements Zer
         info.append("=== Zerobus Module Diagnostics ===\n");
         try {
             info.append("Module Enabled: ").append(configModel != null && configModel.isEnabled()).append("\n");
+            if (configModel != null) {
+                info.append("Sink Mode: ").append(configModel.getSinkMode()).append("\n");
+            }
 
             if (zerobusClientManager != null) {
                 info.append("\n").append(zerobusClientManager.getDiagnostics());
             } else {
                 info.append("\nInitialized: false\nConnected: false\n");
+            }
+            if (postgresClientManager != null) {
+                info.append("\n").append(postgresClientManager.getDiagnostics());
+            } else {
+                info.append("\n=== PostgreSQL Client Diagnostics ===\nInitialized: false\nConnected: false\n");
             }
 
             if (tagSubscriptionService != null) {
@@ -596,9 +659,43 @@ public class ZerobusGatewayHook extends AbstractGatewayModuleHook implements Zer
         return info.toString();
     }
     
+    @Override
+    public String getSdtValidationReportJson(int maxTags, int samplePoints) {
+        if (tagSubscriptionService == null) {
+            return "{\"enabled\":false,\"error\":\"service_not_initialized\"}";
+        }
+        return new com.google.gson.Gson().toJson(
+                tagSubscriptionService.getSdtValidationReport(maxTags, samplePoints));
+    }
+
+    @Override
+    public String getMetricsJson() {
+        long backlog = (tagSubscriptionService != null) ? tagSubscriptionService.getBufferBacklogBytes() : 0L;
+        if (configModel != null && configModel.isEnablePostgresSink() && postgresClientManager != null) {
+            return String.format(
+                    "{\"events_sent\":%d,\"batches_sent\":%d,\"bytes_sent\":0,\"total_failures\":%d,\"buffer_backlog_bytes\":%d}",
+                    postgresClientManager.getTotalEventsSent(),
+                    postgresClientManager.getTotalBatchesSent(),
+                    postgresClientManager.getTotalFailures(),
+                    backlog);
+        }
+        if (zerobusClientManager == null) {
+            return String.format(
+                    "{\"events_sent\":0,\"batches_sent\":0,\"bytes_sent\":0,\"total_failures\":0,\"buffer_backlog_bytes\":%d}",
+                    backlog);
+        }
+        return String.format(
+                "{\"events_sent\":%d,\"batches_sent\":%d,\"bytes_sent\":%d,\"total_failures\":%d,\"buffer_backlog_bytes\":%d}",
+                zerobusClientManager.getTotalEventsSent(),
+                zerobusClientManager.getTotalBatchesSent(),
+                zerobusClientManager.getTotalBytesSent(),
+                zerobusClientManager.getTotalFailures(),
+                backlog);
+    }
+
     /**
      * Ingest a single tag event from Event Streams.
-     * 
+     *
      * @param payload Tag event payload from Event Streams
      * @return true if event was accepted, false if queue is full
      */

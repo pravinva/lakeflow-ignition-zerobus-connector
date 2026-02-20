@@ -33,8 +33,11 @@ public class ZerobusSettings83 extends PersistentRecord {
     // Databricks Connection
     public static final StringField WorkspaceUrl = new StringField(META, "WorkspaceUrl", SFieldFlags.SMANDATORY);
     public static final StringField ZerobusEndpoint = new StringField(META, "ZerobusEndpoint", SFieldFlags.SMANDATORY);
-    public static final StringField OauthClientId = new StringField(META, "OauthClientId", SFieldFlags.SMANDATORY);
+    public static final StringField AuthMode = new StringField(META, "AuthMode");
+    public static final StringField OauthClientId = new StringField(META, "OauthClientId");
     public static final EncodedStringField OauthClientSecret = new EncodedStringField(META, "OauthClientSecret");
+    public static final EncodedStringField BearerToken = new EncodedStringField(META, "BearerToken");
+    public static final StringField AccountId = new StringField(META, "AccountId");
 
     // Unity Catalog / Mapping
     public static final StringField TargetTable = new StringField(META, "TargetTable", SFieldFlags.SMANDATORY);
@@ -73,14 +76,36 @@ public class ZerobusSettings83 extends PersistentRecord {
     public static final BooleanField OnlyOnChange = new BooleanField(META, "OnlyOnChange");
     public static final DoubleField NumericDeadband = new DoubleField(META, "NumericDeadband");
 
+    // SDT Compression
+    public static final BooleanField EnableSdtCompression = new BooleanField(META, "EnableSdtCompression");
+    public static final DoubleField SdtDeviation = new DoubleField(META, "SdtDeviation");
+    public static final IntField SdtMaxIntervalSeconds = new IntField(META, "SdtMaxIntervalSeconds");
+
+    // Sink selection
+    public static final StringField SinkMode = new StringField(META, "SinkMode");
+    public static final BooleanField EnableZerobusSink = new BooleanField(META, "EnableZerobusSink");
+    public static final BooleanField EnablePostgresSink = new BooleanField(META, "EnablePostgresSink");
+
+    // PostgreSQL (Lakebase)
+    public static final StringField PostgresHost = new StringField(META, "PostgresHost");
+    public static final IntField PostgresPort = new IntField(META, "PostgresPort");
+    public static final StringField PostgresDatabase = new StringField(META, "PostgresDatabase");
+    public static final StringField PostgresUser = new StringField(META, "PostgresUser");
+    public static final EncodedStringField PostgresPassword = new EncodedStringField(META, "PostgresPassword");
+    public static final StringField PostgresTable = new StringField(META, "PostgresTable");
+    public static final IntField PostgresPoolSize = new IntField(META, "PostgresPoolSize");
+
     static {
         // Defaults aligned with ConfigModel defaults
         Enabled.setDefault(false);
         DebugLogging.setDefault(false);
         WorkspaceUrl.setDefault("");
         ZerobusEndpoint.setDefault("");
+        AuthMode.setDefault("service_principal");
         OauthClientId.setDefault("");
         OauthClientSecret.setDefault("");
+        BearerToken.setDefault("");
+        AccountId.setDefault("");
         TargetTable.setDefault("");
         SourceSystemId.setDefault("ignition-gateway");
         EnableDirectSubscriptions.setDefault(true);
@@ -105,6 +130,19 @@ public class ZerobusSettings83 extends PersistentRecord {
         IncludeQuality.setDefault(true);
         OnlyOnChange.setDefault(true);
         NumericDeadband.setDefault(0.0);
+        EnableSdtCompression.setDefault(false);
+        SdtDeviation.setDefault(1.0);
+        SdtMaxIntervalSeconds.setDefault(300);
+        SinkMode.setDefault("zerobus");
+        EnableZerobusSink.setDefault(true);
+        EnablePostgresSink.setDefault(false);
+        PostgresHost.setDefault("");
+        PostgresPort.setDefault(5432);
+        PostgresDatabase.setDefault("");
+        PostgresUser.setDefault("");
+        PostgresPassword.setDefault("");
+        PostgresTable.setDefault("raw_tags");
+        PostgresPoolSize.setDefault(5);
     }
 
     @Override
@@ -118,8 +156,11 @@ public class ZerobusSettings83 extends PersistentRecord {
         config.setDebugLogging(getBoolean(DebugLogging));
         config.setWorkspaceUrl(getString(WorkspaceUrl));
         config.setZerobusEndpoint(getString(ZerobusEndpoint));
+        config.setAuthMode(getString(AuthMode));
         config.setOauthClientId(getString(OauthClientId));
         config.setOauthClientSecret(getString(OauthClientSecret));
+        config.setBearerToken(getString(BearerToken));
+        config.setAccountId(getString(AccountId));
         config.setTargetTable(getString(TargetTable));
         config.setSourceSystemId(getString(SourceSystemId));
         config.setEnableDirectSubscriptions(getBoolean(EnableDirectSubscriptions));
@@ -152,6 +193,20 @@ public class ZerobusSettings83 extends PersistentRecord {
         config.setIncludeQuality(getBoolean(IncludeQuality));
         config.setOnlyOnChange(getBoolean(OnlyOnChange));
         config.setNumericDeadband(getDouble(NumericDeadband));
+        config.setEnableSdtCompression(getBoolean(EnableSdtCompression));
+        config.setSdtDeviation(getDouble(SdtDeviation));
+        config.setSdtMaxIntervalSeconds(getInt(SdtMaxIntervalSeconds));
+        config.setSinkMode(getString(SinkMode));
+        config.setEnableZerobusSink(getBoolean(EnableZerobusSink));
+        config.setEnablePostgresSink(getBoolean(EnablePostgresSink));
+        config.setPostgresHost(getString(PostgresHost));
+        config.setPostgresPort(getInt(PostgresPort));
+        config.setPostgresDatabase(getString(PostgresDatabase));
+        config.setPostgresUser(getString(PostgresUser));
+        config.setPostgresPassword(getString(PostgresPassword));
+        config.setPostgresTable(getString(PostgresTable));
+        config.setPostgresPoolSize(getInt(PostgresPoolSize));
+        config.normalizeSinkConfiguration();
         return config;
     }
 
@@ -160,8 +215,11 @@ public class ZerobusSettings83 extends PersistentRecord {
         setBoolean(DebugLogging, config.isDebugLogging());
         setString(WorkspaceUrl, config.getWorkspaceUrl());
         setString(ZerobusEndpoint, config.getZerobusEndpoint());
+        setString(AuthMode, config.getAuthMode());
         setString(OauthClientId, config.getOauthClientId());
         setString(OauthClientSecret, config.getOauthClientSecret());
+        setString(BearerToken, config.getBearerToken());
+        setString(AccountId, config.getAccountId());
         setString(TargetTable, config.getTargetTable());
         setString(SourceSystemId, config.getSourceSystemId());
         setBoolean(EnableDirectSubscriptions, config.isEnableDirectSubscriptions());
@@ -188,6 +246,19 @@ public class ZerobusSettings83 extends PersistentRecord {
         setBoolean(IncludeQuality, config.isIncludeQuality());
         setBoolean(OnlyOnChange, config.isOnlyOnChange());
         setDouble(NumericDeadband, config.getNumericDeadband());
+        setBoolean(EnableSdtCompression, config.isEnableSdtCompression());
+        setDouble(SdtDeviation, config.getSdtDeviation());
+        setInt(SdtMaxIntervalSeconds, config.getSdtMaxIntervalSeconds());
+        setString(SinkMode, config.getSinkMode());
+        setBoolean(EnableZerobusSink, config.isEnableZerobusSink());
+        setBoolean(EnablePostgresSink, config.isEnablePostgresSink());
+        setString(PostgresHost, config.getPostgresHost());
+        setInt(PostgresPort, config.getPostgresPort());
+        setString(PostgresDatabase, config.getPostgresDatabase());
+        setString(PostgresUser, config.getPostgresUser());
+        setString(PostgresPassword, config.getPostgresPassword());
+        setString(PostgresTable, config.getPostgresTable());
+        setInt(PostgresPoolSize, config.getPostgresPoolSize());
     }
 }
 

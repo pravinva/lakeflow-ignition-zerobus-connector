@@ -47,7 +47,7 @@
 
   <rect x="770" y="85" width="150" height="70" class="box"/>
   <text x="785" y="112" class="text">Silver mapping</text>
-  <text x="785" y="132" class="muted">saint_ot.silver_signal_mapping</text>
+  <text x="785" y="132" class="muted">ot.silver_signal_mapping</text>
 
   <rect x="945" y="85" width="190" height="70" class="box"/>
   <text x="960" y="112" class="text">Silver views</text>

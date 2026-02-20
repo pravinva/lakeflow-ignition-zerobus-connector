@@ -180,7 +180,10 @@ public final class DiskSpool {
             persistMeta();
             logger.info("Compacted spool: previousSize={} bytes", size);
         } catch (Throwable t) {
-            logger.warn("Spool compaction failed (ignored)", t);
+            // Compaction is non-critical: the spool remains usable, but disk usage will be higher
+            // than necessary until compaction succeeds. Log the full exception for diagnosis.
+            logger.warn("Spool compaction failed; spool remains usable but disk usage may grow. "
+                    + "Check disk permissions and free space in: {}", dir, t);
         }
     }
 

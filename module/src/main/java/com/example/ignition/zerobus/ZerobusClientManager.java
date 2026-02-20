@@ -1,5 +1,7 @@
 package com.example.ignition.zerobus;
 
+import com.databricks.zerobus.AccountOidcHelper;
+import com.databricks.zerobus.BearerTokenStubFactory;
 import com.databricks.zerobus.ZerobusSdk;
 import com.databricks.zerobus.ZerobusStream;
 import com.databricks.zerobus.TableProperties;
@@ -12,6 +14,9 @@ import com.example.ignition.zerobus.pipeline.OtEventMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +25,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -43,6 +49,7 @@ public class ZerobusClientManager {
     // Metrics
     private AtomicLong totalEventsSent = new AtomicLong(0);
     private AtomicLong totalBatchesSent = new AtomicLong(0);
+    private AtomicLong totalBytesSent = new AtomicLong(0);
     private AtomicLong totalFailures = new AtomicLong(0);
     private volatile long lastSuccessfulSendTime = 0;
     private volatile long lastAckedOffset = 0;
@@ -61,12 +68,21 @@ public class ZerobusClientManager {
     private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
     private final AtomicLong nextRetryAtMs = new AtomicLong(0L);
     private final AtomicLong lastAuthFailureMs = new AtomicLong(0L);
-    
-    // Zerobus SDK objects
-    private ZerobusSdk zerobusSdk;
-    private ZerobusStream<OTEvent> zerobusStream;
-    private TableProperties<OTEvent> tableProperties;
-    private StreamConfigurationOptions streamOptions;
+
+    // Circuit breaker: stop attempting sends after repeated non-retriable errors.
+    // Opens after NON_RETRIABLE_TRIP_COUNT consecutive non-retriable failures, stays open for
+    // NON_RETRIABLE_COOLDOWN_MS before allowing one probe attempt.
+    private static final int NON_RETRIABLE_TRIP_COUNT = 3;
+    private static final long NON_RETRIABLE_COOLDOWN_MS = 10L * 60_000L; // 10 minutes
+    private volatile boolean circuitOpen = false;
+    private volatile long circuitOpenedAtMs = 0L;
+    private volatile String circuitOpenReason = null;
+
+    // Zerobus SDK objects - volatile to prevent race between ensureConnected() and shutdown()
+    private volatile ZerobusSdk zerobusSdk;
+    private volatile ZerobusStream<OTEvent> zerobusStream;
+    private volatile TableProperties<OTEvent> tableProperties;
+    private volatile StreamConfigurationOptions streamOptions;
 
     // Reconnect throttling to avoid hot-looping when the remote service is down.
     private final AtomicLong lastReconnectAttemptMs = new AtomicLong(0);
@@ -76,6 +92,11 @@ public class ZerobusClientManager {
         consecutiveFailures.set(0);
         lastErrorClass = ErrorClass.NONE;
         nextRetryAtMs.set(0L);
+        if (circuitOpen) {
+            logger.info("Circuit breaker closed - connection recovered after non-retriable error");
+            circuitOpen = false;
+            circuitOpenReason = null;
+        }
         // Keep lastError/lastErrorAtMs as historical breadcrumbs.
     }
 
@@ -89,6 +110,15 @@ public class ZerobusClientManager {
         int fails = consecutiveFailures.incrementAndGet();
         if (cls == ErrorClass.AUTH) {
             lastAuthFailureMs.set(now);
+        }
+        // Trip circuit breaker on repeated non-retriable errors
+        if (cls == ErrorClass.NON_RETRIABLE && fails >= NON_RETRIABLE_TRIP_COUNT && !circuitOpen) {
+            circuitOpen = true;
+            circuitOpenedAtMs = now;
+            circuitOpenReason = lastError;
+            logger.error("Circuit breaker OPEN after {} consecutive non-retriable errors. "
+                    + "Sends will be skipped for {}min. Reason: {}",
+                    fails, NON_RETRIABLE_COOLDOWN_MS / 60_000L, circuitOpenReason);
         }
         long backoffMs = computeBackoffMs(cls, fails);
         nextRetryAtMs.set(now + backoffMs);
@@ -236,6 +266,19 @@ public class ZerobusClientManager {
                 config.getWorkspaceUrl()
             );
             
+            // If bearer token mode, inject custom stub factory that bypasses M2M OAuth
+            if (config.isBearerTokenMode()) {
+                logger.info("Auth mode: bearer_token - injecting custom token supplier");
+                BearerTokenStubFactory.inject(zerobusSdk, () -> config.getBearerToken());
+            } else if (config.getAccountId() != null && !config.getAccountId().isEmpty()) {
+                logger.info("Auth mode: service_principal with account-level OIDC (accountId={})",
+                        config.getAccountId());
+                AccountOidcHelper.configure(zerobusSdk, config.getAccountId(),
+                        config.getOauthClientId(), config.getOauthClientSecret());
+            } else {
+                logger.info("Auth mode: service_principal - using SDK M2M OAuth");
+            }
+            
             // Configure table properties
             this.tableProperties = new TableProperties<>(
                 config.getTargetTable(),
@@ -256,10 +299,14 @@ public class ZerobusClientManager {
             
             // Create stream
             logger.info("Creating Zerobus stream...");
+            // In bearer_token mode the custom stub factory handles auth; pass placeholder
+            // credentials since the SDK requires non-null params.
+            String streamClientId = config.isBearerTokenMode() ? "bearer-token-mode" : config.getOauthClientId();
+            String streamClientSecret = config.isBearerTokenMode() ? "unused" : config.getOauthClientSecret();
             CompletableFuture<ZerobusStream<OTEvent>> streamFuture = zerobusSdk.createStream(
                 tableProperties,
-                config.getOauthClientId(),
-                config.getOauthClientSecret(),
+                streamClientId,
+                streamClientSecret,
                 streamOptions
             );
             
@@ -369,6 +416,17 @@ public class ZerobusClientManager {
      * Send a batch of normalized OT events (preferred API).
      */
     public boolean sendOtEvents(List<OTEvent> events) {
+        // Circuit breaker: skip sends entirely when open, allow a probe after cooldown
+        if (circuitOpen) {
+            long elapsed = System.currentTimeMillis() - circuitOpenedAtMs;
+            if (elapsed < NON_RETRIABLE_COOLDOWN_MS) {
+                // Still in cooldown - silently drop without logging every call
+                return false;
+            }
+            // Cooldown expired - allow one probe attempt through
+            logger.info("Circuit breaker cooldown expired; allowing probe attempt");
+        }
+
         if (!ensureConnected()) {
             logger.warn("Cannot send events - client not initialized or not connected");
             return false;
@@ -378,17 +436,38 @@ public class ZerobusClientManager {
         }
         logger.debug("Sending batch of {} OT events to Zerobus", events.size());
 
+        // Compute batch size (bytes) before adding batch_bytes_sent so the metric is payload size.
+        long batchBytes = 0;
+        for (OTEvent event : events) {
+            batchBytes += event.getSerializedSize();
+        }
+        // Rebuild events with batch_bytes_sent set so it lands in raw_tags (Delta) for demo observability.
+        List<OTEvent> eventsWithBatchSize = new ArrayList<>(events.size());
+        for (OTEvent event : events) {
+            eventsWithBatchSize.add(event.toBuilder().setBatchBytesSent(batchBytes).build());
+        }
+        events = eventsWithBatchSize;
+
+        // Capture local reference to avoid TOCTOU race with shutdown() nulling the field.
+        final ZerobusStream<OTEvent> stream = this.zerobusStream;
+        if (stream == null) {
+            logger.warn("Cannot send events - stream was closed during send");
+            connected.set(false);
+            return false;
+        }
+
         try {
             List<CompletableFuture<Void>> futures = new ArrayList<>();
             for (OTEvent event : events) {
-                futures.add(zerobusStream.ingestRecord(event));
+                futures.add(stream.ingestRecord(event));
             }
             CompletableFuture<Void> allFutures = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
             allFutures.get(config.getRequestTimeoutMs(), TimeUnit.MILLISECONDS);
-            zerobusStream.flush();
+            stream.flush();
 
             totalEventsSent.addAndGet(events.size());
             totalBatchesSent.incrementAndGet();
+            totalBytesSent.addAndGet(batchBytes);
             lastSuccessfulSendTime = System.currentTimeMillis();
             recordSuccess();
             return true;
@@ -479,19 +558,34 @@ public class ZerobusClientManager {
     }
     
     /**
-     * Test the connection to Zerobus.
-     * 
-     * @return true if connection is successful
+     * Last error message from the most recent failure (e.g. testConnection or send).
+     * Exposed so callers can include it in API responses.
      */
-    public boolean testConnection() {
+    public String getLastError() {
+        return lastError;
+    }
+
+    /**
+     * Test the connection to Zerobus.
+     *
+     * @return empty on success, or the error message on failure
+     */
+    public Optional<String> testConnection() {
         logger.info("Testing Zerobus connection...");
-        
         try {
             // Create a temporary SDK instance for testing
             ZerobusSdk testSdk = new ZerobusSdk(
                 config.getZerobusEndpoint(),
                 config.getWorkspaceUrl()
             );
+            
+            // Inject custom auth if needed
+            if (config.isBearerTokenMode()) {
+                BearerTokenStubFactory.inject(testSdk, () -> config.getBearerToken());
+            } else if (config.getAccountId() != null && !config.getAccountId().isEmpty()) {
+                AccountOidcHelper.configure(testSdk, config.getAccountId(),
+                        config.getOauthClientId(), config.getOauthClientSecret());
+            }
             
             TableProperties<OTEvent> testTableProps = new TableProperties<>(
                 config.getTargetTable(),
@@ -505,10 +599,12 @@ public class ZerobusClientManager {
                 .build();
             
             // Try to create a stream
+            String testClientId = config.isBearerTokenMode() ? "bearer-token-mode" : config.getOauthClientId();
+            String testClientSecret = config.isBearerTokenMode() ? "unused" : config.getOauthClientSecret();
             CompletableFuture<ZerobusStream<OTEvent>> streamFuture = testSdk.createStream(
                 testTableProps,
-                config.getOauthClientId(),
-                config.getOauthClientSecret(),
+                testClientId,
+                testClientSecret,
                 testOptions
             );
             
@@ -518,17 +614,16 @@ public class ZerobusClientManager {
             testStream.close();
             
             logger.info("Connection test successful");
-            return true;
+            return Optional.empty();
             
         } catch (NonRetriableException e) {
             logger.error("Connection test failed with non-retriable error", e);
             lastError = e.getMessage();
-            return false;
-            
+            return Optional.ofNullable(e.getMessage()).or(() -> Optional.of(e.getClass().getSimpleName()));
         } catch (Exception e) {
             logger.error("Connection test failed", e);
             lastError = e.getMessage();
-            return false;
+            return Optional.ofNullable(e.getMessage()).or(() -> Optional.of(e.getClass().getSimpleName()));
         }
     }
     
@@ -593,25 +688,36 @@ public class ZerobusClientManager {
      * 
      * @return Diagnostics string
      */
+    private static final ZoneId AEDT_ZONE = ZoneId.of("Australia/Sydney");
+    private static final DateTimeFormatter AEDT_FMT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z").withZone(AEDT_ZONE);
+
+    private String formatTimestamp(long epochMs) {
+        long secondsAgo = (System.currentTimeMillis() - epochMs) / 1000;
+        String aedt = AEDT_FMT.format(Instant.ofEpochMilli(epochMs));
+        return secondsAgo + " seconds ago (" + aedt + ")";
+    }
+
     public String getDiagnostics() {
         StringBuilder sb = new StringBuilder();
         sb.append("=== Zerobus Client Diagnostics ===\n");
         sb.append("Initialized: ").append(initialized.get()).append("\n");
         sb.append("Connected: ").append(connected.get()).append("\n");
         
-        if (zerobusStream != null) {
-            sb.append("Stream ID: ").append(zerobusStream.getStreamId()).append("\n");
-            sb.append("Stream State: ").append(zerobusStream.getState()).append("\n");
+        ZerobusStream<OTEvent> stream = this.zerobusStream;
+        if (stream != null) {
+            sb.append("Stream ID: ").append(stream.getStreamId()).append("\n");
+            sb.append("Stream State: ").append(stream.getState()).append("\n");
         }
         
         sb.append("Total Events Sent: ").append(totalEventsSent.get()).append("\n");
         sb.append("Total Batches Sent: ").append(totalBatchesSent.get()).append("\n");
+        sb.append("Total Bytes Sent: ").append(totalBytesSent.get()).append("\n");
         sb.append("Total Failures: ").append(totalFailures.get()).append("\n");
         sb.append("Last Acked Offset: ").append(lastAckedOffset).append("\n");
         
         if (lastSuccessfulSendTime > 0) {
-            long secondsAgo = (System.currentTimeMillis() - lastSuccessfulSendTime) / 1000;
-            sb.append("Last Successful Send: ").append(secondsAgo).append(" seconds ago\n");
+            sb.append("Last Successful Send: ").append(formatTimestamp(lastSuccessfulSendTime)).append("\n");
         } else {
             sb.append("Last Successful Send: Never\n");
         }
@@ -622,10 +728,21 @@ public class ZerobusClientManager {
 
         sb.append("Last Error Class: ").append(lastErrorClass).append("\n");
         if (lastErrorAtMs > 0) {
-            long secondsAgo = (System.currentTimeMillis() - lastErrorAtMs) / 1000;
-            sb.append("Last Error At: ").append(secondsAgo).append(" seconds ago\n");
+            sb.append("Last Error At: ").append(formatTimestamp(lastErrorAtMs)).append("\n");
         }
         sb.append("Consecutive Failures: ").append(consecutiveFailures.get()).append("\n");
+        if (circuitOpen) {
+            long remainMs = NON_RETRIABLE_COOLDOWN_MS - (System.currentTimeMillis() - circuitOpenedAtMs);
+            sb.append("Circuit Breaker: OPEN (sends blocked)\n");
+            sb.append("Circuit Open Reason: ").append(circuitOpenReason).append("\n");
+            if (remainMs > 0) {
+                sb.append("Circuit Cooldown Remaining: ").append(remainMs / 1000).append(" seconds\n");
+            } else {
+                sb.append("Circuit Cooldown Remaining: expired (will probe on next send)\n");
+            }
+        } else {
+            sb.append("Circuit Breaker: closed\n");
+        }
         long retryAt = nextRetryAtMs.get();
         if (retryAt > 0) {
             long ms = retryAt - System.currentTimeMillis();
@@ -635,7 +752,9 @@ public class ZerobusClientManager {
                 sb.append("Next Retry In: now\n");
             }
         }
-        
+
+        sb.append("Diagnostics Generated: ").append(AEDT_FMT.format(Instant.now())).append("\n");
+
         return sb.toString();
     }
     
@@ -647,6 +766,10 @@ public class ZerobusClientManager {
     
     public long getTotalBatchesSent() {
         return totalBatchesSent.get();
+    }
+
+    public long getTotalBytesSent() {
+        return totalBytesSent.get();
     }
     
     public long getTotalFailures() {

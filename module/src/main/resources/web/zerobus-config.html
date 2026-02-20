@@ -521,16 +521,34 @@
                             <small class="form-help">Zerobus ingest endpoint</small>
                         </div>
                         <div class="form-group">
-                            <label for="oauthClientId" class="required">OAuth Client ID</label>
-                            <input type="text" class="form-control" id="oauthClientId" name="oauthClientId" required
-                                   autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
-                            <small class="form-help">Service principal client ID for authentication</small>
+                            <label for="authMode">Authentication Mode</label>
+                            <select class="form-control" id="authMode" name="authMode" onchange="toggleAuthFields()">
+                                <option value="service_principal">Service Principal (M2M OAuth)</option>
+                                <option value="bearer_token">Bearer Token (PAT / U2M)</option>
+                            </select>
+                            <small class="form-help">Service Principal uses client ID + secret. Bearer Token uses a pre-obtained token (PAT, etc.)</small>
                         </div>
-                        <div class="form-group">
-                            <label for="oauthClientSecret" class="required">OAuth Client Secret</label>
-                            <input type="password" class="form-control" id="oauthClientSecret" name="oauthClientSecret" required
-                                   autocomplete="new-password">
-                            <small class="form-help">Service principal client secret (encrypted)</small>
+                        <div id="spAuthFields">
+                            <div class="form-group">
+                                <label for="oauthClientId" class="required">OAuth Client ID</label>
+                                <input type="text" class="form-control" id="oauthClientId" name="oauthClientId"
+                                       autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+                                <small class="form-help">Service principal client ID for authentication</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="oauthClientSecret" class="required">OAuth Client Secret</label>
+                                <input type="password" class="form-control" id="oauthClientSecret" name="oauthClientSecret"
+                                       autocomplete="new-password">
+                                <small class="form-help">Service principal client secret (encrypted)</small>
+                            </div>
+                        </div>
+                        <div id="bearerAuthFields" style="display:none;">
+                            <div class="form-group">
+                                <label for="bearerToken" class="required">Bearer Token</label>
+                                <input type="password" class="form-control" id="bearerToken" name="bearerToken"
+                                       autocomplete="new-password">
+                                <small class="form-help">Personal Access Token (PAT) or pre-obtained OAuth access token</small>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -552,6 +570,54 @@
                             <input type="text" class="form-control" id="sourceSystemId" name="sourceSystemId"
                                    value="ignition-gateway">
                             <small class="form-help">Identifier for this Ignition gateway</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sink Selection -->
+                <div class="section">
+                    <div class="section-header">
+                        <h2>Sink Selection</h2>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="sinkMode">Sink Mode</label>
+                            <select class="form-control" id="sinkMode" name="sinkMode">
+                                <option value="zerobus">Zerobus (Delta Lake)</option>
+                                <option value="lakebase">Lakebase (PostgreSQL)</option>
+                            </select>
+                            <small class="form-help">Exclusive mode for demo comparison (one sink active at a time)</small>
+                        </div>
+                    </div>
+                    <div id="postgresFields" class="form-grid" style="display:none; margin-top: 12px;">
+                        <div class="form-group">
+                            <label for="postgresHost">PostgreSQL Host</label>
+                            <input type="text" class="form-control" id="postgresHost" name="postgresHost"
+                                   placeholder="ep-xxxx.australiaeast.databricks.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="postgresPort">PostgreSQL Port</label>
+                            <input type="number" class="form-control" id="postgresPort" name="postgresPort" value="5432" min="1" max="65535">
+                        </div>
+                        <div class="form-group">
+                            <label for="postgresDatabase">Database</label>
+                            <input type="text" class="form-control" id="postgresDatabase" name="postgresDatabase" value="databricks_postgres">
+                        </div>
+                        <div class="form-group">
+                            <label for="postgresUser">User</label>
+                            <input type="text" class="form-control" id="postgresUser" name="postgresUser">
+                        </div>
+                        <div class="form-group">
+                            <label for="postgresPassword">Password</label>
+                            <input type="password" class="form-control" id="postgresPassword" name="postgresPassword" autocomplete="new-password">
+                        </div>
+                        <div class="form-group">
+                            <label for="postgresTable">Table</label>
+                            <input type="text" class="form-control" id="postgresTable" name="postgresTable" value="raw_tags">
+                        </div>
+                        <div class="form-group">
+                            <label for="postgresPoolSize">Connection Pool Size</label>
+                            <input type="number" class="form-control" id="postgresPoolSize" name="postgresPoolSize" value="5" min="1" max="100">
                         </div>
                     </div>
                 </div>
@@ -768,6 +834,38 @@
                                 <small class="form-help">Minimum change threshold for numeric values (0 = send all)</small>
                             </div>
                         </div>
+
+                        <hr style="margin: 20px 0; border: none; border-top: 1px solid #e1e4e8;">
+
+                        <div class="info-card">
+                            <div class="info-card-title">Swinging Door Trending (SDT) Compression</div>
+                            <div class="info-card-content">
+                                Industry-standard algorithm (OSIsoft PI, Honeywell PHD) that suppresses numeric points
+                                falling within a linear interpolation corridor. Typically achieves 80-95% compression on
+                                slowly-changing analog signals. Non-numeric tags (booleans, strings) pass through unchanged.
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="enableSdtCompression" name="enableSdtCompression">
+                                <label for="enableSdtCompression">Enable SDT Compression</label>
+                            </div>
+                            <small class="form-help">Enable Swinging Door Trending compression for numeric tags</small>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="sdtDeviation">SDT Deviation</label>
+                                <input type="number" class="form-control" id="sdtDeviation" name="sdtDeviation" value="1.0" min="0.001" step="0.1">
+                                <small class="form-help">Absolute deviation band (+/-) in engineering units. Smaller = more points transmitted.</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="sdtMaxIntervalSeconds">SDT Heartbeat Interval (seconds)</label>
+                                <input type="number" class="form-control" id="sdtMaxIntervalSeconds" name="sdtMaxIntervalSeconds" value="300" min="1" step="1">
+                                <small class="form-help">Maximum seconds between transmitted points (forces periodic emission even if value is stable)</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -820,6 +918,7 @@
                                 <div class="k">Workspace URL</div><div class="v mono" id="cfgWorkspaceUrl">—</div>
                                 <div class="k">Zerobus Endpoint</div><div class="v mono" id="cfgZerobusEndpoint">—</div>
                                 <div class="k">Target Table</div><div class="v mono" id="cfgTargetTable">—</div>
+                                <div class="k">Sink Mode</div><div class="v" id="cfgSinkMode">—</div>
                                 <div class="k">Tag Mode</div><div class="v" id="cfgTagMode">—</div>
                                 <div class="k">Explicit Tags</div><div class="v" id="cfgExplicitCount">—</div>
                                 <div class="k">Include Subfolders</div><div class="v" id="cfgIncludeSubfolders">—</div>
@@ -868,6 +967,17 @@
                 safToggle.addEventListener('change', updateSafUI);
             }
 
+            // SDT compression toggle
+            const sdtToggle = document.getElementById('enableSdtCompression');
+            if (sdtToggle) {
+                sdtToggle.addEventListener('change', updateSdtUI);
+            }
+
+            const sinkModeEl = document.getElementById('sinkMode');
+            if (sinkModeEl) {
+                sinkModeEl.addEventListener('change', updateSinkUI);
+            }
+
             // Tag input handler
             const tagInput = document.getElementById('explicitTagPathsInput');
             tagInput.addEventListener('keypress', function(e) {
@@ -890,6 +1000,19 @@
             const icon = header.querySelector('.toggle-icon');
             content.classList.toggle('active');
             icon.classList.toggle('rotated');
+        }
+
+        function toggleAuthFields() {
+            const mode = document.getElementById('authMode').value;
+            const spFields = document.getElementById('spAuthFields');
+            const bearerFields = document.getElementById('bearerAuthFields');
+            if (mode === 'bearer_token') {
+                spFields.style.display = 'none';
+                bearerFields.style.display = 'block';
+            } else {
+                spFields.style.display = 'block';
+                bearerFields.style.display = 'none';
+            }
         }
 
         function updateTagSelectionUI() {
@@ -920,6 +1043,28 @@
             for (const id of ids) {
                 const el = document.getElementById(id);
                 if (el) el.disabled = !enabled;
+            }
+        }
+
+        function updateSdtUI() {
+            const enabled = document.getElementById('enableSdtCompression')
+                ? document.getElementById('enableSdtCompression').checked
+                : false;
+
+            const ids = ['sdtDeviation', 'sdtMaxIntervalSeconds'];
+            for (const id of ids) {
+                const el = document.getElementById(id);
+                if (el) el.disabled = !enabled;
+            }
+        }
+
+        function updateSinkUI() {
+            const sinkMode = document.getElementById('sinkMode')
+                ? document.getElementById('sinkMode').value
+                : 'zerobus';
+            const postgresFields = document.getElementById('postgresFields');
+            if (postgresFields) {
+                postgresFields.style.display = sinkMode === 'lakebase' ? 'grid' : 'none';
             }
         }
 
@@ -1005,6 +1150,7 @@
                 safeText('cfgWorkspaceUrl', cfg ? cfg.workspaceUrl : '—');
                 safeText('cfgZerobusEndpoint', cfg ? cfg.zerobusEndpoint : '—');
                 safeText('cfgTargetTable', cfg ? cfg.targetTable : '—');
+                safeText('cfgSinkMode', cfg ? (cfg.sinkMode || 'zerobus') : '—');
                 safeText('cfgTagMode', cfg ? cfg.tagSelectionMode : '—');
                 const tagCount = cfg && Array.isArray(cfg.explicitTagPaths) ? cfg.explicitTagPaths.length : 0;
                 safeText('cfgExplicitCount', cfg ? `${tagCount} tag(s)` : '—');
@@ -1054,8 +1200,11 @@
             // Databricks connection
             document.getElementById('workspaceUrl').value = config.workspaceUrl || '';
             document.getElementById('zerobusEndpoint').value = config.zerobusEndpoint || '';
+            document.getElementById('authMode').value = config.authMode || 'service_principal';
             document.getElementById('oauthClientId').value = config.oauthClientId || '';
             document.getElementById('oauthClientSecret').value = config.oauthClientSecret || '';
+            document.getElementById('bearerToken').value = config.bearerToken || '';
+            toggleAuthFields();
 
             // Unity Catalog
             document.getElementById('targetTable').value = config.targetTable || '';
@@ -1097,6 +1246,23 @@
             document.getElementById('includeQuality').checked = config.includeQuality !== false;
             document.getElementById('onlyOnChange').checked = config.onlyOnChange !== false;
             document.getElementById('numericDeadband').value = config.numericDeadband || 0.0;
+
+            // SDT Compression
+            document.getElementById('enableSdtCompression').checked = config.enableSdtCompression || false;
+            document.getElementById('sdtDeviation').value = (config.sdtDeviation !== undefined && config.sdtDeviation !== null) ? config.sdtDeviation : 1.0;
+            document.getElementById('sdtMaxIntervalSeconds').value = (config.sdtMaxIntervalSeconds !== undefined && config.sdtMaxIntervalSeconds !== null) ? config.sdtMaxIntervalSeconds : 300;
+            updateSdtUI();
+
+            // Sink mode + PostgreSQL settings
+            document.getElementById('sinkMode').value = config.sinkMode || (config.enablePostgresSink ? 'lakebase' : 'zerobus');
+            document.getElementById('postgresHost').value = config.postgresHost || '';
+            document.getElementById('postgresPort').value = (config.postgresPort !== undefined && config.postgresPort !== null) ? config.postgresPort : 5432;
+            document.getElementById('postgresDatabase').value = config.postgresDatabase || 'databricks_postgres';
+            document.getElementById('postgresUser').value = config.postgresUser || '';
+            document.getElementById('postgresPassword').value = config.postgresPassword || '';
+            document.getElementById('postgresTable').value = config.postgresTable || 'raw_tags';
+            document.getElementById('postgresPoolSize').value = (config.postgresPoolSize !== undefined && config.postgresPoolSize !== null) ? config.postgresPoolSize : 5;
+            updateSinkUI();
         }
 
         function getFormData() {
@@ -1105,8 +1271,10 @@
                 debugLogging: document.getElementById('debugLogging').checked,
                 workspaceUrl: document.getElementById('workspaceUrl').value,
                 zerobusEndpoint: document.getElementById('zerobusEndpoint').value,
+                authMode: document.getElementById('authMode').value,
                 oauthClientId: document.getElementById('oauthClientId').value,
                 oauthClientSecret: document.getElementById('oauthClientSecret').value,
+                bearerToken: document.getElementById('bearerToken').value,
                 targetTable: document.getElementById('targetTable').value,
                 sourceSystemId: document.getElementById('sourceSystemId').value,
                 enableDirectSubscriptions: document.getElementById('enableDirectSubscriptions') ? document.getElementById('enableDirectSubscriptions').checked : true,
@@ -1131,7 +1299,20 @@
                 requestTimeoutMs: parseInt(document.getElementById('requestTimeoutMs').value),
                 includeQuality: document.getElementById('includeQuality').checked,
                 onlyOnChange: document.getElementById('onlyOnChange').checked,
-                numericDeadband: parseFloat(document.getElementById('numericDeadband').value)
+                numericDeadband: parseFloat(document.getElementById('numericDeadband').value),
+                enableSdtCompression: document.getElementById('enableSdtCompression').checked,
+                sdtDeviation: parseFloat(document.getElementById('sdtDeviation').value),
+                sdtMaxIntervalSeconds: parseInt(document.getElementById('sdtMaxIntervalSeconds').value),
+                sinkMode: document.getElementById('sinkMode').value,
+                enableZerobusSink: document.getElementById('sinkMode').value === 'zerobus',
+                enablePostgresSink: document.getElementById('sinkMode').value === 'lakebase',
+                postgresHost: document.getElementById('postgresHost').value,
+                postgresPort: parseInt(document.getElementById('postgresPort').value),
+                postgresDatabase: document.getElementById('postgresDatabase').value,
+                postgresUser: document.getElementById('postgresUser').value,
+                postgresPassword: document.getElementById('postgresPassword').value,
+                postgresTable: document.getElementById('postgresTable').value,
+                postgresPoolSize: parseInt(document.getElementById('postgresPoolSize').value)
             };
         }
 

@@ -114,14 +114,13 @@ public class ConfigPanel {
             }
             
             // Test connection
-            boolean success = gatewayHook.testConnection();
-            
+            java.util.Optional<String> err = gatewayHook.testConnection();
+            boolean success = err.isEmpty();
             if (success) {
                 logger.info("Connection test successful");
             } else {
-                logger.error("Connection test failed - check Gateway logs");
+                logger.error("Connection test failed: {}", err.orElse("check Gateway logs"));
             }
-            
             return success;
             
         } catch (Exception e) {

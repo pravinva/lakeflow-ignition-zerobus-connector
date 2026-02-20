@@ -26,11 +26,26 @@ public final class ZerobusServletHandler {
     private static final Logger logger = LoggerFactory.getLogger(ZerobusServletHandler.class);
     private static final Gson gson = new Gson();
 
+    /** Maximum number of events in a single /ingest/batch request to prevent OOM. */
+    private static final int MAX_BATCH_SIZE = 10_000;
+
+    /** Maximum body size (bytes) for ingest endpoints to prevent memory exhaustion. */
+    private static final int MAX_BODY_BYTES = 10 * 1024 * 1024; // 10 MB
+
     private ZerobusServletHandler() {
         // no-op
     }
 
+    /** Backwards-compatible entry point (no auth header). */
     public static Response handle(String method, String pathInfo, String body) {
+        return handle(method, pathInfo, body, null);
+    }
+
+    /**
+     * Main entry point. The authHeader parameter carries the Authorization header value
+     * for API key validation on POST endpoints.
+     */
+    public static Response handle(String method, String pathInfo, String body, String authHeader) {
         String path = normalizePath(pathInfo);
 
         ZerobusConfigResource resource = ZerobusConfigResourceHolder.get();
@@ -41,6 +56,18 @@ public final class ZerobusServletHandler {
                 return handleGet(runtime, path);
             }
             if ("POST".equalsIgnoreCase(method)) {
+                // API key check: when ingestApiKey is configured, all POST requests must
+                // include a matching Authorization: Bearer <key> header.
+                if (runtime != null) {
+                    String apiKey = runtime.getConfigModel() != null
+                            ? runtime.getConfigModel().getIngestApiKey() : null;
+                    if (apiKey != null && !apiKey.isEmpty()) {
+                        String expected = "Bearer " + apiKey;
+                        if (authHeader == null || !expected.equals(authHeader)) {
+                            return Response.json(401, "{\"error\":\"unauthorized\"}");
+                        }
+                    }
+                }
                 return handlePost(runtime, path, body == null ? "" : body);
             }
             return Response.json(405, "{\"error\":\"method_not_allowed\"}");
@@ -68,6 +95,13 @@ public final class ZerobusServletHandler {
             return Response.text(200, runtime.getDiagnosticsInfo());
         }
 
+        if ("/metrics".equals(path)) {
+            if (runtime == null) {
+                return Response.json(200, "{\"events_sent\":0,\"batches_sent\":0,\"bytes_sent\":0}");
+            }
+            return Response.json(200, runtime.getMetricsJson());
+        }
+
         if ("/config".equals(path)) {
             if (runtime == null) {
                 return Response.json(500, "{\"error\":\"hook_not_initialized\"}");
@@ -85,10 +119,25 @@ public final class ZerobusServletHandler {
                     String secret = cfg.getOauthClientSecret();
                     obj.addProperty("oauthClientSecret", (secret == null || secret.isEmpty()) ? "" : "****");
                 }
+                if (obj.has("bearerToken")) {
+                    String token = cfg.getBearerToken();
+                    obj.addProperty("bearerToken", (token == null || token.isEmpty()) ? "" : "****");
+                }
+                if (obj.has("ingestApiKey")) {
+                    String key = cfg.getIngestApiKey();
+                    obj.addProperty("ingestApiKey", (key == null || key.isEmpty()) ? "" : "****");
+                }
                 return Response.json(200, gson.toJson(obj));
             }
 
             return Response.json(200, gson.toJson(cfg));
+        }
+
+        if ("/diagnostics/sdt".equals(path)) {
+            if (runtime == null) {
+                return Response.json(500, "{\"error\":\"hook_not_initialized\"}");
+            }
+            return Response.json(200, runtime.getSdtValidationReportJson(20, 10));
         }
 
         return Response.json(404, "{\"error\":\"not_found\"}");
@@ -111,14 +160,28 @@ public final class ZerobusServletHandler {
                 return Response.json(400, "{\"error\":\"invalid_config\"}");
             }
 
-            // Preserve secret if UI sends blank/"****" (masked). This allows updating other fields without
-            // overwriting the stored secret.
+            // Preserve secrets if UI sends blank/"****" (masked). This allows updating other fields without
+            // overwriting the stored secrets.
+            ConfigModel existing = runtime.getConfigModel();
             String incomingSecret = newCfg.getOauthClientSecret();
             if (incomingSecret == null || incomingSecret.isBlank() || "****".equals(incomingSecret)) {
-                ConfigModel existing = runtime.getConfigModel();
                 String existingSecret = existing == null ? null : existing.getOauthClientSecret();
                 if (existingSecret != null && !existingSecret.isBlank()) {
                     newCfg.setOauthClientSecret(existingSecret);
+                }
+            }
+            String incomingToken = newCfg.getBearerToken();
+            if (incomingToken == null || incomingToken.isBlank() || "****".equals(incomingToken)) {
+                String existingToken = existing == null ? null : existing.getBearerToken();
+                if (existingToken != null && !existingToken.isBlank()) {
+                    newCfg.setBearerToken(existingToken);
+                }
+            }
+            String incomingApiKey = newCfg.getIngestApiKey();
+            if (incomingApiKey == null || incomingApiKey.isBlank() || "****".equals(incomingApiKey)) {
+                String existingKey = existing == null ? null : existing.getIngestApiKey();
+                if (existingKey != null && !existingKey.isBlank()) {
+                    newCfg.setIngestApiKey(existingKey);
                 }
             }
 
@@ -150,10 +213,11 @@ public final class ZerobusServletHandler {
         }
 
         if ("/test-connection".equals(path)) {
-            boolean ok = runtime.testConnection();
+            java.util.Optional<String> err = runtime.testConnection();
+            boolean ok = err.isEmpty();
             JsonObject resp = new JsonObject();
             resp.addProperty("success", ok);
-            resp.addProperty("message", ok ? "Connection test successful" : "Connection test failed");
+            resp.addProperty("message", ok ? "Connection test successful" : err.orElse("Connection test failed"));
             return Response.json(ok ? 200 : 400, gson.toJson(resp));
         }
 
@@ -166,6 +230,9 @@ public final class ZerobusServletHandler {
         }
 
         if ("/ingest".equals(path)) {
+            if (body.length() > MAX_BODY_BYTES) {
+                return Response.json(413, "{\"error\":\"payload_too_large\"}");
+            }
             TagEventPayload payload;
             try {
                 payload = gson.fromJson(body, TagEventPayload.class);
@@ -174,6 +241,9 @@ public final class ZerobusServletHandler {
             }
             if (payload == null) {
                 return Response.json(400, "{\"error\":\"invalid_payload\"}");
+            }
+            if (payload.getTagPath() == null || payload.getTagPath().isEmpty()) {
+                return Response.json(400, "{\"error\":\"tagPath_required\"}");
             }
             boolean accepted = runtime.ingestTagEvent(payload);
             JsonObject resp = new JsonObject();
@@ -184,6 +254,9 @@ public final class ZerobusServletHandler {
         }
 
         if ("/ingest/batch".equals(path)) {
+            if (body.length() > MAX_BODY_BYTES) {
+                return Response.json(413, "{\"error\":\"payload_too_large\"}");
+            }
             TagEventPayload[] payloads;
             try {
                 payloads = gson.fromJson(body, TagEventPayload[].class);
@@ -192,6 +265,13 @@ public final class ZerobusServletHandler {
             }
 
             int received = payloads == null ? 0 : payloads.length;
+            if (received > MAX_BATCH_SIZE) {
+                JsonObject resp = new JsonObject();
+                resp.addProperty("error", "batch_too_large");
+                resp.addProperty("maxBatchSize", MAX_BATCH_SIZE);
+                resp.addProperty("received", received);
+                return Response.json(413, gson.toJson(resp));
+            }
             int accepted = received == 0 ? 0 : runtime.ingestTagEventBatch(payloads);
             int dropped = Math.max(0, received - accepted);
 

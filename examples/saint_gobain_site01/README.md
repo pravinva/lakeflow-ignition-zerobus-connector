@@ -30,10 +30,10 @@ Databricks Lakehouse
   Bronze: ignition_demo.scada_data.tag_events
         |
         v
-  Silver: ignition_demo.saint_ot (mapping + normalized views)
+  Silver: ignition_demo.ot (mapping + normalized views)
         |
         v
-  Gold: ignition_demo.saint_ot (KPIs, rollups, forecast accuracy)
+  Gold: ignition_demo.ot (KPIs, rollups, forecast accuracy)
         |
         +--> Dashboards (AI/BI)
         |
@@ -229,7 +229,7 @@ This demo **reuses the same Bronze table** you already have:
 
 and builds Saint-Gobain layers in a dedicated schema:
 
-- **Silver/Gold**: `ignition_demo.saint_ot`
+- **Silver/Gold**: `ignition_demo.ot`
 
 Run these in order:
 
@@ -262,11 +262,11 @@ Use `tools/databricks_end2end_sg/50_genie_room_seed.md`.
 
 Suggested tables/views to add:
 
-- `ignition_demo.saint_ot.gold_site_kpis_5m`
-- `ignition_demo.saint_ot.gold_site_kpis_daily`
-- `ignition_demo.saint_ot.gold_forecast_accuracy_hourly`
-- `ignition_demo.saint_ot.silver_signals_1m` (drilldown)
-- `ignition_demo.saint_ot.silver_maintenance_events` (drilldown)
+- `ignition_demo.ot.gold_site_kpis_5m`
+- `ignition_demo.ot.gold_site_kpis_daily`
+- `ignition_demo.ot.gold_forecast_accuracy_hourly`
+- `ignition_demo.ot.silver_signals_1m` (drilldown)
+- `ignition_demo.ot.silver_maintenance_events` (drilldown)
 
 Example questions:
 
