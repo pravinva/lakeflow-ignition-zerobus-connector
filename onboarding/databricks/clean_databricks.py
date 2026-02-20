@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Drop catalog (CASCADE), delete SDP pipeline, and delete zerobus app for a clean Databricks reset.
+"""Drop catalog (CASCADE), delete SDP pipeline, training job, and zerobus app for a clean Databricks reset.
 
 Run with the same profile used for setup (e.g. your user profile with metastore/admin rights).
 After this, run make db-setup-sql (or make bootstrap-83) to recreate everything.
@@ -10,12 +10,14 @@ Usage:
 Optional env:
   CATALOG (default: agl_demo)
   PIPELINE_NAME (default: [production] agl-etl)
+  JOB_NAME (default: [production] agl-train-health-model)
   DATABRICKS_WAREHOUSE_ID (default: e4082fdb7ea19a15)
 
 Flags:
-  --skip-catalog   Do not drop the catalog (e.g. keep data, only remove pipeline + app).
+  --skip-catalog   Do not drop the catalog (e.g. keep data, only remove pipeline + app + job).
   --skip-pipeline  Do not delete the pipeline.
   --skip-app       Do not delete the app.
+  --skip-job       Do not delete the training job.
 """
 
 from __future__ import annotations
@@ -28,6 +30,7 @@ from databricks.sdk import WorkspaceClient
 
 DEFAULT_CATALOG = "agl_demo"
 DEFAULT_PIPELINE_NAME = "[production] agl-etl"
+DEFAULT_JOB_NAME = "[production] agl-train-health-model"
 DEFAULT_WAREHOUSE_ID = "e4082fdb7ea19a15"
 APP_NAME = "zerobus-ignition-agl"
 
@@ -51,11 +54,17 @@ def main() -> int:
         action="store_true",
         help="Do not delete the app.",
     )
+    parser.add_argument(
+        "--skip-job",
+        action="store_true",
+        help="Do not delete the training job.",
+    )
     args = parser.parse_args()
 
     profile = os.environ.get("DATABRICKS_CONFIG_PROFILE", "daveok")
     catalog = os.environ.get("CATALOG", DEFAULT_CATALOG)
     pipeline_name = os.environ.get("PIPELINE_NAME", DEFAULT_PIPELINE_NAME)
+    job_name = os.environ.get("JOB_NAME", DEFAULT_JOB_NAME)
     warehouse_id = os.environ.get("DATABRICKS_WAREHOUSE_ID", DEFAULT_WAREHOUSE_ID)
 
     w = WorkspaceClient(profile=profile)
@@ -116,6 +125,25 @@ def main() -> int:
                 return 1
     else:
         print("▸ Skipping app delete (--skip-app)")
+
+    if not args.skip_job:
+        job_id = None
+        for j in w.jobs.list():
+            if j.settings and j.settings.name == job_name:
+                job_id = j.job_id
+                break
+        if job_id:
+            print(f"▸ Deleting job '{job_name}' (id={job_id})...")
+            try:
+                w.jobs.delete(job_id=job_id)
+                print(f"   Deleted job {job_name}")
+            except Exception as e:
+                print(f"   Failed: {e}", file=sys.stderr)
+                return 1
+        else:
+            print(f"   Job '{job_name}' not found (skip)")
+    else:
+        print("▸ Skipping job delete (--skip-job)")
 
     print("✔ Databricks clean complete. Run make db-setup-sql (or make bootstrap-83) to recreate.")
     return 0

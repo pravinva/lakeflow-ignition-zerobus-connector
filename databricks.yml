@@ -1,11 +1,32 @@
-# Databricks Asset Bundle: Zerobus Ignition AGL demo app
-# Pipeline is created/updated via SDK (onboarding/databricks/deploy_pipeline_sdk.py) pointing at a Git folder.
-# This bundle deploys only the app.
+# Databricks Asset Bundle: Zerobus Ignition AGL
+# Single deployment command for all resources: databricks bundle deploy -t production
+#
+# Resources managed by this bundle:
+#   - Databricks App (zerobus-ignition-agl)
+#   - Lakebase database instance (agl-demo-lakebase)
+#   - SDP ETL pipeline (agl-etl)
+#   - Training job (train-health-model)
 #
 # Example: databricks bundle deploy -t production
 
 bundle:
   name: zerobus-ignition-agl
+
+sync:
+  exclude:
+    - "module/"
+    - "docker/"
+    - "docker-out/"
+    - "releases/"
+    - "zerobus-test/"
+    - "onboarding/"
+    - "examples/"
+    - "docs/"
+    - "prompts/"
+    - "tools/"
+    - "simulator/"
+    - "frontend/"
+    - "*.modl"
 
 variables:
   catalog:
@@ -14,6 +35,12 @@ variables:
   schema:
     description: Schema for OT tables (e.g. raw_tags, asset framework)
     default: "ot"
+  pipeline_name:
+    description: Display name for the SDP ETL pipeline
+    default: "[production] agl-etl"
+  job_name:
+    description: Display name for the health model training job
+    default: "[production] agl-train-health-model"
   lakebase_instance_name:
     description: Lakebase database instance name for app + connector
     default: "agl-demo-lakebase"
@@ -44,6 +71,8 @@ targets:
     variables:
       catalog: "agl_demo"
       schema: "ot"
+      pipeline_name: "[production] agl-etl"
+      job_name: "[production] agl-train-health-model"
       lakebase_instance_name: "agl-demo-lakebase"
       lakebase_instance_capacity: "CU_1"
       lakebase_database_name: "databricks_postgres"
@@ -57,10 +86,41 @@ resources:
       capacity: ${var.lakebase_instance_capacity}
       enable_pg_native_login: true
 
+  pipelines:
+    agl_etl:
+      name: ${var.pipeline_name}
+      catalog: ${var.catalog}
+      target: ${var.schema}
+      libraries:
+        - glob:
+            include: ./pipelines/sdp/transformations/**
+      environment:
+        dependencies:
+          - /Volumes/${var.catalog}/${var.schema}/wheels/agl_analytics-0.1.0-py3-none-any.whl
+      serverless: true
+      photon: true
+      continuous: true
+      channel: PREVIEW
+      development: false
+
+  jobs:
+    train_health_model:
+      name: ${var.job_name}
+      max_concurrent_runs: 1
+      tasks:
+        - task_key: train_health_model
+          description: "Train IsolationForest and register to UC asset_health_model"
+          new_cluster:
+            spark_version: "14.3.x-scala2.12"
+            node_type_id: "Standard_DS3_v2"
+            num_workers: 0
+          spark_python_task:
+            python_file: ./pipelines/sdp/transformations/train_health_model.py
+
   apps:
     zerobus_ignition_agl:
       name: zerobus-ignition-agl
-      description: "Zerobus Ignition AGL – OT tag streaming and asset framework demo"
+      description: "Zerobus Ignition AGL - OT tag streaming and asset framework demo"
       source_code_path: https://github.com/dgokeeffe/lakeflow-ignition-zerobus-connector.git
       config:
         command:
