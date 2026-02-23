@@ -334,11 +334,11 @@ print('✔ Zerobus-only mode enabled' if resp.get('success') else '✘ ' + resp.
 "
 
 .PHONY: configure-lakebase-83
-configure-lakebase-83: configure-postgres-83 ## Force Lakebase-only mode on 8.3 gateway
+configure-lakebase-83: configure-83 configure-postgres-83 ## Force Lakebase-only mode on 8.3 gateway
 	@echo "✔ Lakebase-only mode configured on 8.3 gateway"
 
 .PHONY: configure-lakebase-83-direct
-configure-lakebase-83-direct: db-lakebase-provision-direct ## Provision Lakebase + configure 8.3 gateway in Lakebase mode
+configure-lakebase-83-direct: configure-83 db-lakebase-provision-direct ## Provision Lakebase + configure 8.3 gateway in Lakebase mode
 	@echo "▸ Applying direct-provisioned Lakebase connector credentials to 8.3 gateway..."
 	@if [ ! -f "$(LAKEBASE_CONNECTOR_ARTIFACT)" ]; then \
 		echo "✘ Connector artifact not found: $(LAKEBASE_CONNECTOR_ARTIFACT)"; \
@@ -372,11 +372,11 @@ print('✔ Zerobus-only mode enabled' if resp.get('success') else '✘ ' + resp.
 "
 
 .PHONY: configure-lakebase-81
-configure-lakebase-81: configure-postgres-81 ## Force Lakebase-only mode on 8.1 gateway
+configure-lakebase-81: configure-81 configure-postgres-81 ## Force Lakebase-only mode on 8.1 gateway
 	@echo "✔ Lakebase-only mode configured on 8.1 gateway"
 
 .PHONY: configure-lakebase-81-direct
-configure-lakebase-81-direct: db-lakebase-provision-direct ## Provision Lakebase + configure 8.1 gateway in Lakebase mode
+configure-lakebase-81-direct: configure-81 db-lakebase-provision-direct ## Provision Lakebase + configure 8.1 gateway in Lakebase mode
 	@echo "▸ Applying direct-provisioned Lakebase connector credentials to 8.1 gateway..."
 	@if [ ! -f "$(LAKEBASE_CONNECTOR_ARTIFACT)" ]; then \
 		echo "✘ Connector artifact not found: $(LAKEBASE_CONNECTOR_ARTIFACT)"; \
