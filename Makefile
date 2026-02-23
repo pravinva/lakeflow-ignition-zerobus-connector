@@ -810,8 +810,13 @@ links-83: ## [Step 7] Print all URLs for workspace, app, gateway, pipeline
 	@WS_HOST=$$(awk '/^\[$(DATABRICKS_CONFIG_PROFILE)\]/{found=1} found && /^host/{gsub(/^[^=]+=[ \t]*/,""); print; exit}' ~/.databrickscfg 2>/dev/null); \
 	if [ -n "$$WS_HOST" ]; then \
 		echo "   https://$$WS_HOST"; \
-		echo "   Catalog: https://$$WS_HOST/explore/data/$(CATALOG)/$(SCHEMA)"; \
-		echo "   Apps:    https://$$WS_HOST/apps"; \
+		echo "   Catalog:   https://$$WS_HOST/explore/data/$(CATALOG)/$(SCHEMA)"; \
+		APP_URL=$$(databricks apps get $(APP_NAME) -p $(DATABRICKS_CONFIG_PROFILE) 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin).get('url',''))" 2>/dev/null); \
+		if [ -n "$$APP_URL" ]; then \
+			echo "   App:       $$APP_URL"; \
+		else \
+			echo "   Apps:      https://$$WS_HOST/apps"; \
+		fi; \
 		echo "   Pipelines: https://$$WS_HOST/pipelines"; \
 	else \
 		echo "   (could not read host from [$(DATABRICKS_CONFIG_PROFILE)] profile)"; \
