@@ -65,6 +65,7 @@ DATABRICKS_WAREHOUSE_ID  := e4082fdb7ea19a15
 endif
 PIPELINE_NAME ?= [production] agl-etl
 JOB_NAME      ?= [production] agl-train-health-model
+APP_NAME      ?= zerobus-ignition-agl
 LAKEBASE_INSTANCE_NAME ?= agl-demo-lakebase
 LAKEBASE_INSTANCE_CAPACITY ?= CU_1
 LAKEBASE_CONNECTOR_ARTIFACT ?= .lakebase-connector.env
@@ -537,6 +538,18 @@ db-setup-sql: ## Run setup SQL (catalog, schema, tables, SP grants)
 		uv run --with databricks-sdk python onboarding/databricks/run_setup_sql.py
 	@echo "✔ Setup SQL complete"
 
+.PHONY: db-grant-app-sp
+db-grant-app-sp: ## Grant UC privileges to Databricks App SP (run after db-deploy)
+	@echo "▸ Granting UC privileges to app SP (app=$(APP_NAME), catalog=$(CATALOG).$(SCHEMA))..."
+	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
+	DATABRICKS_HOST=$(or $(DATABRICKS_HOST),$(WS_HOST)) \
+	APP_NAME=$(APP_NAME) \
+	CATALOG=$(CATALOG) \
+	SCHEMA=$(SCHEMA) \
+	DATABRICKS_WAREHOUSE_ID=$(DATABRICKS_WAREHOUSE_ID) \
+		uv run --with databricks-sdk python onboarding/databricks/uc_grants.py
+	@echo "✔ App SP grants complete"
+
 # ──────────────────────────────────────────────────────────────
 # Lakebase (PostgreSQL) setup
 # ──────────────────────────────────────────────────────────────
@@ -575,8 +588,7 @@ db-lakebase-test: ## Test Lakebase connection (SELECT 1)
 .PHONY: db-lakebase-provision-direct
 db-lakebase-provision-direct: ## Provision Lakebase via SDK/CLI + create connector role + grants + connector artifact
 	@if [ -z "$(LAKEBASE_USER)" ] || [ -z "$(LAKEBASE_PASSWORD)" ]; then \
-		echo "✘ Missing Lakebase admin credentials. Set LAKEBASE_USER and LAKEBASE_PASSWORD in .env"; \
-		exit 1; \
+		echo "▸ LAKEBASE_USER/LAKEBASE_PASSWORD not set; provisioning script will auto-generate a short-lived admin credential from profile [$(DATABRICKS_CONFIG_PROFILE)]."; \
 	fi
 	@echo "▸ Provisioning Lakebase direct deployment artifacts..."
 	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
@@ -824,7 +836,7 @@ all-83: build-83 up-83 ## Build + start 8.3 (still need setup wizard + configure
 all-81: build-81 up-81 ## Build + start 8.1 (still need configure)
 
 .PHONY: db-all
-db-all: db-create-sp db-setup-sql db-wheel db-deploy db-lakebase-post-deploy db-run ## Full Databricks setup (SP + SQL + wheel + bundle deploy + Lakebase DDL + run)
+db-all: db-create-sp db-setup-sql db-wheel db-deploy db-grant-app-sp db-lakebase-post-deploy db-run ## Full Databricks setup (SP + SQL + wheel + bundle deploy + Lakebase DDL + run)
 
 .PHONY: bootstrap-83
 bootstrap-83: db-all build-83 up-83 ## Everything from scratch (steps 1-4, then manual 4b-8)
