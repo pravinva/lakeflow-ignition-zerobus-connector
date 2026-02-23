@@ -25,7 +25,6 @@ sync:
     - "prompts/"
     - "tools/"
     - "simulator/"
-    - "frontend/"
     - "*.modl"
 
 variables:
@@ -121,7 +120,7 @@ resources:
     zerobus_ignition_agl:
       name: zerobus-ignition-agl
       description: "Zerobus Ignition AGL - OT tag streaming and asset framework demo"
-      source_code_path: https://github.com/dgokeeffe/lakeflow-ignition-zerobus-connector.git
+      source_code_path: ./demo/app
       config:
         command:
           - uvicorn

@@ -638,6 +638,23 @@ db-clean: ## Destroy DAB resources + drop catalog CASCADE (clean Databricks for 
 			--skip-pipeline --skip-app --skip-job
 	@echo "✔ Databricks clean complete"
 
+.PHONY: db-nuke
+db-nuke: ## Hard reset Databricks (force delete app/pipeline/job + drop catalog)
+	@echo "▸ Hard reset: destroy DAB state (best-effort)..."
+	-DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
+	DATABRICKS_HOST=$(or $(DATABRICKS_HOST),$(WS_HOST)) \
+	DATABRICKS_BUNDLE_ENGINE=$(BUNDLE_ENGINE) \
+		databricks bundle destroy -t production $(BUNDLE_VARS) --auto-approve
+	@echo "▸ Hard reset: force delete resources and catalog..."
+	DATABRICKS_CONFIG_PROFILE=$(DATABRICKS_CONFIG_PROFILE) \
+	DATABRICKS_HOST=$(or $(DATABRICKS_HOST),$(WS_HOST)) \
+	CATALOG=$(CATALOG) \
+	PIPELINE_NAME="$(PIPELINE_NAME)" \
+	JOB_NAME="$(JOB_NAME)" \
+	DATABRICKS_WAREHOUSE_ID=$(DATABRICKS_WAREHOUSE_ID) \
+		uv run --with databricks-sdk python onboarding/databricks/clean_databricks.py
+	@echo "✔ Databricks hard reset complete"
+
 .PHONY: db-lakebase-post-deploy
 db-lakebase-post-deploy: ## Run PostgreSQL DDL + grants after DAB creates Lakebase instance
 	@echo "▸ Running post-deploy Lakebase provisioning (DDL + grants)..."
@@ -827,6 +844,9 @@ bootstrap-83: db-all build-83 up-83 ## Everything from scratch (steps 1-4, then 
 	@echo "   7   make links-83              Show all URLs"
 	@echo "   8   make db-train-health-model (optional) Run training job"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+.PHONY: nuke-83
+nuke-83: db-nuke clean-83 bootstrap-83 ## Hard nuke Databricks + gateway, then rebuild
 
 .PHONY: next-steps-83
 next-steps-83: ## Print post-bootstrap steps (4b-8) in sequence
