@@ -16,6 +16,14 @@ export function qualityLabel(quality: number | string | null | undefined): strin
   return 'Bad';
 }
 
+export function formatLatency(ms: number | string | null | undefined): string {
+  if (ms == null) return '-';
+  const v = typeof ms === 'string' ? parseFloat(ms) : ms;
+  if (isNaN(v)) return '-';
+  if (v >= 1000) return `${(v / 1000).toFixed(1)}s`;
+  return `${Math.round(v)}ms`;
+}
+
 export function latencyColor(ms: number | string | null | undefined): string {
   const v = typeof ms === 'string' ? parseFloat(ms) : ms;
   if (v == null || isNaN(v)) return 'text-gray-600';

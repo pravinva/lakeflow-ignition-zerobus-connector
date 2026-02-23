@@ -5,7 +5,7 @@ import type { DiagnosticData } from '../services/api';
 import ThroughputChart from '../components/ThroughputChart';
 import BigNumberCard from '../components/BigNumberCard';
 import EventStream from '../components/EventStream';
-import { formatNumber, latencyColor } from '../utils/format';
+import { formatNumber, formatLatency, latencyColor } from '../utils/format';
 
 type MetricsSource = 'raw_tags' | 'raw_throughput';
 type WindowMinutes = 5 | 15 | 30 | 60;
@@ -241,13 +241,13 @@ export default function Dashboard() {
           <>
             <BigNumberCard
               label="Avg time to insight"
-              value={`${formatNumber(latestLatency.avg_e2e_latency_ms, 0)}ms`}
+              value={formatLatency(latestLatency.avg_e2e_latency_ms)}
               subtitle="Ignition → Delta commit"
               colorClass={latencyColor(latestLatency.avg_e2e_latency_ms)}
             />
             <BigNumberCard
               label="P99 time to insight"
-              value={`${formatNumber(latestLatency.p99_e2e_latency_ms ?? 0, 0)}ms`}
+              value={formatLatency(latestLatency.p99_e2e_latency_ms)}
               subtitle="Ignition → Delta commit"
             />
           </>
@@ -283,7 +283,7 @@ export default function Dashboard() {
           label="Delta → app read"
           value={
             latestLatency?.avg_delta_to_app_ms != null
-              ? `${formatNumber(latestLatency.avg_delta_to_app_ms, 0)}ms`
+              ? formatLatency(latestLatency.avg_delta_to_app_ms)
               : '-'
           }
           subtitle="Commit visibility freshness"
