@@ -196,7 +196,7 @@ def _latency_e2e(minutes: int = 5) -> tuple[str, list[Any]]:
     return (
         "WITH cdf AS ("
         "  SELECT event_time, _commit_timestamp"
-        f"  FROM table_changes('{table_name}', TIMESTAMPADD(MINUTE, -:p_lookback, CURRENT_TIMESTAMP()), CURRENT_TIMESTAMP())"
+        f"  FROM table_changes('{table_name}', TIMESTAMPADD(MINUTE, -:p_lookback, CURRENT_TIMESTAMP()))"
         "  WHERE _change_type != 'update_preimage'"
         "    AND event_time IS NOT NULL"
         "    AND _commit_timestamp IS NOT NULL"
