@@ -340,6 +340,11 @@ def _raw_tags_storage_metrics() -> tuple[str, list[Any]]:
     return (f"DESCRIBE DETAIL {table}", [])
 
 
+def _raw_tags_total_count() -> tuple[str, list[Any]]:
+    """Total row count in raw_tags (used to scale Delta size to a time window)."""
+    return (f"SELECT COUNT(*) AS total_rows FROM {_t('raw_tags')}", [])
+
+
 def _sdt_config() -> tuple[str, list[Any]]:
     return (
         "SELECT tag_pattern, comp_dev, comp_dev_percent, comp_max_seconds, comp_min_seconds "
@@ -765,6 +770,7 @@ QUERY_BUILDERS: dict[str, Any] = {
     "assetTags": _asset_tags,
     "compressionComparison": _compression_comparison,
     "rawTagsStorageMetrics": _raw_tags_storage_metrics,
+    "rawTagsTotalCount": _raw_tags_total_count,
     "sdtConfig": _sdt_config,
     "sdtConfigUpdate": _sdt_config_update,
     # Analytics queries (APP-PRD)

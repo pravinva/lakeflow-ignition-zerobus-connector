@@ -45,6 +45,7 @@ def _get_int(row: dict, *keys: str, default: int = 0) -> int:
 def build_compression_layers(
     comparison_rows: list[dict],
     storage_rows: list[dict],
+    total_count_rows: list[dict] | None = None,
 ) -> list[dict]:
     """Build the four compression layers from comparison and storage query results.
 
@@ -72,13 +73,22 @@ def build_compression_layers(
         if delta_total_bytes is not None:
             delta_total_bytes = int(delta_total_bytes)
 
+    # Scale Delta size to the same time window as the raw/SDT estimates.
+    # DESCRIBE DETAIL gives the whole-table size; we need the fraction
+    # that corresponds to the 30-min window rows.
+    total_table_rows = 0
+    if total_count_rows:
+        total_table_rows = _get_int(total_count_rows[0], "total_rows", "TOTAL_ROWS")
+
     raw_size = total_raw * BYTES_PER_ROW_RAW
     after_sdt_size = total_bytes_estimate if total_bytes_estimate > 0 else 0
-    delta_size = (
-        delta_total_bytes
-        if delta_total_bytes is not None and delta_total_bytes > 0
-        else after_sdt_size
-    )
+    if delta_total_bytes and total_table_rows > 0 and total_after_sdt > 0:
+        # bytes-per-row in Delta ZSTD, scaled to the window row count
+        delta_size = int(delta_total_bytes * (total_after_sdt / total_table_rows))
+    elif delta_total_bytes is not None and delta_total_bytes > 0:
+        delta_size = delta_total_bytes
+    else:
+        delta_size = after_sdt_size
 
     def safe_ratio(num: float, denom: float) -> float:
         if denom is None or denom <= 0:
@@ -118,7 +128,8 @@ async def compression_comparison() -> dict:
     start = time.monotonic()
     comparison_rows = await query_service.execute("compressionComparison")
     storage_rows = await query_service.execute("rawTagsStorageMetrics")
-    layers = build_compression_layers(comparison_rows, storage_rows)
+    total_count_rows = await query_service.execute("rawTagsTotalCount")
+    layers = build_compression_layers(comparison_rows, storage_rows, total_count_rows)
     return _wrap(layers, start)
 
 
