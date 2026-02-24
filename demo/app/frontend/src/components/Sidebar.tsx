@@ -5,11 +5,11 @@ import databricksLogo from '../default/databricks-full.png';
 const mainLinks = [
   { to: '/', label: 'Talk Track' },
   { to: '/dashboard', label: 'Dashboard' },
+  { to: '/compression', label: 'Compression' },
   { to: '/postgres', label: 'PostgreSQL (Lakebase)' },
   { to: '/analytics', label: 'Fleet health & revenue risk' },
   { to: '/assets', label: 'Assets' },
   { to: '/assets/detail', label: 'Asset Detail' },
-  { to: '/compression', label: 'Compression' },
   { to: '/performance', label: 'Performance' },
   { to: '/architecture', label: 'Architecture' },
   { to: '/data-generation', label: 'Data Generation' },
