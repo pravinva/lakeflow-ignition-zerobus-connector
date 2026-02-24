@@ -192,8 +192,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Big number cards */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+      {/* Throughput cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
         <BigNumberCard
           label="Records/sec"
           value={
@@ -236,7 +236,24 @@ export default function Dashboard() {
           subtitle={latest?.sdt_enabled != null ? (latest.sdt_enabled ? 'Gateway: SDT on' : 'Gateway: SDT off') : undefined}
           colorClass="text-brand-green"
         />
-        {/* Primary: Time to insight (Ignition → Delta commit) when CDF commit timestamps are available */}
+      </div>
+
+      {/* Latency cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <BigNumberCard
+          label="Tag → gateway ingest"
+          value={
+            latestLatency
+              ? `${formatNumber(latestLatency.avg_latency_ms, 0)}ms`
+              : '-'
+          }
+          subtitle="Inside connector path only"
+          colorClass={
+            latestLatency
+              ? latencyColor(latestLatency.avg_latency_ms)
+              : 'text-databricks-primary'
+          }
+        />
         {latestLatency?.avg_e2e_latency_ms != null ? (
           <>
             <BigNumberCard
@@ -265,20 +282,6 @@ export default function Dashboard() {
             />
           </>
         )}
-        <BigNumberCard
-          label="Tag → gateway ingest"
-          value={
-            latestLatency
-              ? `${formatNumber(latestLatency.avg_latency_ms, 0)}ms`
-              : '-'
-          }
-          subtitle="Inside connector path only"
-          colorClass={
-            latestLatency
-              ? latencyColor(latestLatency.avg_latency_ms)
-              : 'text-databricks-primary'
-          }
-        />
         <BigNumberCard
           label="Delta → app read"
           value={
