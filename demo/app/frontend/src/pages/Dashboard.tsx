@@ -242,13 +242,13 @@ export default function Dashboard() {
             <BigNumberCard
               label="Avg time to insight"
               value={formatLatency(latestLatency.avg_e2e_latency_ms)}
-              subtitle="Ignition → Delta commit"
+              subtitle="Ignition → Delta commit (via raw_throughput)"
               colorClass={latencyColor(latestLatency.avg_e2e_latency_ms)}
             />
             <BigNumberCard
               label="P99 time to insight"
               value={formatLatency(latestLatency.p99_e2e_latency_ms)}
-              subtitle="Ignition → Delta commit"
+              subtitle="Ignition → Delta commit (via raw_throughput)"
             />
           </>
         ) : (
@@ -286,7 +286,7 @@ export default function Dashboard() {
               ? formatLatency(latestLatency.avg_delta_to_app_ms)
               : '-'
           }
-          subtitle="Commit visibility freshness"
+          subtitle="Commit visibility freshness (via raw_throughput)"
           colorClass={
             latestLatency?.avg_delta_to_app_ms != null
               ? latencyColor(latestLatency.avg_delta_to_app_ms)
