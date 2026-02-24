@@ -22,10 +22,10 @@ const WIND_TAGS = [
   'grid/frequency_hz',
 ];
 const BESS_TAGS = [
-  'battery/soc_pct',
-  'battery/charge_rate_kw',
-  'battery/temperature_c',
-  'inverter/power_kw',
+  'telemetry/soc_pct',
+  'telemetry/activepower_mw',
+  'thermal/maxracktemp_c',
+  'telemetry/frequency_hz',
 ];
 
 const CHART_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
