@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Iterable
 
 import psycopg
+from psycopg import sql
 
 
 def _quote_ident(name: str) -> str:
@@ -52,9 +53,13 @@ def ensure_login_role(conn: psycopg.Connection, role_name: str, password: str) -
         if not cur.fetchone():
             cur.execute(f"CREATE ROLE {_quote_ident(role_name)} LOGIN")
             created = True
+        # PostgreSQL does not support bind parameters in ALTER ROLE PASSWORD;
+        # use a safely-quoted SQL literal for rotation.
         cur.execute(
-            f"ALTER ROLE {_quote_ident(role_name)} WITH LOGIN PASSWORD %s",
-            (password,),
+            sql.SQL("ALTER ROLE {} WITH LOGIN PASSWORD {}").format(
+                sql.Identifier(role_name),
+                sql.Literal(password),
+            )
         )
     return created
 
