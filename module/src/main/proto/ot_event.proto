@@ -38,8 +38,8 @@ message OTEvent {
   // Boolean tag value (for boolean tags)
   optional bool boolean_value = 7;
   
-  // Quality indicator as string ("GOOD", "BAD", "UNCERTAIN")
-  optional string quality = 8;
+  // Numeric quality code expected by current Field Engineering stream contract.
+  optional int32 quality = 8;
   
   // Numeric quality code from Ignition
   optional int32 quality_code = 9;

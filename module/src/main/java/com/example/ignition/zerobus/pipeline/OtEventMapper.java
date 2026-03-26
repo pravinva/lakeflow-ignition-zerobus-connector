@@ -53,8 +53,8 @@ public final class OtEventMapper {
             dataType = "BOOLEAN";
         }
 
-        String quality = (config.isIncludeQuality() && event.getQuality() != null) ? event.getQuality() : "";
-        int qualityCode = (config.isIncludeQuality() && event.isGoodQuality()) ? 192 : 0;
+        int quality = (config.isIncludeQuality() && event.isGoodQuality()) ? 192 : 0;
+        int qualityCode = quality;
 
         OTEvent.Builder builder = OTEvent.newBuilder()
             .setEventId(eventId)

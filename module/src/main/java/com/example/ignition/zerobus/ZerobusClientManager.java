@@ -47,10 +47,13 @@ public class ZerobusClientManager {
     private volatile long lastSuccessfulSendTime = 0;
     private volatile long lastAckedOffset = 0;
     private volatile String lastError = null;
+    private volatile String lastErrorSummary = null;
+    private volatile String lastErrorStage = null;
 
     // Error classification / backoff state
     private enum ErrorClass {
         NONE,
+        PERMISSION,
         AUTH,
         TRANSIENT,
         NON_RETRIABLE
@@ -79,12 +82,14 @@ public class ZerobusClientManager {
         // Keep lastError/lastErrorAtMs as historical breadcrumbs.
     }
 
-    private void recordFailure(Throwable t) {
+    private void recordFailure(String stage, Throwable t) {
         long now = System.currentTimeMillis();
         ErrorClass cls = classify(t);
         lastErrorClass = cls;
         lastErrorAtMs = now;
         lastError = t != null ? t.getClass().getSimpleName() + ": " + safeMsg(t) : "Unknown failure";
+        lastErrorSummary = summarizeError(t, cls);
+        lastErrorStage = stage;
 
         int fails = consecutiveFailures.incrementAndGet();
         if (cls == ErrorClass.AUTH) {
@@ -99,10 +104,7 @@ public class ZerobusClientManager {
         return m != null ? m : "";
     }
 
-    private static ErrorClass classify(Throwable t) {
-        if (t == null) return ErrorClass.TRANSIENT;
-
-        // Unwrap common wrapper exceptions
+    private static Throwable unwrap(Throwable t) {
         Throwable root = t;
         while (root instanceof java.util.concurrent.ExecutionException
                 || root instanceof java.util.concurrent.CompletionException) {
@@ -110,21 +112,98 @@ public class ZerobusClientManager {
             if (c == null) break;
             root = c;
         }
+        return root;
+    }
+
+    private static String collectMessages(Throwable t) {
+        StringBuilder sb = new StringBuilder();
+        Throwable scan = t;
+        int depth = 0;
+        while (scan != null && depth < 8) {
+            String m = safeMsg(scan);
+            if (m != null && !m.isEmpty()) {
+                if (sb.length() > 0) {
+                    sb.append("\n");
+                }
+                sb.append(m.toLowerCase(Locale.ROOT));
+            }
+            scan = scan.getCause();
+            depth++;
+        }
+        return sb.toString();
+    }
+
+    private static boolean containsAny(String text, String... needles) {
+        for (String n : needles) {
+            if (text.contains(n)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String extractRootMessage(Throwable t) {
+        Throwable cur = t;
+        Throwable lastWithMessage = null;
+        int depth = 0;
+        while (cur != null && depth < 12) {
+            if (!safeMsg(cur).isEmpty()) {
+                lastWithMessage = cur;
+            }
+            cur = cur.getCause();
+            depth++;
+        }
+        if (lastWithMessage != null) {
+            return safeMsg(lastWithMessage);
+        }
+        return t != null ? t.getClass().getSimpleName() : "unknown";
+    }
+
+    private String summarizeError(Throwable t, ErrorClass cls) {
+        String root = extractRootMessage(t);
+        switch (cls) {
+            case PERMISSION:
+                return "Likely permissions issue on target table '" + config.getTargetTable()
+                        + "'. Verify service principal grants (USE CATALOG, USE SCHEMA, and MODIFY/INSERT). Root cause: " + root;
+            case AUTH:
+                return "Authentication/authorization failure while requesting Zerobus credentials. Verify workspace URL, OAuth client ID/secret, and service principal permissions. Root cause: " + root;
+            case NON_RETRIABLE:
+                return "Non-retriable Zerobus error. Validate target table/schema and connector configuration. Root cause: " + root;
+            case TRANSIENT:
+            default:
+                return "Transient connectivity/service issue while talking to Zerobus. Connector will retry with backoff. Root cause: " + root;
+        }
+    }
+
+    private void recordDiagnosticError(String stage, Throwable t) {
+        ErrorClass cls = classify(t);
+        lastErrorClass = cls;
+        lastErrorAtMs = System.currentTimeMillis();
+        lastError = t != null ? t.getClass().getSimpleName() + ": " + safeMsg(t) : "Unknown failure";
+        lastErrorSummary = summarizeError(t, cls);
+        lastErrorStage = stage;
+    }
+
+    private static ErrorClass classify(Throwable t) {
+        if (t == null) return ErrorClass.TRANSIENT;
+
+        // Unwrap common wrapper exceptions
+        Throwable root = unwrap(t);
 
         // Auth/token detection by message is allowed for any exception type (SDKs sometimes throw "retriable"
         // exception types for auth failures, but we still want to avoid hot-looping).
         //
         // IMPORTANT: Some SDKs put the important auth hint only in a nested cause message, so scan the cause chain.
-        String msg = "";
-        Throwable scan = root;
-        int depth = 0;
-        while (scan != null && depth < 8) {
-            String m = safeMsg(scan);
-            if (m != null && !m.isEmpty()) {
-                msg = (msg + "\n" + m).toLowerCase(Locale.ROOT);
-            }
-            scan = scan.getCause();
-            depth++;
+        String msg = collectMessages(root);
+        if (containsAny(msg,
+                "permission denied",
+                "insufficient privileges",
+                "access denied",
+                "not authorized on",
+                "missing privileges",
+                "permission",
+                "privilege")) {
+            return ErrorClass.PERMISSION;
         }
         // AUTH classification:
         // Only classify as AUTH when we see explicit authorization/credential signals.
@@ -179,6 +258,9 @@ public class ZerobusClientManager {
         long jitter = ThreadLocalRandom.current().nextLong(0, 250L);
 
         switch (cls) {
+            case PERMISSION:
+                // Permission issues are usually operator-actionable. Retry occasionally.
+                return (5L * 60_000L) + jitter; // 5 minutes
             case AUTH: {
                 // Avoid hot loops on auth: start at 30s, cap at 10m
                 long authBase = Math.max(30_000L, base);
@@ -278,7 +360,7 @@ public class ZerobusClientManager {
             
         } catch (Exception e) {
             logger.error("Failed to initialize Zerobus client", e);
-            lastError = e.getMessage();
+            recordDiagnosticError("create_stream", e);
             throw e;
         }
     }
@@ -393,9 +475,11 @@ public class ZerobusClientManager {
             recordSuccess();
             return true;
         } catch (NonRetriableException e) {
-            recordFailure(e);
+            recordFailure("ingest_record", e);
             if (lastErrorClass == ErrorClass.AUTH) {
                 logger.error("Auth/token error sending events to Zerobus (will back off)", e);
+            } else if (lastErrorClass == ErrorClass.PERMISSION) {
+                logger.error("Permission error sending events to Zerobus (operator action likely required)", e);
             } else {
                 logger.error("Non-retriable error sending events to Zerobus (operator action likely required)", e);
             }
@@ -403,13 +487,13 @@ public class ZerobusClientManager {
             connected.set(false);
             return false;
         } catch (ZerobusException e) {
-            recordFailure(e);
+            recordFailure("ingest_record", e);
             logger.warn("Retriable error sending events to Zerobus (will retry with backoff)", e);
             totalFailures.incrementAndGet();
             // Recovery will be attempted by ensureConnected() after backoff.
             return false;
         } catch (Exception e) {
-            recordFailure(e);
+            recordFailure("ingest_record", e);
             logger.error("Unexpected error sending events to Zerobus (will retry with backoff)", e);
             totalFailures.incrementAndGet();
             connected.set(false);
@@ -471,7 +555,7 @@ public class ZerobusClientManager {
                 }
                 return connected.get();
             } catch (Exception e) {
-                recordFailure(e);
+                recordFailure("ensure_connected", e);
                 connected.set(false);
                 return false;
             }
@@ -522,12 +606,12 @@ public class ZerobusClientManager {
             
         } catch (NonRetriableException e) {
             logger.error("Connection test failed with non-retriable error", e);
-            lastError = e.getMessage();
+            recordDiagnosticError("test_connection", e);
             return false;
             
         } catch (Exception e) {
             logger.error("Connection test failed", e);
-            lastError = e.getMessage();
+            recordDiagnosticError("test_connection", e);
             return false;
         }
     }
@@ -561,7 +645,7 @@ public class ZerobusClientManager {
             
         } catch (Exception e) {
             logger.error("Stream recovery failed", e);
-            recordFailure(e);
+            recordFailure("recreate_stream", e);
             connected.set(false);
         }
     }
@@ -617,10 +701,18 @@ public class ZerobusClientManager {
         }
         
         if (lastError != null) {
-            sb.append("Last Error: ").append(lastError).append("\n");
+            sb.append("Last Error (raw): ").append(lastError).append("\n");
+        }
+        if (lastErrorSummary != null) {
+            sb.append("Last Error Summary: ").append(lastErrorSummary).append("\n");
+        }
+        if (lastErrorStage != null) {
+            sb.append("Last Error Stage: ").append(lastErrorStage).append("\n");
         }
 
         sb.append("Last Error Class: ").append(lastErrorClass).append("\n");
+        sb.append("Workspace URL: ").append(config.getWorkspaceUrl()).append("\n");
+        sb.append("Target Table: ").append(config.getTargetTable()).append("\n");
         if (lastErrorAtMs > 0) {
             long secondsAgo = (System.currentTimeMillis() - lastErrorAtMs) / 1000;
             sb.append("Last Error At: ").append(secondsAgo).append(" seconds ago\n");
